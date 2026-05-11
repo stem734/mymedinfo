@@ -8,6 +8,7 @@ import PatientSupportFooter from '../components/PatientSupportFooter';
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
+import { getVideoEmbedUrl } from '../videoEmbed';
 
 /**
  * ImmunisationView — renders post-immunisation information.
@@ -173,6 +174,21 @@ const ImmunisationView: React.FC = () => {
               ))}
             </ul>
           </div>
+
+          {getVideoEmbedUrl(template.videoUrl) && (
+            <div className="patient-info-section">
+              <h3 className="patient-section-title patient-section-title--small">{template.videoTitle || 'Video guidance'}</h3>
+              <div style={{ aspectRatio: '16 / 9', width: '100%', overflow: 'hidden', borderRadius: '8px', border: '1px solid #d8dde0', background: '#000' }}>
+                <iframe
+                  src={getVideoEmbedUrl(template.videoUrl)}
+                  title={template.videoTitle || `${template.label} video guidance`}
+                  style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
 
           <div className="patient-resources patient-section-divider">
             <h3 className="patient-resources-heading">Further guidance</h3>

@@ -263,6 +263,7 @@ const formatRevisionPreview = (builderType: CardTemplateBuilderType, payload: un
       `Headline: ${String(template.headline || '')}`,
       `Explanation: ${String(template.explanation || '')}`,
       `Guidance: ${Array.isArray(template.guidance) ? template.guidance.join(' | ') : ''}`,
+      `Video: ${String(template.videoUrl || '')}`,
     ];
 
     if (builderType === 'screening') {
@@ -1077,6 +1078,11 @@ const CardBuilder: React.FC = () => {
     updateScreeningTemplate(templateId, { nhsLinks });
   };
 
+  const removeScreeningLink = (templateId: string, index: number) => {
+    const template = screeningTemplates[templateId] || SCREENING_TEMPLATES.cervical;
+    updateScreeningTemplate(templateId, { nhsLinks: template.nhsLinks.filter((_, linkIndex) => linkIndex !== index) });
+  };
+
   const updateImmunisationTemplate = (templateId: string, patch: Partial<ImmunisationTemplate>) => {
     setImmunisationTemplates((current) => ({
       ...current,
@@ -1094,10 +1100,26 @@ const CardBuilder: React.FC = () => {
     updateImmunisationTemplate(templateId, { guidance });
   };
 
+  const addImmunisationGuidance = (templateId: string) => {
+    const template = immunisationTemplates[templateId] || IMMUNISATION_TEMPLATES.flu;
+    updateImmunisationTemplate(templateId, { guidance: [...template.guidance, ''] });
+  };
+
+  const removeImmunisationGuidance = (templateId: string, index: number) => {
+    const template = immunisationTemplates[templateId] || IMMUNISATION_TEMPLATES.flu;
+    const guidance = template.guidance.filter((_, itemIndex) => itemIndex !== index);
+    updateImmunisationTemplate(templateId, { guidance: guidance.length > 0 ? guidance : [''] });
+  };
+
   const updateImmunisationLink = (templateId: string, index: number, field: keyof PatientResourceLink, value: string) => {
     const template = immunisationTemplates[templateId] || IMMUNISATION_TEMPLATES.flu;
     const nhsLinks = template.nhsLinks.map((link, linkIndex) => linkIndex === index ? { ...link, [field]: value } : link);
     updateImmunisationTemplate(templateId, { nhsLinks });
+  };
+
+  const removeImmunisationLink = (templateId: string, index: number) => {
+    const template = immunisationTemplates[templateId] || IMMUNISATION_TEMPLATES.flu;
+    updateImmunisationTemplate(templateId, { nhsLinks: template.nhsLinks.filter((_, linkIndex) => linkIndex !== index) });
   };
 
   const updateLongTermConditionTemplate = (templateId: string, patch: Partial<LongTermConditionTemplate>) => {
@@ -1121,6 +1143,11 @@ const CardBuilder: React.FC = () => {
     const template = longTermConditionTemplates[templateId] || LONG_TERM_CONDITION_TEMPLATES.asthma;
     const nhsLinks = template.nhsLinks.map((link, linkIndex) => linkIndex === index ? { ...link, [field]: value } : link);
     updateLongTermConditionTemplate(templateId, { nhsLinks });
+  };
+
+  const removeLongTermLink = (templateId: string, index: number) => {
+    const template = longTermConditionTemplates[templateId] || LONG_TERM_CONDITION_TEMPLATES.asthma;
+    updateLongTermConditionTemplate(templateId, { nhsLinks: template.nhsLinks.filter((_, linkIndex) => linkIndex !== index) });
   };
 
   const updateLongTermZone = (
@@ -2624,6 +2651,16 @@ const CardBuilder: React.FC = () => {
                 <label style={editorFieldLabelStyle}>Guidance *</label>
                 <textarea value={selectedScreeningTemplate.explanation} onChange={(e) => updateScreeningTemplate(screeningType, { explanation: e.target.value })} rows={4} style={editorInputStyle} />
               </div>
+              <div style={metadataGridStyle}>
+                <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Video URL</label>
+                  <input type="url" value={selectedScreeningTemplate.videoUrl || ''} onChange={(e) => updateScreeningTemplate(screeningType, { videoUrl: e.target.value })} style={editorInputStyle} />
+                </div>
+                <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Video title</label>
+                  <input type="text" value={selectedScreeningTemplate.videoTitle || ''} onChange={(e) => updateScreeningTemplate(screeningType, { videoTitle: e.target.value })} style={editorInputStyle} />
+                </div>
+              </div>
               <div style={{ border: '1px solid #d8dde0', borderRadius: '10px', padding: '0.8rem 0.85rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.6rem' }}>
                   <h4 style={{ margin: 0 }}>Do</h4>
@@ -2669,10 +2706,15 @@ const CardBuilder: React.FC = () => {
                   </button>
                 </div>
                 {selectedScreeningTemplate.nhsLinks.map((link, index) => (
-                  <div key={index} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: '1fr', marginBottom: '0.75rem' }}>
-                    <input type="text" value={link.title} onChange={(e) => updateScreeningLink(screeningType, index, 'title', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
-                    <input type="text" value={link.url} onChange={(e) => updateScreeningLink(screeningType, index, 'url', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
-                    <textarea value={link.description} onChange={(e) => updateScreeningLink(screeningType, index, 'description', e.target.value)} rows={2} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                  <div key={index} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'minmax(0, 1fr) auto', marginBottom: '0.75rem', alignItems: 'start' }}>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <input type="text" value={link.title} onChange={(e) => updateScreeningLink(screeningType, index, 'title', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                      <input type="text" value={link.url} onChange={(e) => updateScreeningLink(screeningType, index, 'url', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                      <textarea value={link.description} onChange={(e) => updateScreeningLink(screeningType, index, 'description', e.target.value)} rows={2} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                    </div>
+                    <button type="button" onClick={() => removeScreeningLink(screeningType, index)} style={{ background: '#fde8e8', border: 'none', color: '#d5281b', borderRadius: '6px', padding: '0.5rem', cursor: 'pointer' }}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -2752,10 +2794,30 @@ const CardBuilder: React.FC = () => {
                 </div>
               </div>
               <div>
-                <h4 style={{ margin: '0 0 0.5rem' }}>Guidance</h4>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <h4 style={{ margin: 0 }}>Guidance</h4>
+                  <button type="button" onClick={() => addImmunisationGuidance(selectedImmunisationTemplate.id)} className="action-button-sm" style={{ background: '#ffffff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.35rem 0.6rem' }}>
+                    <Plus size={14} /> Add Point
+                  </button>
+                </div>
                 {selectedImmunisationTemplate.guidance.map((item, index) => (
-                  <input key={index} type="text" value={item} onChange={(e) => updateImmunisationGuidance(selectedImmunisationTemplate.id, index, e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box', marginBottom: '0.5rem' }} />
+                  <div key={index} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                    <input type="text" value={item} onChange={(e) => updateImmunisationGuidance(selectedImmunisationTemplate.id, index, e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                    <button type="button" onClick={() => removeImmunisationGuidance(selectedImmunisationTemplate.id, index)} style={{ background: '#fde8e8', border: 'none', color: '#d5281b', borderRadius: '6px', padding: '0.5rem', cursor: 'pointer' }}>
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 ))}
+              </div>
+              <div style={metadataGridStyle}>
+                <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Video URL</label>
+                  <input type="url" value={selectedImmunisationTemplate.videoUrl || ''} onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, { videoUrl: e.target.value })} style={editorInputStyle} />
+                </div>
+                <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Video title</label>
+                  <input type="text" value={selectedImmunisationTemplate.videoTitle || ''} onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, { videoTitle: e.target.value })} style={editorInputStyle} />
+                </div>
               </div>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -2765,10 +2827,15 @@ const CardBuilder: React.FC = () => {
                   </button>
                 </div>
                 {selectedImmunisationTemplate.nhsLinks.map((link, index) => (
-                  <div key={index} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: '1fr', marginBottom: '0.75rem' }}>
-                    <input type="text" value={link.title} onChange={(e) => updateImmunisationLink(selectedImmunisationTemplate.id, index, 'title', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
-                    <input type="text" value={link.url} onChange={(e) => updateImmunisationLink(selectedImmunisationTemplate.id, index, 'url', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
-                    <textarea value={link.description} onChange={(e) => updateImmunisationLink(selectedImmunisationTemplate.id, index, 'description', e.target.value)} rows={2} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                  <div key={index} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'minmax(0, 1fr) auto', marginBottom: '0.75rem', alignItems: 'start' }}>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <input type="text" value={link.title} onChange={(e) => updateImmunisationLink(selectedImmunisationTemplate.id, index, 'title', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                      <input type="text" value={link.url} onChange={(e) => updateImmunisationLink(selectedImmunisationTemplate.id, index, 'url', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                      <textarea value={link.description} onChange={(e) => updateImmunisationLink(selectedImmunisationTemplate.id, index, 'description', e.target.value)} rows={2} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                    </div>
+                    <button type="button" onClick={() => removeImmunisationLink(selectedImmunisationTemplate.id, index)} style={{ background: '#fde8e8', border: 'none', color: '#d5281b', borderRadius: '6px', padding: '0.5rem', cursor: 'pointer' }}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -2851,6 +2918,16 @@ const CardBuilder: React.FC = () => {
                 <label style={editorFieldLabelStyle}>Important message</label>
                 <textarea value={selectedLongTermConditionTemplate.importantMessage || ''} onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, { importantMessage: e.target.value })} rows={3} style={editorInputStyle} />
               </div>
+              <div style={metadataGridStyle}>
+                <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Video URL</label>
+                  <input type="url" value={selectedLongTermConditionTemplate.videoUrl || ''} onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, { videoUrl: e.target.value })} style={editorInputStyle} />
+                </div>
+                <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Video title</label>
+                  <input type="text" value={selectedLongTermConditionTemplate.videoTitle || ''} onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, { videoTitle: e.target.value })} style={editorInputStyle} />
+                </div>
+              </div>
               <div>
                 <h4 style={{ margin: '0 0 0.5rem' }}>Guidance</h4>
                 {selectedLongTermConditionTemplate.guidance.map((item, index) => (
@@ -2878,10 +2955,15 @@ const CardBuilder: React.FC = () => {
                   </button>
                 </div>
                 {selectedLongTermConditionTemplate.nhsLinks.map((link, index) => (
-                  <div key={index} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: '1fr', marginBottom: '0.75rem' }}>
-                    <input type="text" value={link.title} onChange={(e) => updateLongTermLink(selectedLongTermCondition, index, 'title', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
-                    <input type="text" value={link.url} onChange={(e) => updateLongTermLink(selectedLongTermCondition, index, 'url', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
-                    <textarea value={link.description} onChange={(e) => updateLongTermLink(selectedLongTermCondition, index, 'description', e.target.value)} rows={2} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                  <div key={index} style={{ display: 'grid', gap: '0.5rem', gridTemplateColumns: 'minmax(0, 1fr) auto', marginBottom: '0.75rem', alignItems: 'start' }}>
+                    <div style={{ display: 'grid', gap: '0.5rem' }}>
+                      <input type="text" value={link.title} onChange={(e) => updateLongTermLink(selectedLongTermCondition, index, 'title', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                      <input type="text" value={link.url} onChange={(e) => updateLongTermLink(selectedLongTermCondition, index, 'url', e.target.value)} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                      <textarea value={link.description} onChange={(e) => updateLongTermLink(selectedLongTermCondition, index, 'description', e.target.value)} rows={2} style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', boxSizing: 'border-box' }} />
+                    </div>
+                    <button type="button" onClick={() => removeLongTermLink(selectedLongTermCondition, index)} style={{ background: '#fde8e8', border: 'none', color: '#d5281b', borderRadius: '6px', padding: '0.5rem', cursor: 'pointer' }}>
+                      <Trash2 size={14} />
+                    </button>
                   </div>
                 ))}
               </div>

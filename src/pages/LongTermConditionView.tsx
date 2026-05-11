@@ -8,6 +8,7 @@ import PatientSupportFooter from '../components/PatientSupportFooter';
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
+import { getVideoEmbedUrl } from '../videoEmbed';
 
 const formatValidUntil = (issuedAt: Date | null, value?: number, unit?: 'weeks' | 'months') => {
   if (!issuedAt || !value || !unit) return '';
@@ -34,6 +35,7 @@ const LongTermConditionView: React.FC = () => {
   const [loadedTemplate, setLoadedTemplate] = useState<LongTermConditionTemplate | null>(null);
   const access = usePracticeContentAccess(practiceIdentifier, 'ltc_enabled', { skip: isDemoMode });
   const selectedTemplate = loadedTemplate;
+  const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
   const validUntil = useMemo(
     () => formatValidUntil(issuedAt, selectedTemplate?.linkExpiryValue, selectedTemplate?.linkExpiryUnit),
     [issuedAt, selectedTemplate],
@@ -161,6 +163,21 @@ const LongTermConditionView: React.FC = () => {
             ))}
           </ul>
         </div>
+
+        {videoEmbedUrl && (
+          <div className="patient-info-section">
+            <h3 className="patient-section-title patient-section-title--small">{selectedTemplate.videoTitle || 'Video guidance'}</h3>
+            <div style={{ aspectRatio: '16 / 9', width: '100%', overflow: 'hidden', borderRadius: '8px', border: '1px solid #d8dde0', background: '#000' }}>
+              <iframe
+                src={videoEmbedUrl}
+                title={selectedTemplate.videoTitle || `${selectedTemplate.label} video guidance`}
+                style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
+          </div>
+        )}
       </div>
 
       {selectedTemplate.zones && selectedTemplate.zones.length > 0 && (

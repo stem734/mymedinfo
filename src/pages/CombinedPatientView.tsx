@@ -24,6 +24,7 @@ import { NhsCross, NhsTick } from '../components/NhsIcons';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
 import { saveElementAsPdf } from '../pdfExport';
+import { getVideoEmbedUrl } from '../videoEmbed';
 
 const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALIDATION_CACHE_VERSION = 'v2';
@@ -974,6 +975,21 @@ const CombinedPatientView: React.FC = () => {
             </div>
           )}
 
+          {getVideoEmbedUrl(template.videoUrl) && (
+            <div className="patient-info-section">
+              <h3 className="patient-section-title patient-section-title--small">{template.videoTitle || 'Video guidance'}</h3>
+              <div style={{ aspectRatio: '16 / 9', width: '100%', overflow: 'hidden', borderRadius: '8px', border: '1px solid #d8dde0', background: '#000' }}>
+                <iframe
+                  src={getVideoEmbedUrl(template.videoUrl)}
+                  title={template.videoTitle || `${template.label} video guidance`}
+                  style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
+
           <div className="patient-resources patient-section-divider">
             <h3 className="patient-resources-heading">Further guidance</h3>
             <div className="patient-resource-list patient-resource-list--compact">
@@ -1061,6 +1077,21 @@ const CombinedPatientView: React.FC = () => {
               ))}
             </ul>
           </div>
+
+          {getVideoEmbedUrl(template.videoUrl) && (
+            <div className="patient-info-section">
+              <h3 className="patient-section-title patient-section-title--small">{template.videoTitle || 'Video guidance'}</h3>
+              <div style={{ aspectRatio: '16 / 9', width: '100%', overflow: 'hidden', borderRadius: '8px', border: '1px solid #d8dde0', background: '#000' }}>
+                <iframe
+                  src={getVideoEmbedUrl(template.videoUrl)}
+                  title={template.videoTitle || `${template.label} video guidance`}
+                  style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                />
+              </div>
+            </div>
+          )}
 
           <div className="patient-resources patient-section-divider">
             <h3 className="patient-resources-heading">Further guidance</h3>

@@ -13,6 +13,8 @@ export type ScreeningTemplate = {
   guidance: string[];
   dontGuidance?: string[];
   nhsLinks: PatientResourceLink[];
+  videoUrl?: string;
+  videoTitle?: string;
   reviewMonths?: number;
   contentReviewDate?: string;
   linkExpiryValue?: number;
@@ -26,6 +28,8 @@ export type ImmunisationTemplate = {
   explanation: string;
   guidance: string[];
   nhsLinks: PatientResourceLink[];
+  videoUrl?: string;
+  videoTitle?: string;
   reviewMonths?: number;
   contentReviewDate?: string;
   linkExpiryValue?: number;
@@ -52,6 +56,8 @@ export type LongTermConditionTemplate = {
     points: string[];
   }>;
   nhsLinks: PatientResourceLink[];
+  videoUrl?: string;
+  videoTitle?: string;
   linkExpiryValue?: number;
   linkExpiryUnit?: 'weeks' | 'months';
 };

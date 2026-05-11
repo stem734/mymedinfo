@@ -15,6 +15,7 @@ import { NhsCross, NhsTick } from '../components/NhsIcons';
 import PatientSupportFooter from '../components/PatientSupportFooter';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
+import { getVideoEmbedUrl } from '../videoEmbed';
 
 /**
  * ScreeningView — renders screening invitation / result info.
@@ -39,6 +40,7 @@ const ScreeningView: React.FC = () => {
   const access = usePracticeContentAccess(practiceIdentifier, 'screening_enabled', { skip: isDemoMode || previewOnly });
   const knownTemplateIds = useMemo(() => Object.keys(SCREENING_TEMPLATES), []);
   const selectedTemplate = loadedTemplate;
+  const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
   const issuedAt = useMemo(() => parseSystmOneTimestamp(searchParams.get('codes')), [searchParams]);
   const validUntil = useMemo(() => {
     if (!issuedAt || !selectedTemplate?.linkExpiryValue || !selectedTemplate?.linkExpiryUnit) return '';
@@ -181,6 +183,21 @@ const ScreeningView: React.FC = () => {
                 </li>
               ))}
             </ul>
+          </div>
+        )}
+
+        {videoEmbedUrl && (
+          <div className="patient-info-section">
+            <h3 className="patient-section-title patient-section-title--small">{selectedTemplate.videoTitle || 'Video guidance'}</h3>
+            <div style={{ aspectRatio: '16 / 9', width: '100%', overflow: 'hidden', borderRadius: '8px', border: '1px solid #d8dde0', background: '#000' }}>
+              <iframe
+                src={videoEmbedUrl}
+                title={selectedTemplate.videoTitle || `${selectedTemplate.label} video guidance`}
+                style={{ width: '100%', height: '100%', border: 0, display: 'block' }}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            </div>
           </div>
         )}
       </div>
