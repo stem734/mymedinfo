@@ -157,7 +157,7 @@ const ScreeningView: React.FC = () => {
 
         <div className="patient-info-section">
           <h3 className="patient-section-title patient-section-title--small">Guidance</h3>
-          <p className="patient-section-copy" style={{ marginBottom: 0 }}>{selectedTemplate.explanation}</p>
+          <p className="patient-section-copy patient-section-copy--formatted" style={{ marginBottom: 0 }}>{selectedTemplate.explanation}</p>
         </div>
 
         <div className="patient-info-section">

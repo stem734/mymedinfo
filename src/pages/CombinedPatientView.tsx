@@ -946,7 +946,7 @@ const CombinedPatientView: React.FC = () => {
 
           <div className="patient-info-section">
             <h3 className="patient-section-title patient-section-title--small">Guidance</h3>
-            <p className="patient-section-copy" style={{ marginBottom: 0 }}>{template.explanation}</p>
+            <p className="patient-section-copy patient-section-copy--formatted" style={{ marginBottom: 0 }}>{template.explanation}</p>
           </div>
 
           <div className="patient-info-section">
@@ -1064,7 +1064,7 @@ const CombinedPatientView: React.FC = () => {
           </div>
           <h2 className="patient-section-title">{template.label}</h2>
           <p className="patient-section-copy">{template.headline}</p>
-          <p className="patient-section-copy">{template.explanation}</p>
+          <p className="patient-section-copy patient-section-copy--formatted">{template.explanation}</p>
 
           <div className="patient-info-section">
             <h3 className="patient-section-title patient-section-title--small">Aftercare and guidance</h3>

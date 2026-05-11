@@ -161,7 +161,7 @@ const ImmunisationView: React.FC = () => {
           })()}
           <h2 className="patient-section-title">{template.label}</h2>
           <p className="patient-section-copy">{template.headline}</p>
-          <p className="patient-section-copy">{template.explanation}</p>
+          <p className="patient-section-copy patient-section-copy--formatted">{template.explanation}</p>
 
           <div className="patient-info-section">
             <h3 className="patient-section-title patient-section-title--small">Aftercare and guidance</h3>

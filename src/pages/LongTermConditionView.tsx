@@ -133,7 +133,7 @@ const LongTermConditionView: React.FC = () => {
         )}
         <h2 className="patient-section-title">{selectedTemplate.label}</h2>
         <p className="patient-section-copy">{selectedTemplate.headline}</p>
-        <p className="patient-section-copy">{selectedTemplate.explanation}</p>
+        <p className="patient-section-copy patient-section-copy--formatted">{selectedTemplate.explanation}</p>
 
         {selectedTemplate.importantMessage && (
           <div style={{

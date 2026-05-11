@@ -29,7 +29,9 @@ export const getVideoEmbedUrl = (value?: string) => {
   if (!value?.trim()) return '';
 
   try {
-    const url = new URL(value.trim());
+    const trimmed = value.trim();
+    const iframeSrc = trimmed.match(/<iframe[^>]+src=["']([^"']+)["']/i)?.[1];
+    const url = new URL(iframeSrc || trimmed);
     if (YOUTUBE_HOSTS.has(url.hostname)) {
       const id = getYouTubeId(url);
       return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}` : '';

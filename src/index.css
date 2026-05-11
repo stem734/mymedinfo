@@ -883,6 +883,10 @@ p {
   font-size: 0.95rem;
 }
 
+.patient-section-copy--formatted {
+  white-space: pre-line;
+}
+
 .patient-section-divider {
   margin-top: 1rem;
   padding-top: 1rem;
