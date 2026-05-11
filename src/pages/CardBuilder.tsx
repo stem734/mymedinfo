@@ -310,6 +310,12 @@ const getDuplicateTemplateId = (baseId: string, existingIds: string[]) => {
   return `${normalizedBase}_${index}`;
 };
 
+const parseOptionalPositiveInteger = (value: string) => {
+  if (value === '') return undefined;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : undefined;
+};
+
 const isOutputBuilderType = (value: string | null): value is OutputBuilderType =>
   value === 'medication' || value === 'healthcheck' || value === 'screening' || value === 'immunisation' || value === 'ltc';
 
@@ -2323,12 +2329,12 @@ const CardBuilder: React.FC = () => {
                         <input
                           type="number"
                           min={1}
-                          value={healthCheckReviewMeta[selectedHealthCheckDomain]?.reviewMonths ?? 12}
+                          value={healthCheckReviewMeta[selectedHealthCheckDomain]?.reviewMonths ?? ''}
                           onChange={(e) => setHealthCheckReviewMeta((prev) => ({
                             ...prev,
                             [selectedHealthCheckDomain]: {
                               ...prev[selectedHealthCheckDomain],
-                              reviewMonths: Math.max(1, Number(e.target.value) || 12),
+                              reviewMonths: parseOptionalPositiveInteger(e.target.value),
                             },
                           }))}
                           style={{ width: '100%', padding: '0.7rem', border: '2px solid #d8dde0', borderRadius: '8px', fontSize: '0.95rem', boxSizing: 'border-box' }}
@@ -2698,7 +2704,7 @@ const CardBuilder: React.FC = () => {
                   <label style={editorFieldLabelStyle}>Code</label>
                   <input
                     type="text"
-                    value={selectedScreeningTemplate.code || getDefaultScreeningCode(selectedScreeningTemplate.id)}
+                    value={selectedScreeningTemplate.code ?? getDefaultScreeningCode(selectedScreeningTemplate.id)}
                     onChange={(e) => updateScreeningTemplate(screeningType, {
                       code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                     })}
@@ -2722,8 +2728,8 @@ const CardBuilder: React.FC = () => {
                   <input
                     type="number"
                     min={1}
-                    value={selectedScreeningTemplate.reviewMonths ?? 12}
-                    onChange={(e) => updateScreeningTemplate(screeningType, { reviewMonths: Math.max(1, Number(e.target.value) || 12) })}
+                    value={selectedScreeningTemplate.reviewMonths ?? ''}
+                    onChange={(e) => updateScreeningTemplate(screeningType, { reviewMonths: parseOptionalPositiveInteger(e.target.value) })}
                     style={editorInputStyle}
                   />
                 </div>
@@ -2855,7 +2861,7 @@ const CardBuilder: React.FC = () => {
                   <label style={editorFieldLabelStyle}>Code</label>
                   <input
                     type="text"
-                    value={selectedImmunisationTemplate.code || getDefaultImmunisationCode(selectedImmunisationTemplate.id)}
+                    value={selectedImmunisationTemplate.code ?? getDefaultImmunisationCode(selectedImmunisationTemplate.id)}
                     onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, {
                       code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                     })}
@@ -2867,8 +2873,8 @@ const CardBuilder: React.FC = () => {
                   <input
                     type="number"
                     min={1}
-                    value={selectedImmunisationTemplate.reviewMonths ?? 12}
-                    onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, { reviewMonths: Math.max(1, Number(e.target.value) || 12) })}
+                    value={selectedImmunisationTemplate.reviewMonths ?? ''}
+                    onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, { reviewMonths: parseOptionalPositiveInteger(e.target.value) })}
                     style={editorInputStyle}
                   />
                 </div>
@@ -2987,7 +2993,7 @@ const CardBuilder: React.FC = () => {
                   <label style={editorFieldLabelStyle}>Code</label>
                   <input
                     type="text"
-                    value={selectedLongTermConditionTemplate.code || getDefaultLongTermConditionCode(selectedLongTermConditionTemplate.id)}
+                    value={selectedLongTermConditionTemplate.code ?? getDefaultLongTermConditionCode(selectedLongTermConditionTemplate.id)}
                     onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, {
                       code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                     })}
@@ -2999,8 +3005,8 @@ const CardBuilder: React.FC = () => {
                   <input
                     type="number"
                     min={1}
-                    value={selectedLongTermConditionTemplate.reviewMonths ?? 12}
-                    onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, { reviewMonths: Math.max(1, Number(e.target.value) || 12) })}
+                    value={selectedLongTermConditionTemplate.reviewMonths ?? ''}
+                    onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, { reviewMonths: parseOptionalPositiveInteger(e.target.value) })}
                     style={editorInputStyle}
                   />
                 </div>
