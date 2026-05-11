@@ -292,6 +292,18 @@ const createDefaultImmunisationState = (): Record<string, ImmunisationTemplate> 
 const createDefaultLongTermConditionState = (): Record<string, LongTermConditionTemplate> =>
   Object.fromEntries(Object.entries(LONG_TERM_CONDITION_TEMPLATES).map(([key, template]) => [key, cloneLongTermConditionTemplate(template)]));
 
+const getDuplicateTemplateId = (baseId: string, existingIds: string[]) => {
+  const normalizedBase = `${baseId}_copy`.toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+  const existing = new Set(existingIds.map((id) => id.toLowerCase()));
+  if (!existing.has(normalizedBase)) return normalizedBase;
+
+  let index = 2;
+  while (existing.has(`${normalizedBase}_${index}`)) {
+    index += 1;
+  }
+  return `${normalizedBase}_${index}`;
+};
+
 const isOutputBuilderType = (value: string | null): value is OutputBuilderType =>
   value === 'medication' || value === 'healthcheck' || value === 'screening' || value === 'immunisation' || value === 'ltc';
 
@@ -701,6 +713,49 @@ const CardBuilder: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const duplicateScreeningTemplate = (template: ScreeningTemplate) => {
+    const nextId = getDuplicateTemplateId(template.id, Object.keys(screeningTemplates));
+    const duplicate = cloneScreeningTemplate({
+      ...template,
+      id: nextId,
+      code: getDefaultScreeningCode(nextId),
+      label: `${template.label} Copy`,
+    });
+    setScreeningTemplates((current) => ({ ...current, [nextId]: duplicate }));
+    setScreeningType(nextId);
+    setTemplateSaveCompleted((current) => ({ ...current, screening: false }));
+    setScreeningEditorOpen(true);
+    toast.info('Screening card duplicated. Save it to keep the copy.');
+  };
+
+  const duplicateImmunisationTemplate = (template: ImmunisationTemplate) => {
+    const nextId = getDuplicateTemplateId(template.id, Object.keys(immunisationTemplates));
+    const duplicate = cloneImmunisationTemplate({
+      ...template,
+      id: nextId,
+      label: `${template.label} Copy`,
+    });
+    setImmunisationTemplates((current) => ({ ...current, [nextId]: duplicate }));
+    setImmunisationSelections([nextId]);
+    setTemplateSaveCompleted((current) => ({ ...current, immunisation: false }));
+    setImmunisationEditorOpen(true);
+    toast.info('Immunisation card duplicated. Save it to keep the copy.');
+  };
+
+  const duplicateLongTermConditionTemplate = (template: LongTermConditionTemplate) => {
+    const nextId = getDuplicateTemplateId(template.id, Object.keys(longTermConditionTemplates));
+    const duplicate = cloneLongTermConditionTemplate({
+      ...template,
+      id: nextId,
+      label: `${template.label} Copy`,
+    });
+    setLongTermConditionTemplates((current) => ({ ...current, [nextId]: duplicate }));
+    setSelectedLongTermCondition(nextId);
+    setTemplateSaveCompleted((current) => ({ ...current, ltc: false }));
+    setLtcEditorOpen(true);
+    toast.info('Long term condition card duplicated. Save it to keep the copy.');
+  };
+
   const sourceLabel = (medication: MedicationRecord) => {
     if (medication.source === 'built-in') return 'Built in';
     if (medication.source === 'override') return 'Edited global card';
@@ -711,7 +766,28 @@ const CardBuilder: React.FC = () => {
     `${window.location.origin}${resolvePath('/patient')}?${params.toString()}`;
 
   const copyText = async (value: string) => {
-    await navigator.clipboard.writeText(value);
+    try {
+      if (navigator.clipboard?.writeText && window.isSecureContext) {
+        await navigator.clipboard.writeText(value);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = value;
+        textarea.setAttribute('readonly', '');
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.select();
+        const copied = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!copied) {
+          throw new Error('Copy command failed');
+        }
+      }
+      toast.success('Link copied');
+    } catch (error) {
+      console.error('Failed to copy link', error);
+      toast.error('Could not copy link');
+    }
   };
 
   const openPathwayLibraryManager = () => {
@@ -2443,8 +2519,8 @@ const CardBuilder: React.FC = () => {
                       >
                         Audit
                       </button>
-                      <button onClick={() => copyText(previewUrl)} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Copy size={14} /> Copy
+                      <button onClick={() => duplicateScreeningTemplate(template)} className="action-button-sm" style={{ background: '#f3f8f1', border: '1px solid #007f3b', color: '#007f3b', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        <CopyPlus size={14} /> Duplicate
                       </button>
                     </div>
                   </div>
@@ -2503,8 +2579,8 @@ const CardBuilder: React.FC = () => {
                       >
                         Audit
                       </button>
-                      <button onClick={() => copyText(previewUrl)} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Copy size={14} /> Copy
+                      <button onClick={() => duplicateImmunisationTemplate(template)} className="action-button-sm" style={{ background: '#f3f8f1', border: '1px solid #007f3b', color: '#007f3b', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        <CopyPlus size={14} /> Duplicate
                       </button>
                     </div>
                   </div>
@@ -2559,8 +2635,8 @@ const CardBuilder: React.FC = () => {
                       >
                         Audit
                       </button>
-                      <button onClick={() => copyText(previewUrl)} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Copy size={14} /> Copy
+                      <button onClick={() => duplicateLongTermConditionTemplate(template)} className="action-button-sm" style={{ background: '#f3f8f1', border: '1px solid #007f3b', color: '#007f3b', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+                        <CopyPlus size={14} /> Duplicate
                       </button>
                     </div>
                   </div>
