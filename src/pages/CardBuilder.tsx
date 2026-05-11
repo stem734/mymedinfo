@@ -754,6 +754,24 @@ const CardBuilder: React.FC = () => {
     return buildPatientUrl(params);
   };
 
+  const buildImmunisationPreviewUrl = (template: ImmunisationTemplate) => {
+    const params = new URLSearchParams({
+      type: 'imms',
+      previewOnly: '1',
+      vaccine: template.id,
+    });
+
+    try {
+      const previewToken = `immunisation-preview:${template.id}:${Date.now()}`;
+      window.sessionStorage.setItem(previewToken, JSON.stringify(template));
+      params.set('previewToken', previewToken);
+    } catch {
+      // sessionStorage may be unavailable; fall back to saved templates only.
+    }
+
+    return buildPatientUrl(params);
+  };
+
   const selectedScreeningTemplate = screeningTemplates[screeningType] || SCREENING_TEMPLATES.cervical;
   const selectedImmunisationTemplate = immunisationTemplates[immunisationSelections[0]] || IMMUNISATION_TEMPLATES.flu;
   const selectedLongTermConditionTemplate =
@@ -2422,7 +2440,7 @@ const CardBuilder: React.FC = () => {
           <h3 style={{ marginBottom: '1rem' }}>2. Immunisation Card Catalogue</h3>
           <div className="dashboard-list">
               {Object.values(immunisationTemplates).map((template) => {
-                const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'imms', vaccine: template.id }));
+                const previewUrl = buildImmunisationPreviewUrl(template);
                 return (
                   <div key={template.id} className="dashboard-list-card">
                     <div style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 800, fontFamily: 'monospace', background: '#005eb8', color: 'white', minWidth: '72px', textAlign: 'center' }}>

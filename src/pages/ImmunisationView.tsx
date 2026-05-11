@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ShieldPlus, ShieldCheck, ExternalLink, Phone, Mail, Globe, AlertCircle } from 'lucide-react';
-import type { ImmunisationTemplate } from '../patientTemplateCatalog';
+import { IMMUNISATION_TEMPLATES, type ImmunisationTemplate } from '../patientTemplateCatalog';
 import { fetchCardTemplates } from '../cardTemplateStore';
 import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore';
 import PatientSupportFooter from '../components/PatientSupportFooter';
@@ -25,6 +25,8 @@ const ImmunisationView: React.FC = () => {
   const org = practiceLookup.orgName;
   const practiceIdentifier = practiceLookup.lookupValue;
   const isDemoMode = searchParams.get('demo') === '1';
+  const previewOnly = searchParams.get('previewOnly') === '1';
+  const previewToken = (searchParams.get('previewToken') || '').trim();
   const vaccines = (searchParams.get('vaccine') || searchParams.get('jab') || searchParams.get('imms') || '')
     .split(',')
     .map(v => v.trim().toLowerCase())
@@ -37,12 +39,25 @@ const ImmunisationView: React.FC = () => {
   const requestedVaccines = useMemo(() => (vaccines.length > 0 ? vaccines : ['flu']), [vaccines]);
   const requestedVaccinesKey = requestedVaccines.join(',');
   const [loadedTemplateMap, setLoadedTemplateMap] = useState<Record<string, ImmunisationTemplate>>({});
-  const access = usePracticeContentAccess(practiceIdentifier, 'immunisation_enabled', { skip: isDemoMode });
+  const access = usePracticeContentAccess(practiceIdentifier, 'immunisation_enabled', { skip: isDemoMode || previewOnly });
   const selectedVaccines = requestedVaccines
     .map((vaccineCode) => loadedTemplateMap[vaccineCode])
     .filter(Boolean);
   useEffect(() => {
     const loadTemplates = async () => {
+      if (previewOnly && previewToken && typeof window !== 'undefined') {
+        try {
+          const raw = window.sessionStorage.getItem(previewToken);
+          if (raw) {
+            const previewTemplate = JSON.parse(raw) as ImmunisationTemplate;
+            setLoadedTemplateMap({ [previewTemplate.id.toLowerCase()]: previewTemplate });
+            return;
+          }
+        } catch {
+          // Ignore malformed preview payloads and fall back to stored templates.
+        }
+      }
+
       try {
         const practiceRows = practiceIdentifier
           ? await fetchPatientPracticeCardTemplates<ImmunisationTemplate>(practiceIdentifier, 'immunisation', requestedVaccines)
@@ -50,16 +65,17 @@ const ImmunisationView: React.FC = () => {
         const practiceMap = Object.fromEntries(practiceRows.map((row) => [row.template_id, row.payload]));
         const rows = await fetchCardTemplates<ImmunisationTemplate>('immunisation', requestedVaccines);
         setLoadedTemplateMap({
+          ...Object.fromEntries(Object.values(IMMUNISATION_TEMPLATES).map((template) => [template.id, template])),
           ...Object.fromEntries(rows.map((row) => [row.template_id, row.payload])),
           ...practiceMap,
         });
       } catch (error) {
         console.error('Failed to load immunisation template overrides', error);
-        setLoadedTemplateMap({});
+        setLoadedTemplateMap(Object.fromEntries(Object.values(IMMUNISATION_TEMPLATES).map((template) => [template.id, template])));
       }
     };
     void loadTemplates();
-  }, [practiceIdentifier, requestedVaccines, requestedVaccinesKey]);
+  }, [practiceIdentifier, previewOnly, previewToken, requestedVaccines, requestedVaccinesKey]);
 
   if (access.loading) {
     return (
