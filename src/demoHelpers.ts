@@ -9,6 +9,8 @@ import {
   type ImmunisationTemplate,
   type LongTermConditionTemplate,
   type ScreeningTemplate,
+  withImmunisationTemplateDefaults,
+  withLongTermConditionTemplateDefaults,
   withScreeningTemplateDefaults,
 } from './patientTemplateCatalog';
 
@@ -119,7 +121,9 @@ export const buildDemoSamples = (
     },
   });
   }),
-  ...(sources.immunisationTemplates || Object.values(IMMUNISATION_TEMPLATES)).map((template) => ({
+  ...(sources.immunisationTemplates || Object.values(IMMUNISATION_TEMPLATES)).map((sourceTemplate) => {
+    const template = withImmunisationTemplateDefaults(sourceTemplate);
+    return ({
     id: `immunisation-${template.id}`,
     category: 'Immunisation' as const,
     title: template.label,
@@ -127,10 +131,13 @@ export const buildDemoSamples = (
     practiceName: DEMO_PRACTICE_NAME,
     params: {
       type: 'imms',
-      vaccine: template.id,
+      vaccine: template.code || template.id,
     },
-  })),
-  ...(sources.ltcTemplates || Object.values(LONG_TERM_CONDITION_TEMPLATES)).map((template) => ({
+  });
+  }),
+  ...(sources.ltcTemplates || Object.values(LONG_TERM_CONDITION_TEMPLATES)).map((sourceTemplate) => {
+    const template = withLongTermConditionTemplateDefaults(sourceTemplate);
+    return ({
     id: `ltc-${template.id}`,
     category: 'Long term condition' as const,
     title: template.label,
@@ -138,9 +145,10 @@ export const buildDemoSamples = (
     practiceName: DEMO_PRACTICE_NAME,
     params: {
       type: 'ltc',
-      ltc: template.id,
+      ltc: template.code || template.id,
     },
-  })),
+  });
+  }),
 ];
 
 export const DEMO_SAMPLES: DemoSample[] = buildDemoSamples();

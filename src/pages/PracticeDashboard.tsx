@@ -202,9 +202,11 @@ const isEditablePatientTemplate = (value: unknown): value is EditablePatientTemp
 };
 
 const getTemplateDisplayCode = (builderType: PracticeTemplateBuilderType, templateId: string, payload: unknown) => {
-  if (builderType !== 'screening') return templateId;
-  const template = isEditablePatientTemplate(payload) ? withScreeningTemplateDefaults(payload as ScreeningTemplate) : null;
-  return template?.code || templateId;
+  if (!isEditablePatientTemplate(payload)) return templateId;
+  if (builderType === 'screening') return withScreeningTemplateDefaults(payload as ScreeningTemplate).code || templateId;
+  if (builderType === 'immunisation') return (payload as ImmunisationTemplate).code || templateId;
+  if (builderType === 'ltc') return (payload as LongTermConditionTemplate).code || templateId;
+  return templateId;
 };
 
 const resourceLinksToText = (links: PatientResourceLink[]) =>

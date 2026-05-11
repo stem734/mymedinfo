@@ -10,8 +10,10 @@ import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore'
 import {
   SCREENING_TEMPLATES,
   IMMUNISATION_TEMPLATES,
+  findImmunisationTemplateByIdentifier,
   findScreeningTemplateByIdentifier,
   hydrateScreeningTemplate,
+  withImmunisationTemplateDefaults,
   type ImmunisationTemplate,
   type ScreeningTemplate,
   withScreeningTemplateDefaults,
@@ -192,7 +194,7 @@ const CombinedPatientView: React.FC = () => {
     [builtInScreeningTemplates],
   );
   const builtInImmunisationTemplates = useMemo(
-    () => Object.values(IMMUNISATION_TEMPLATES),
+    () => Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults),
     [],
   );
   const builtInImmunisationIds = useMemo(
@@ -520,12 +522,11 @@ const CombinedPatientView: React.FC = () => {
 
         const candidates = [
           ...builtInImmunisationTemplates,
-          ...globalRows.map((row) => row.payload),
-          ...practiceRows.map((row) => row.payload),
+          ...globalRows.map((row) => withImmunisationTemplateDefaults(row.payload)),
+          ...practiceRows.map((row) => withImmunisationTemplateDefaults(row.payload)),
         ];
-        const templateMap = new Map(candidates.map((template) => [template.id.toLowerCase(), template]));
         const resolvedImmunisations = requestedImmunisations
-          .map((identifier) => templateMap.get(identifier.toLowerCase()))
+          .map((identifier) => findImmunisationTemplateByIdentifier(identifier, candidates))
           .filter((item): item is ImmunisationTemplate => Boolean(item));
 
         if (!cancelled) {

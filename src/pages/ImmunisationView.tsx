@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ShieldPlus, ShieldCheck, ExternalLink, Phone, Mail, Globe, AlertCircle } from 'lucide-react';
-import { IMMUNISATION_TEMPLATES, type ImmunisationTemplate } from '../patientTemplateCatalog';
+import {
+  IMMUNISATION_TEMPLATES,
+  findImmunisationTemplateByIdentifier,
+  type ImmunisationTemplate,
+  withImmunisationTemplateDefaults,
+} from '../patientTemplateCatalog';
 import { fetchCardTemplates } from '../cardTemplateStore';
 import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore';
 import PatientSupportFooter from '../components/PatientSupportFooter';
@@ -50,8 +55,11 @@ const ImmunisationView: React.FC = () => {
         try {
           const raw = window.sessionStorage.getItem(previewToken);
           if (raw) {
-            const previewTemplate = JSON.parse(raw) as ImmunisationTemplate;
-            setLoadedTemplateMap({ [previewTemplate.id.toLowerCase()]: previewTemplate });
+            const previewTemplate = withImmunisationTemplateDefaults(JSON.parse(raw) as ImmunisationTemplate);
+            setLoadedTemplateMap({
+              [previewTemplate.id.toLowerCase()]: previewTemplate,
+              [(previewTemplate.code || '').toLowerCase()]: previewTemplate,
+            });
             return;
           }
         } catch {
@@ -60,19 +68,32 @@ const ImmunisationView: React.FC = () => {
       }
 
       try {
+        const builtInIds = Object.keys(IMMUNISATION_TEMPLATES);
         const practiceRows = practiceIdentifier
-          ? await fetchPatientPracticeCardTemplates<ImmunisationTemplate>(practiceIdentifier, 'immunisation', requestedVaccines)
+          ? await fetchPatientPracticeCardTemplates<ImmunisationTemplate>(practiceIdentifier, 'immunisation', builtInIds)
           : [];
-        const practiceMap = Object.fromEntries(practiceRows.map((row) => [row.template_id, row.payload]));
-        const rows = await fetchCardTemplates<ImmunisationTemplate>('immunisation', requestedVaccines);
-        setLoadedTemplateMap({
-          ...Object.fromEntries(Object.values(IMMUNISATION_TEMPLATES).map((template) => [template.id, template])),
-          ...Object.fromEntries(rows.map((row) => [row.template_id, row.payload])),
-          ...practiceMap,
-        });
+        const rows = await fetchCardTemplates<ImmunisationTemplate>('immunisation');
+        const candidates = [
+          ...Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults),
+          ...rows.map((row) => withImmunisationTemplateDefaults(row.payload)),
+          ...practiceRows.map((row) => withImmunisationTemplateDefaults(row.payload)),
+        ];
+        const selectedMap = Object.fromEntries(
+          requestedVaccines.flatMap((identifier) => {
+            const template = findImmunisationTemplateByIdentifier(identifier, candidates);
+            return template ? [[identifier, template]] : [];
+          }),
+        );
+        setLoadedTemplateMap(selectedMap);
       } catch (error) {
         console.error('Failed to load immunisation template overrides', error);
-        setLoadedTemplateMap(Object.fromEntries(Object.values(IMMUNISATION_TEMPLATES).map((template) => [template.id, template])));
+        const candidates = Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults);
+        setLoadedTemplateMap(Object.fromEntries(
+          requestedVaccines.flatMap((identifier) => {
+            const template = findImmunisationTemplateByIdentifier(identifier, candidates);
+            return template ? [[identifier, template]] : [];
+          }),
+        ));
       }
     };
     void loadTemplates();

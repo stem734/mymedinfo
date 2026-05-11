@@ -23,6 +23,7 @@ export type ScreeningTemplate = {
 
 export type ImmunisationTemplate = {
   id: string;
+  code?: string;
   label: string;
   headline: string;
   explanation: string;
@@ -38,6 +39,7 @@ export type ImmunisationTemplate = {
 
 export type LongTermConditionTemplate = {
   id: string;
+  code?: string;
   label: string;
   headline: string;
   explanation: string;
@@ -248,6 +250,83 @@ export const findScreeningTemplateByIdentifier = (
     return (
       normalizeScreeningIdentifier(hydrated.id) === normalized ||
       normalizeScreeningIdentifier(hydrated.code) === normalized
+    );
+  }) || null;
+};
+
+const DEFAULT_IMMUNISATION_CODES: Record<string, string> = {
+  flu: 'IM1',
+  covid: 'IM2',
+  shingles: 'IM3',
+  pneumo: 'IM4',
+  pertussis: 'IM5',
+  mmr: 'IM6',
+  hpv: 'IM7',
+};
+
+const DEFAULT_LTC_CODES: Record<string, string> = {
+  asthma: 'LC1',
+  diabetes: 'LC2',
+};
+
+const getDefaultTemplateCode = (templateId: string, defaults: Record<string, string>, fallbackPrefix: string) => {
+  const normalized = templateId.trim().toLowerCase();
+  if (defaults[normalized]) return defaults[normalized];
+
+  const compact = templateId
+    .split(/[^a-z0-9]+/i)
+    .filter(Boolean)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('')
+    .slice(0, 3);
+
+  return `${compact || fallbackPrefix}1`;
+};
+
+export const getDefaultImmunisationCode = (templateId: string) =>
+  getDefaultTemplateCode(templateId, DEFAULT_IMMUNISATION_CODES, 'IM');
+
+export const getDefaultLongTermConditionCode = (templateId: string) =>
+  getDefaultTemplateCode(templateId, DEFAULT_LTC_CODES, 'LC');
+
+export const withImmunisationTemplateDefaults = (template: ImmunisationTemplate): ImmunisationTemplate => ({
+  ...template,
+  code: template.code?.trim() || getDefaultImmunisationCode(template.id),
+});
+
+export const withLongTermConditionTemplateDefaults = (template: LongTermConditionTemplate): LongTermConditionTemplate => ({
+  ...template,
+  code: template.code?.trim() || getDefaultLongTermConditionCode(template.id),
+});
+
+export const findImmunisationTemplateByIdentifier = (
+  identifier: string,
+  templates: ImmunisationTemplate[],
+): ImmunisationTemplate | null => {
+  const normalized = normalizeScreeningIdentifier(identifier);
+  if (!normalized) return null;
+
+  return templates.find((template) => {
+    const hydrated = withImmunisationTemplateDefaults(template);
+    return (
+      normalizeScreeningIdentifier(hydrated.id) === normalized ||
+      normalizeScreeningIdentifier(hydrated.code || '') === normalized
+    );
+  }) || null;
+};
+
+export const findLongTermConditionTemplateByIdentifier = (
+  identifier: string,
+  templates: LongTermConditionTemplate[],
+): LongTermConditionTemplate | null => {
+  const normalized = normalizeScreeningIdentifier(identifier);
+  if (!normalized) return null;
+
+  return templates.find((template) => {
+    const hydrated = withLongTermConditionTemplateDefaults(template);
+    return (
+      normalizeScreeningIdentifier(hydrated.id) === normalized ||
+      normalizeScreeningIdentifier(hydrated.code || '') === normalized
     );
   }) || null;
 };

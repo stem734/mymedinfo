@@ -18,6 +18,10 @@ import {
   SCREENING_TEMPLATES,
   IMMUNISATION_TEMPLATES,
   LONG_TERM_CONDITION_TEMPLATES,
+  findImmunisationTemplateByIdentifier,
+  findLongTermConditionTemplateByIdentifier,
+  getDefaultImmunisationCode,
+  getDefaultLongTermConditionCode,
   getDefaultScreeningCode,
   hydrateScreeningTemplate,
   type ScreeningTemplate,
@@ -25,6 +29,8 @@ import {
   type LongTermConditionTemplate,
   type PatientResourceLink,
   withScreeningTemplateDefaults,
+  withImmunisationTemplateDefaults,
+  withLongTermConditionTemplateDefaults,
 } from '../patientTemplateCatalog';
 import {
   fetchCardTemplateRevisions,
@@ -224,12 +230,12 @@ const cloneScreeningTemplate = (template: ScreeningTemplate): ScreeningTemplate 
   nhsLinks: cloneResourceLinks(template.nhsLinks),
 });
 const cloneImmunisationTemplate = (template: ImmunisationTemplate): ImmunisationTemplate => ({
-  ...template,
+  ...withImmunisationTemplateDefaults(template),
   guidance: [...template.guidance],
   nhsLinks: cloneResourceLinks(template.nhsLinks),
 });
 const cloneLongTermConditionTemplate = (template: LongTermConditionTemplate): LongTermConditionTemplate => ({
-  ...template,
+  ...withLongTermConditionTemplateDefaults(template),
   guidance: [...template.guidance],
   nhsLinks: cloneResourceLinks(template.nhsLinks),
   zones: template.zones?.map((zone) => ({ ...zone, when: [...zone.when], actions: [...zone.actions] })),
@@ -733,6 +739,7 @@ const CardBuilder: React.FC = () => {
     const duplicate = cloneImmunisationTemplate({
       ...template,
       id: nextId,
+      code: getDefaultImmunisationCode(nextId),
       label: `${template.label} Copy`,
     });
     setImmunisationTemplates((current) => ({ ...current, [nextId]: duplicate }));
@@ -747,6 +754,7 @@ const CardBuilder: React.FC = () => {
     const duplicate = cloneLongTermConditionTemplate({
       ...template,
       id: nextId,
+      code: getDefaultLongTermConditionCode(nextId),
       label: `${template.label} Copy`,
     });
     setLongTermConditionTemplates((current) => ({ ...current, [nextId]: duplicate }));
@@ -835,7 +843,7 @@ const CardBuilder: React.FC = () => {
     const params = new URLSearchParams({
       type: 'imms',
       previewOnly: '1',
-      vaccine: template.id,
+      vaccine: template.code || template.id,
     });
 
     try {
@@ -850,9 +858,15 @@ const CardBuilder: React.FC = () => {
   };
 
   const selectedScreeningTemplate = screeningTemplates[screeningType] || SCREENING_TEMPLATES.cervical;
-  const selectedImmunisationTemplate = immunisationTemplates[immunisationSelections[0]] || IMMUNISATION_TEMPLATES.flu;
+  const selectedImmunisationTemplate = findImmunisationTemplateByIdentifier(
+    immunisationSelections[0] || 'flu',
+    Object.values(immunisationTemplates),
+  ) || withImmunisationTemplateDefaults(IMMUNISATION_TEMPLATES.flu);
   const selectedLongTermConditionTemplate =
-    longTermConditionTemplates[selectedLongTermCondition] || LONG_TERM_CONDITION_TEMPLATES.asthma;
+    findLongTermConditionTemplateByIdentifier(
+      selectedLongTermCondition,
+      Object.values(longTermConditionTemplates),
+    ) || withLongTermConditionTemplateDefaults(LONG_TERM_CONDITION_TEMPLATES.asthma);
 
   const healthCheckCatalogueRows = CLINICAL_DOMAIN_IDS.map((domainId) => {
     const metricByCode = PREVIEW_DOMAIN_CONFIGS[domainId].metricByCode;
@@ -2547,7 +2561,7 @@ const CardBuilder: React.FC = () => {
                 return (
                   <div key={template.id} className="dashboard-list-card">
                     <div style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 800, fontFamily: 'monospace', background: '#005eb8', color: 'white', minWidth: '72px', textAlign: 'center' }}>
-                      {template.id.toUpperCase()}
+                      {(template.code || template.id).toUpperCase()}
                     </div>
                     <div className="dashboard-list-main">
                       <div className="dashboard-list-title">{template.label}</div>
@@ -2603,11 +2617,11 @@ const CardBuilder: React.FC = () => {
           <h3 style={{ marginBottom: '1rem' }}>2. Long Term Condition Card Catalogue</h3>
           <div className="dashboard-list">
               {Object.values(longTermConditionTemplates).map((template) => {
-                const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'ltc', ltc: template.id }));
+                const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'ltc', ltc: template.code || template.id }));
                 return (
                   <div key={template.id} className="dashboard-list-card">
                     <div style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 800, fontFamily: 'monospace', background: '#005eb8', color: 'white', minWidth: '72px', textAlign: 'center' }}>
-                      {template.id.toUpperCase()}
+                      {(template.code || template.id).toUpperCase()}
                     </div>
                     <div className="dashboard-list-main">
                       <div className="dashboard-list-title">{template.label}</div>
@@ -2838,6 +2852,17 @@ const CardBuilder: React.FC = () => {
               </div>
               <div style={metadataGridStyle}>
                 <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Code</label>
+                  <input
+                    type="text"
+                    value={selectedImmunisationTemplate.code || getDefaultImmunisationCode(selectedImmunisationTemplate.id)}
+                    onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, {
+                      code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                    })}
+                    style={{ ...editorInputStyle, fontFamily: 'monospace' }}
+                  />
+                </div>
+                <div className="dashboard-field">
                   <label style={editorFieldLabelStyle}>Review period (months)</label>
                   <input
                     type="number"
@@ -2958,6 +2983,17 @@ const CardBuilder: React.FC = () => {
                 <textarea value={selectedLongTermConditionTemplate.explanation} onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, { explanation: e.target.value })} rows={4} style={editorInputStyle} />
               </div>
               <div style={metadataGridStyle}>
+                <div className="dashboard-field">
+                  <label style={editorFieldLabelStyle}>Code</label>
+                  <input
+                    type="text"
+                    value={selectedLongTermConditionTemplate.code || getDefaultLongTermConditionCode(selectedLongTermConditionTemplate.id)}
+                    onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, {
+                      code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
+                    })}
+                    style={{ ...editorInputStyle, fontFamily: 'monospace' }}
+                  />
+                </div>
                 <div className="dashboard-field">
                   <label style={editorFieldLabelStyle}>Review period (months)</label>
                   <input

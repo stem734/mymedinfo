@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ClipboardList, ShieldCheck, AlertTriangle, ExternalLink, AlertCircle } from 'lucide-react';
-import type { LongTermConditionTemplate } from '../patientTemplateCatalog';
+import {
+  LONG_TERM_CONDITION_TEMPLATES,
+  findLongTermConditionTemplateByIdentifier,
+  type LongTermConditionTemplate,
+  withLongTermConditionTemplateDefaults,
+} from '../patientTemplateCatalog';
 import { fetchCardTemplates } from '../cardTemplateStore';
 import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore';
 import PatientSupportFooter from '../components/PatientSupportFooter';
@@ -53,16 +58,18 @@ const LongTermConditionView: React.FC = () => {
   useEffect(() => {
     const loadTemplate = async () => {
       try {
-        const [practiceRow] = practiceIdentifier
-          ? await fetchPatientPracticeCardTemplates<LongTermConditionTemplate>(practiceIdentifier, 'ltc', [conditionType || 'asthma'])
+        const identifier = conditionType || 'asthma';
+        const builtInIds = Object.keys(LONG_TERM_CONDITION_TEMPLATES);
+        const practiceRows = practiceIdentifier
+          ? await fetchPatientPracticeCardTemplates<LongTermConditionTemplate>(practiceIdentifier, 'ltc', builtInIds)
           : [];
-        if (practiceRow?.payload) {
-          setLoadedTemplate(practiceRow.payload);
-          return;
-        }
-
-        const [row] = await fetchCardTemplates<LongTermConditionTemplate>('ltc', [conditionType || 'asthma']);
-        setLoadedTemplate(row?.payload || null);
+        const rows = await fetchCardTemplates<LongTermConditionTemplate>('ltc');
+        const candidates = [
+          ...Object.values(LONG_TERM_CONDITION_TEMPLATES).map(withLongTermConditionTemplateDefaults),
+          ...rows.map((row) => withLongTermConditionTemplateDefaults(row.payload)),
+          ...practiceRows.map((row) => withLongTermConditionTemplateDefaults(row.payload)),
+        ];
+        setLoadedTemplate(findLongTermConditionTemplateByIdentifier(identifier, candidates));
       } catch (error) {
         console.error('Failed to load long term condition template override', error);
         setLoadedTemplate(null);
