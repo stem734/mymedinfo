@@ -10,6 +10,7 @@ export type ScreeningTemplate = {
   label: string;
   headline: string;
   explanation: string;
+  importantMessage?: string;
   guidance: string[];
   dontGuidance?: string[];
   nhsLinks: PatientResourceLink[];
@@ -27,6 +28,7 @@ export type ImmunisationTemplate = {
   label: string;
   headline: string;
   explanation: string;
+  importantMessage?: string;
   guidance: string[];
   nhsLinks: PatientResourceLink[];
   videoUrl?: string;

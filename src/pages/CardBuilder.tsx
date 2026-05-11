@@ -2747,6 +2747,10 @@ const CardBuilder: React.FC = () => {
                 <label style={editorFieldLabelStyle}>Guidance *</label>
                 <textarea value={selectedScreeningTemplate.explanation} onChange={(e) => updateScreeningTemplate(screeningType, { explanation: e.target.value })} rows={4} style={editorInputStyle} />
               </div>
+              <div className="dashboard-field">
+                <label style={editorFieldLabelStyle}>Important message</label>
+                <textarea value={selectedScreeningTemplate.importantMessage || ''} onChange={(e) => updateScreeningTemplate(screeningType, { importantMessage: e.target.value })} rows={3} style={editorInputStyle} />
+              </div>
               <div style={metadataGridStyle}>
                 <div className="dashboard-field">
                   <label style={editorFieldLabelStyle}>Video URL</label>
@@ -2855,6 +2859,10 @@ const CardBuilder: React.FC = () => {
               <div className="dashboard-field">
                 <label style={editorFieldLabelStyle}>Guidance *</label>
                 <textarea value={selectedImmunisationTemplate.explanation} onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, { explanation: e.target.value })} rows={4} style={editorInputStyle} />
+              </div>
+              <div className="dashboard-field">
+                <label style={editorFieldLabelStyle}>Important message</label>
+                <textarea value={selectedImmunisationTemplate.importantMessage || ''} onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, { importantMessage: e.target.value })} rows={3} style={editorInputStyle} />
               </div>
               <div style={metadataGridStyle}>
                 <div className="dashboard-field">

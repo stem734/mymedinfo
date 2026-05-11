@@ -723,7 +723,7 @@ const PracticeDashboard: React.FC = () => {
       label: customRow?.label || label,
       headline: editablePayload?.headline || '',
       explanation: editablePayload?.explanation || '',
-      importantMessage: editablePayload && 'importantMessage' in editablePayload ? (editablePayload as LongTermConditionTemplate).importantMessage || '' : '',
+      importantMessage: editablePayload && 'importantMessage' in editablePayload ? String(editablePayload.importantMessage || '') : '',
       guidanceText: editablePayload?.guidance.join('\n') || '',
       linksText: editablePayload ? resourceLinksToText(editablePayload.nhsLinks) : '',
       payloadJson: JSON.stringify(effectivePayload, null, 2),
@@ -747,9 +747,9 @@ const PracticeDashboard: React.FC = () => {
       label: draftValue.label.trim(),
       headline: draftValue.headline.trim(),
       explanation: draftValue.explanation.trim(),
+      importantMessage: draftValue.importantMessage.trim(),
       guidance: draftValue.guidanceText.split('\n').map((item) => item.trim()).filter(Boolean),
       nhsLinks: textToResourceLinks(draftValue.linksText),
-      ...('importantMessage' in existing ? { importantMessage: draftValue.importantMessage.trim() } : {}),
     };
   };
 
@@ -1275,12 +1275,10 @@ const PracticeDashboard: React.FC = () => {
                 <label>Explanation</label>
                 <textarea value={templateDraft.explanation} rows={4} onChange={(event) => setTemplateDraft((current) => current ? { ...current, explanation: event.target.value } : current)} style={{ width: '100%', padding: '0.75rem', border: '2px solid #d8dde0', borderRadius: '8px', resize: 'vertical' }} />
               </div>
-              {templateDraft.builderType === 'ltc' && (
-                <div className="dashboard-field">
-                  <label>Important message</label>
-                  <textarea value={templateDraft.importantMessage} rows={3} onChange={(event) => setTemplateDraft((current) => current ? { ...current, importantMessage: event.target.value } : current)} style={{ width: '100%', padding: '0.75rem', border: '2px solid #d8dde0', borderRadius: '8px', resize: 'vertical' }} />
-                </div>
-              )}
+              <div className="dashboard-field">
+                <label>Important message</label>
+                <textarea value={templateDraft.importantMessage} rows={3} onChange={(event) => setTemplateDraft((current) => current ? { ...current, importantMessage: event.target.value } : current)} style={{ width: '100%', padding: '0.75rem', border: '2px solid #d8dde0', borderRadius: '8px', resize: 'vertical' }} />
+              </div>
               <div className="dashboard-field">
                 <label>Guidance points (one per line)</label>
                 <textarea value={templateDraft.guidanceText} rows={6} onChange={(event) => setTemplateDraft((current) => current ? { ...current, guidanceText: event.target.value } : current)} style={{ width: '100%', padding: '0.75rem', border: '2px solid #d8dde0', borderRadius: '8px', resize: 'vertical' }} />

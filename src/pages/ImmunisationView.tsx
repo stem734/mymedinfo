@@ -10,6 +10,7 @@ import {
 import { fetchCardTemplates } from '../cardTemplateStore';
 import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore';
 import PatientSupportFooter from '../components/PatientSupportFooter';
+import WarningCallout from '../components/WarningCallout';
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
@@ -183,6 +184,14 @@ const ImmunisationView: React.FC = () => {
           <h2 className="patient-section-title">{template.label}</h2>
           <p className="patient-section-copy">{template.headline}</p>
           <p className="patient-section-copy patient-section-copy--formatted">{template.explanation}</p>
+
+          {template.importantMessage && (
+            <WarningCallout title="Important">
+              <p className="patient-section-copy patient-section-copy--formatted" style={{ marginBottom: 0 }}>
+                {template.importantMessage}
+              </p>
+            </WarningCallout>
+          )}
 
           <div className="patient-info-section">
             <h3 className="patient-section-title patient-section-title--small">Aftercare and guidance</h3>

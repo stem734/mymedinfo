@@ -13,6 +13,7 @@ import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore'
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { NhsCross, NhsTick } from '../components/NhsIcons';
 import PatientSupportFooter from '../components/PatientSupportFooter';
+import WarningCallout from '../components/WarningCallout';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
@@ -159,6 +160,14 @@ const ScreeningView: React.FC = () => {
           <h3 className="patient-section-title patient-section-title--small">Guidance</h3>
           <p className="patient-section-copy patient-section-copy--formatted" style={{ marginBottom: 0 }}>{selectedTemplate.explanation}</p>
         </div>
+
+        {selectedTemplate.importantMessage && (
+          <WarningCallout title="Important">
+            <p className="patient-section-copy patient-section-copy--formatted" style={{ marginBottom: 0 }}>
+              {selectedTemplate.importantMessage}
+            </p>
+          </WarningCallout>
+        )}
 
         <div className="patient-info-section">
           <h3 className="patient-section-title patient-section-title--small">Do</h3>

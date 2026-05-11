@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ClipboardList, ShieldCheck, AlertTriangle, ExternalLink, AlertCircle } from 'lucide-react';
+import { ClipboardList, ShieldCheck, ExternalLink, AlertCircle } from 'lucide-react';
 import {
   LONG_TERM_CONDITION_TEMPLATES,
   findLongTermConditionTemplateByIdentifier,
@@ -10,6 +10,7 @@ import {
 import { fetchCardTemplates } from '../cardTemplateStore';
 import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore';
 import PatientSupportFooter from '../components/PatientSupportFooter';
+import WarningCallout from '../components/WarningCallout';
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
@@ -143,20 +144,11 @@ const LongTermConditionView: React.FC = () => {
         <p className="patient-section-copy patient-section-copy--formatted">{selectedTemplate.explanation}</p>
 
         {selectedTemplate.importantMessage && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '0.55rem',
-            background: '#fde8e8',
-            border: '1px solid #d5281b',
-            borderRadius: '8px',
-            color: '#7f0000',
-            padding: '0.75rem 0.8rem',
-            marginBottom: '0.9rem',
-          }}>
-            <AlertTriangle size={18} style={{ marginTop: '0.1rem', flexShrink: 0 }} />
-            <p style={{ margin: 0, fontSize: '0.92rem' }}>{selectedTemplate.importantMessage}</p>
-          </div>
+          <WarningCallout title="Important">
+            <p className="patient-section-copy patient-section-copy--formatted" style={{ marginBottom: 0 }}>
+              {selectedTemplate.importantMessage}
+            </p>
+          </WarningCallout>
         )}
 
         <div className="patient-info-section">
