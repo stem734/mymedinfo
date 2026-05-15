@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { detectContentType, CONTENT_TYPES } from '../contentRouter';
+import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 
 // All content views are lazy-loaded to keep patient routes split by content type.
 const ResourceView = React.lazy(() => import('./ResourceView'));
@@ -23,6 +24,7 @@ const LongTermConditionView = React.lazy(() => import('./LongTermConditionView')
  */
 const PatientRouter: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const practiceLookup = getPracticeLookupFromSearchParams(searchParams);
   const hasMedicationParams = Boolean((searchParams.get('codes') || searchParams.get('code') || searchParams.get('med') || '').trim());
   const hasScreeningParams = Boolean((searchParams.get('screen') || searchParams.get('screening') || '').trim());
   const hasHealthCheckParams = Boolean((searchParams.get('s1') || searchParams.get('s1csv') || searchParams.get('payload') || searchParams.get('hc') || '').trim());
@@ -81,8 +83,13 @@ const PatientRouter: React.FC = () => {
       </div>
     }>
       <div className="patient-page-shell">
-        <div className="patient-page-shell__brand no-print" aria-hidden="true">
+        <div className="patient-page-shell__brand no-print">
           <img className="patient-page-shell__brand-logo" src="/MyMedInfo-logo.png" alt="" />
+          {practiceLookup.orgName && (
+            <p className="patient-page-shell__brand-partner">
+              Partnering with {practiceLookup.orgName}
+            </p>
+          )}
         </div>
         {renderContent()}
       </div>

@@ -650,7 +650,10 @@ p {
 
 .patient-page-shell__brand {
   display: flex;
+  flex-direction: column;
+  align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   margin: 0 0 0.9rem;
 }
 
@@ -658,6 +661,14 @@ p {
   width: min(180px, 52vw);
   height: auto;
   display: block;
+}
+
+.patient-page-shell__brand-partner {
+  margin: 0;
+  color: #4c6272;
+  font-size: 0.9rem;
+  font-weight: 700;
+  text-align: center;
 }
 
 .patient-view h1.patient-medication-title {
@@ -779,6 +790,7 @@ p {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 0.35rem;
   min-height: 2.25rem;
   padding: 0.4rem 0.7rem;
   border-radius: 999px;
@@ -788,6 +800,24 @@ p {
   text-decoration: none;
   font-size: 0.88rem;
   font-weight: 700;
+}
+
+.patient-bundle-jump--complete {
+  border-color: #007f3b;
+  background: #f3f9f2;
+  color: #005a30;
+}
+
+.patient-bundle-jump__status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.7rem;
+  line-height: 1;
 }
 
 .patient-bundle-section-label {

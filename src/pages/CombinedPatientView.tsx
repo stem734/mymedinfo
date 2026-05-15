@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, ExternalLink, FlaskConical, Info, Link as LinkIcon, Printer, Search, ShieldCheck } from 'lucide-react';
+import { AlertCircle, Check, ExternalLink, FlaskConical, Info, Link as LinkIcon, Printer, Search, ShieldCheck } from 'lucide-react';
 import { parseMedicationCodes, recordPatientAccess, resolveOrganisationMedicationCards, validateOrganisation } from '../protocolService';
 import { DEFAULT_PRACTICE_FEATURE_SETTINGS, type PracticeFeatureSettings } from '../practiceFeatures';
 import { useMedicationCatalog } from '../medicationCatalog';
@@ -238,6 +238,7 @@ const CombinedPatientView: React.FC = () => {
   const [immunisationError, setImmunisationError] = useState<string | null>(null);
   const [sickDayModalOpen, setSickDayModalOpen] = useState(false);
   const [sickDayRulesVariant, setSickDayRulesVariant] = useState<SickDayRulesVariant>('standard');
+  const [completedSectionIds, setCompletedSectionIds] = useState<Set<string>>(() => new Set());
   const loggedAccessKeyRef = useRef<string | null>(null);
   const exportRef = useRef<HTMLDivElement | null>(null);
   const [isSavingPdf, setIsSavingPdf] = useState(false);
@@ -620,6 +621,35 @@ const CombinedPatientView: React.FC = () => {
     return links;
   }, [medicationContents.length, selectedScreenings, selectedImmunisations]);
 
+  useEffect(() => {
+    if (sectionLinks.length === 0 || typeof IntersectionObserver === 'undefined') return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleIds = entries
+          .filter((entry) => entry.isIntersecting)
+          .map((entry) => entry.target.id)
+          .filter(Boolean);
+
+        if (visibleIds.length === 0) return;
+
+        setCompletedSectionIds((current) => {
+          const next = new Set(current);
+          visibleIds.forEach((id) => next.add(id));
+          return next;
+        });
+      },
+      { threshold: 0.55 },
+    );
+
+    sectionLinks.forEach((link) => {
+      const element = document.getElementById(link.id);
+      if (element) observer.observe(element);
+    });
+
+    return () => observer.disconnect();
+  }, [sectionLinks]);
+
   const sharedContentTypes = [
     medicationContents.length > 0 ? 'medication' : '',
     selectedScreenings.length > 0 ? 'screening' : '',
@@ -707,7 +737,17 @@ const CombinedPatientView: React.FC = () => {
         {sectionLinks.length > 0 && (
           <div className="patient-bundle-jumps">
             {sectionLinks.map((link) => (
-              <a key={link.id} href={`#${link.id}`} className="patient-bundle-jump">
+              <a
+                key={link.id}
+                href={`#${link.id}`}
+                className={`patient-bundle-jump${completedSectionIds.has(link.id) ? ' patient-bundle-jump--complete' : ''}`}
+                aria-label={`${link.label}${completedSectionIds.has(link.id) ? ', complete' : ', not complete'}`}
+              >
+                {completedSectionIds.has(link.id) && (
+                  <span className="patient-bundle-jump__status" aria-hidden="true">
+                    <Check size={12} strokeWidth={3} />
+                  </span>
+                )}
                 {link.label}
               </a>
             ))}
