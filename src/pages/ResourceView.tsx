@@ -571,17 +571,13 @@ const ResourceView: React.FC = () => {
   }, [contents]);
 
   const pageHeadline = orgName
-    ? `Your medication information from ${orgName}`
-    : 'Your medication information';
+    ? `${orgName} has shared some information with you which you may find useful.`
+    : 'Your practice has shared some information with you which you may find useful.';
 
   const pageValidUntil = useMemo(() => {
     const expiry = getEarliestExpiryDate(issuedAt, contents);
     return expiry ? expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
   }, [contents, issuedAt]);
-
-  const patientGreeting = orgName
-    ? `Your GP practice has shared the information below about your medication.`
-    : 'Your practice has shared the information below about your medication.';
 
   const guidanceOrganisationName = useMemo(() => {
     if (resolvedContents.some((content) => content.state === 'custom') && orgName) {
@@ -703,7 +699,6 @@ const ResourceView: React.FC = () => {
               {pageValidUntil ? `Valid until ${pageValidUntil}` : ''}
             </p>
           )}
-          <p className="patient-greeting-text">{patientGreeting}</p>
         </div>
       </div>
 

@@ -592,8 +592,8 @@ const CombinedPatientView: React.FC = () => {
   }, [medicationContents]);
 
   const pageHeadline = orgName
-    ? `Your information from ${orgName}`
-    : 'Your information';
+    ? `${orgName} has shared some information with you which you may find useful.`
+    : 'Your practice has shared some information with you which you may find useful.';
 
   const pageValidUntil = useMemo(() => {
     const sources = [
@@ -649,17 +649,6 @@ const CombinedPatientView: React.FC = () => {
 
     return () => observer.disconnect();
   }, [sectionLinks]);
-
-  const sharedContentTypes = [
-    medicationContents.length > 0 ? 'medication' : '',
-    selectedScreenings.length > 0 ? 'screening' : '',
-    selectedImmunisations.length > 0 ? 'immunisation' : '',
-  ].filter(Boolean);
-
-  const sharedContentPhrase = getContentListPhrase(sharedContentTypes);
-  const patientGreeting = orgName
-    ? `Hi, ${orgName} has shared the information below${sharedContentPhrase ? ` about your ${sharedContentPhrase}` : ''}${issuedDateDisplay ? `. This was sent on ${issuedDateDisplay}.` : '.'}`
-    : `Hi, your practice has shared the information below${sharedContentPhrase ? ` about your ${sharedContentPhrase}` : ''}${issuedDateDisplay ? `. This was sent on ${issuedDateDisplay}.` : '.'}`;
 
   const summaryParts = [
     medicationContents.length > 0 ? `${medicationContents.length} medication ${medicationContents.length === 1 ? 'update' : 'updates'}` : '',
@@ -720,7 +709,6 @@ const CombinedPatientView: React.FC = () => {
               {pageValidUntil ? `Valid until ${pageValidUntil}` : ''}
             </p>
           )}
-          <p className="patient-greeting-text">{patientGreeting}</p>
         </div>
       </div>
 
