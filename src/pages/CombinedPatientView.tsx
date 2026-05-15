@@ -22,6 +22,7 @@ import WarningCallout from '../components/WarningCallout';
 import PatientGuidanceNotice from '../components/PatientGuidanceNotice';
 import PatientSupportFooter from '../components/PatientSupportFooter';
 import SickDayRulesModal from '../components/SickDayRulesModal';
+import type { SickDayRulesVariant } from '../components/SickDayRulesModal';
 import { NhsCross, NhsTick } from '../components/NhsIcons';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
@@ -35,6 +36,9 @@ const MEDICATION_BADGE_ORDER: Record<'NEW' | 'REAUTH' | 'GENERAL', number> = {
   REAUTH: 1,
   GENERAL: 2,
 };
+
+const getSickDayRulesVariant = (content: { category?: string; title?: string }): SickDayRulesVariant =>
+  `${content.category || ''} ${content.title || ''}`.toLowerCase().includes('insulin') ? 'insulin' : 'standard';
 
 const GROUP_COPY: Record<'NEW' | 'REAUTH' | 'GENERAL', { title: string }> = {
   NEW: {
@@ -233,6 +237,7 @@ const CombinedPatientView: React.FC = () => {
   const [screeningError, setScreeningError] = useState<string | null>(null);
   const [immunisationError, setImmunisationError] = useState<string | null>(null);
   const [sickDayModalOpen, setSickDayModalOpen] = useState(false);
+  const [sickDayRulesVariant, setSickDayRulesVariant] = useState<SickDayRulesVariant>('standard');
   const loggedAccessKeyRef = useRef<string | null>(null);
   const exportRef = useRef<HTMLDivElement | null>(null);
   const [isSavingPdf, setIsSavingPdf] = useState(false);
@@ -665,7 +670,7 @@ const CombinedPatientView: React.FC = () => {
   return (
     <div className="animation-container patient-view patient-page-shell" ref={exportRef}>
       <h1 className="sr-only">Patient information</h1>
-      <SickDayRulesModal isOpen={sickDayModalOpen} onClose={() => setSickDayModalOpen(false)} />
+      <SickDayRulesModal isOpen={sickDayModalOpen} onClose={() => setSickDayModalOpen(false)} variant={sickDayRulesVariant} />
       {isDemoMode && !isExactDemo && (
         <div className="patient-demo-banner no-print" role="note" aria-live="polite">
           {getDemoNoticeText()}
@@ -836,9 +841,18 @@ const CombinedPatientView: React.FC = () => {
                       {content.state !== 'placeholder' && content.sickDaysNeeded && (
                         <WarningCallout title="Important: Sick day rules apply">
                           <p style={{ marginBottom: '0.75rem', color: '#212b32' }}>
-                            If you become unwell and are unable to eat or drink normally, you may need to pause this medication.
+                            {getSickDayRulesVariant(content) === 'insulin'
+                              ? 'If you become unwell, you should follow insulin-specific sick day guidance.'
+                              : 'If you become unwell and are unable to eat or drink normally, you may need to pause this medication.'}
                           </p>
-                          <button type="button" onClick={() => setSickDayModalOpen(true)} className="action-button">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSickDayRulesVariant(getSickDayRulesVariant(content));
+                              setSickDayModalOpen(true);
+                            }}
+                            className="action-button"
+                          >
                             View Sick Day Rules
                           </button>
                         </WarningCallout>
