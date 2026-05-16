@@ -28,6 +28,7 @@ import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
 import { saveElementAsPdf } from '../pdfExport';
 import { getVideoEmbedUrl } from '../videoEmbed';
+import { parsePatientLinkCodes } from '../patientLinkCodes';
 
 const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALIDATION_CACHE_VERSION = 'v2';
@@ -171,17 +172,21 @@ const CombinedPatientView: React.FC = () => {
   const vaccineParam = searchParams.get('vaccine') || searchParams.get('jab') || searchParams.get('imms') || '';
   const isDemoMode = searchParams.get('demo') === '1';
   const isExactDemo = searchParams.get('exactDemo') === '1';
+  const parsedCodes = useMemo(() => parsePatientLinkCodes(codesParam), [codesParam]);
   const requestedCodes = useMemo(() => {
     if (codesParam) {
-      return Array.from(new Set(parseMedicationCodes(codesParam)));
+      return Array.from(new Set(parsedCodes.medicationCodes.length > 0 ? parsedCodes.medicationCodes : parseMedicationCodes(codesParam)));
     }
     const matches = rawCode.match(/\d{3}/g) || [];
     return Array.from(new Set(matches));
-  }, [codesParam, rawCode]);
-  const requestedScreenings = useMemo(() => Array.from(new Set(parseRequestedList(screenParam))), [screenParam]);
+  }, [codesParam, parsedCodes.medicationCodes, rawCode]);
+  const requestedScreenings = useMemo(
+    () => Array.from(new Set(screenParam ? parseRequestedList(screenParam) : parsedCodes.screeningIdentifiers)),
+    [parsedCodes.screeningIdentifiers, screenParam],
+  );
   const requestedImmunisations = useMemo(
-    () => Array.from(new Set(parseRequestedList(vaccineParam).map((item) => item.toLowerCase()))),
-    [vaccineParam],
+    () => Array.from(new Set((vaccineParam ? parseRequestedList(vaccineParam) : parsedCodes.immunisationIdentifiers).map((item) => item.toLowerCase()))),
+    [parsedCodes.immunisationIdentifiers, vaccineParam],
   );
   const issuedAt = useMemo(() => parseSystmOneTimestamp(searchParams.get('codes')), [searchParams]);
   const issuedDateDisplay = useMemo(() => {
@@ -622,6 +627,8 @@ const CombinedPatientView: React.FC = () => {
   }, [medicationContents.length, selectedScreenings, selectedImmunisations]);
 
   useEffect(() => {
+    setCompletedSectionIds(new Set());
+
     if (sectionLinks.length === 0 || typeof IntersectionObserver === 'undefined') return;
 
     const observer = new IntersectionObserver(

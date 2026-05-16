@@ -33,10 +33,15 @@ const ScreeningView: React.FC = () => {
   const practiceLookup = getPracticeLookupFromSearchParams(searchParams);
   const org = practiceLookup.orgName;
   const practiceIdentifier = practiceLookup.lookupValue;
+  const codesParam = (searchParams.get('codes') || '').trim();
   const isDemoMode = searchParams.get('demo') === '1';
   const previewOnly = searchParams.get('previewOnly') === '1';
   const previewToken = (searchParams.get('previewToken') || '').trim();
-  const screenIdentifier = (searchParams.get('screen') || searchParams.get('screening') || '').trim();
+  const screenIdentifier = (
+    searchParams.get('screen') ||
+    searchParams.get('screening') ||
+    codesParam
+  ).trim();
   const [loadedTemplate, setLoadedTemplate] = useState<ScreeningTemplate | null>(null);
   const access = usePracticeContentAccess(practiceIdentifier, 'screening_enabled', { skip: isDemoMode || previewOnly });
   const knownTemplateIds = useMemo(() => Object.keys(SCREENING_TEMPLATES), []);

@@ -35,8 +35,9 @@ const LongTermConditionView: React.FC = () => {
   const practiceLookup = getPracticeLookupFromSearchParams(searchParams);
   const org = practiceLookup.orgName;
   const practiceIdentifier = practiceLookup.lookupValue;
+  const codesParam = (searchParams.get('codes') || '').trim();
   const isDemoMode = searchParams.get('demo') === '1';
-  const conditionType = (searchParams.get('ltc') || searchParams.get('condition') || '').trim().toLowerCase();
+  const conditionType = (searchParams.get('ltc') || searchParams.get('condition') || codesParam).trim().toLowerCase();
   const issuedAt = useMemo(() => parseSystmOneTimestamp(searchParams.get('codes')), [searchParams]);
   const [loadedTemplate, setLoadedTemplate] = useState<LongTermConditionTemplate | null>(null);
   const access = usePracticeContentAccess(practiceIdentifier, 'ltc_enabled', { skip: isDemoMode });
