@@ -646,7 +646,10 @@ const CombinedPatientView: React.FC = () => {
           return next;
         });
       },
-      { threshold: 0.55 },
+      {
+        threshold: 0,
+        rootMargin: '0px 0px -45% 0px',
+      },
     );
 
     sectionLinks.forEach((link) => {

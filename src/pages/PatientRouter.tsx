@@ -93,11 +93,14 @@ const PatientRouter: React.FC = () => {
     }>
       <div className="patient-page-shell">
         <div className="patient-page-shell__brand no-print">
-          <img className="patient-page-shell__brand-logo" src="/MyMedInfo-logo.png" alt="" />
+          <img className="patient-page-shell__brand-logo" src="/MyMedInfo-logo.png" alt="MyMedInfo" />
           {practiceLookup.orgName && (
-            <p className="patient-page-shell__brand-partner">
-              Partnering with {practiceLookup.orgName}
-            </p>
+            <div className="patient-page-shell__brand-partner-block">
+              <img className="patient-page-shell__brand-partner-logo" src="/nhs-wordmark-blue.jpg" alt="NHS" />
+              <p className="patient-page-shell__brand-partner">
+                Partnering with {practiceLookup.orgName}
+              </p>
+            </div>
           )}
         </div>
         {renderContent()}
