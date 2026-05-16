@@ -792,6 +792,15 @@ p {
   margin-bottom: 1rem;
 }
 
+.patient-bundle-summary__intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  padding-bottom: 0.95rem;
+  margin-bottom: 0.95rem;
+  border-bottom: 1px solid #d8e6f5;
+}
+
 .patient-bundle-summary__header {
   display: flex;
   align-items: flex-start;

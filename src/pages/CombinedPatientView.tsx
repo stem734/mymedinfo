@@ -704,23 +704,22 @@ const CombinedPatientView: React.FC = () => {
         </div>
       )}
 
-      <div className="patient-greeting-card" role="status" aria-live="polite" style={{ marginBottom: '1rem' }}>
-        <div className="patient-greeting-icon">
-          <Info size={20} aria-hidden="true" />
-        </div>
-        <div className="patient-greeting-copy">
-          <p className="patient-greeting-title">{pageHeadline}</p>
-          {(issuedDateDisplay || pageValidUntil) && (
-            <p className="patient-greeting-meta">
-              {issuedDateDisplay ? `Sent ${issuedDateDisplay}` : ''}
-              {issuedDateDisplay && pageValidUntil ? ' · ' : ''}
-              {pageValidUntil ? `Valid until ${pageValidUntil}` : ''}
-            </p>
-          )}
-        </div>
-      </div>
-
       <section className="card patient-bundle-summary">
+        <div className="patient-bundle-summary__intro" role="status" aria-live="polite">
+          <div className="patient-greeting-icon">
+            <Info size={20} aria-hidden="true" />
+          </div>
+          <div className="patient-greeting-copy">
+            <p className="patient-greeting-title">{pageHeadline}</p>
+            {(issuedDateDisplay || pageValidUntil) && (
+              <p className="patient-greeting-meta">
+                {issuedDateDisplay ? `Sent ${issuedDateDisplay}` : ''}
+                {issuedDateDisplay && pageValidUntil ? ' · ' : ''}
+                {pageValidUntil ? `Valid until ${pageValidUntil}` : ''}
+              </p>
+            )}
+          </div>
+        </div>
         <div className="patient-bundle-summary__header">
           <div className="patient-bundle-summary__icon">
             <LinkIcon size={20} />
