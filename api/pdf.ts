@@ -1,11 +1,6 @@
 import puppeteer from 'puppeteer-core';
 import chromium from '@sparticuz/chromium';
 
-type PdfRequest = {
-  source?: string;
-  filename?: string;
-};
-
 const sanitizeFilename = (value: string | undefined) =>
   (value || 'MyMedInfo page')
     .trim()
