@@ -570,9 +570,7 @@ const ResourceView: React.FC = () => {
     );
   }, [contents]);
 
-  const pageHeadline = orgName
-    ? `${orgName} has shared some information with you which you may find useful.`
-    : 'Your practice has shared some information with you which you may find useful.';
+  const pageHeadline = 'Your GP practice has shared some information with you which you may find useful.';
 
   const pageValidUntil = useMemo(() => {
     const expiry = getEarliestExpiryDate(issuedAt, contents);
