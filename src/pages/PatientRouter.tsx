@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { detectContentType, CONTENT_TYPES } from '../contentRouter';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
+import { parsePatientLinkCodes } from '../patientLinkCodes';
 
 // All content views are lazy-loaded to keep patient routes split by content type.
 const ResourceView = React.lazy(() => import('./ResourceView'));
@@ -25,11 +26,19 @@ const LongTermConditionView = React.lazy(() => import('./LongTermConditionView')
 const PatientRouter: React.FC = () => {
   const [searchParams] = useSearchParams();
   const practiceLookup = getPracticeLookupFromSearchParams(searchParams);
-  const hasMedicationParams = Boolean((searchParams.get('codes') || searchParams.get('code') || searchParams.get('med') || '').trim());
-  const hasScreeningParams = Boolean((searchParams.get('screen') || searchParams.get('screening') || '').trim());
+  const explicitType = (searchParams.get('type') || '').toLowerCase().trim();
+  const codesParam = (searchParams.get('codes') || '').trim();
+  const parsedCodes = useMemo(() => parsePatientLinkCodes(codesParam), [codesParam]);
+  const hasMedicationParams = Boolean((searchParams.get('code') || searchParams.get('med') || '').trim()) || (
+    parsedCodes.medicationCodes.length > 0 &&
+    explicitType !== CONTENT_TYPES.SCREENING &&
+    explicitType !== CONTENT_TYPES.IMMUNISATION &&
+    explicitType !== CONTENT_TYPES.LONG_TERM_CONDITION
+  );
+  const hasScreeningParams = Boolean((searchParams.get('screen') || searchParams.get('screening') || '').trim()) || parsedCodes.screeningIdentifiers.length > 0;
   const hasHealthCheckParams = Boolean((searchParams.get('s1') || searchParams.get('s1csv') || searchParams.get('payload') || searchParams.get('hc') || '').trim());
-  const hasImmunisationParams = Boolean((searchParams.get('vaccine') || searchParams.get('jab') || searchParams.get('imms') || '').trim());
-  const hasLtcParams = Boolean((searchParams.get('ltc') || searchParams.get('condition') || '').trim());
+  const hasImmunisationParams = Boolean((searchParams.get('vaccine') || searchParams.get('jab') || searchParams.get('imms') || '').trim()) || parsedCodes.immunisationIdentifiers.length > 0;
+  const hasLtcParams = Boolean((searchParams.get('ltc') || searchParams.get('condition') || '').trim()) || parsedCodes.longTermConditionIdentifiers.length > 0;
   const mvpBundleParamCount = [hasMedicationParams, hasScreeningParams, hasImmunisationParams].filter(Boolean).length;
   const isCombinedBundle = mvpBundleParamCount > 1;
 

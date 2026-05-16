@@ -31,10 +31,11 @@ const ImmunisationView: React.FC = () => {
   const practiceLookup = getPracticeLookupFromSearchParams(searchParams);
   const org = practiceLookup.orgName;
   const practiceIdentifier = practiceLookup.lookupValue;
+  const codesParam = (searchParams.get('codes') || '').trim();
   const isDemoMode = searchParams.get('demo') === '1';
   const previewOnly = searchParams.get('previewOnly') === '1';
   const previewToken = (searchParams.get('previewToken') || '').trim();
-  const vaccines = (searchParams.get('vaccine') || searchParams.get('jab') || searchParams.get('imms') || '')
+  const vaccines = (searchParams.get('vaccine') || searchParams.get('jab') || searchParams.get('imms') || codesParam)
     .split(',')
     .map(v => v.trim().toLowerCase())
     .filter(Boolean);
