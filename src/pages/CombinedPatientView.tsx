@@ -288,6 +288,7 @@ const CombinedPatientView: React.FC = () => {
 
       const cacheKey = getValidationCacheKey(practiceLookup.cacheKey);
       const cached = window.sessionStorage.getItem(cacheKey);
+      let usedCachedValue = false;
       if (cached) {
         try {
           const parsed = JSON.parse(cached) as { expiresAt?: number; valid?: boolean; practiceFeatures?: PracticeFeatureSettings };
@@ -297,23 +298,25 @@ const CombinedPatientView: React.FC = () => {
               setAuthError(null);
               setIsValidating(false);
               setPracticeFeatures(parsed.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS);
+              usedCachedValue = true;
             }
-            return;
           }
         } catch {
           // Ignore invalid cache and continue with live validation.
         }
-        window.sessionStorage.removeItem(cacheKey);
+        if (!usedCachedValue) {
+          window.sessionStorage.removeItem(cacheKey);
+        }
       }
 
-      if (!cancelled) {
+      if (!cancelled && !usedCachedValue) {
         setIsAuthorised(null);
         setAuthError(null);
         setPracticeFeatures(DEFAULT_PRACTICE_FEATURE_SETTINGS);
       }
 
       loadingTimer = window.setTimeout(() => {
-        if (!cancelled) {
+        if (!cancelled && !usedCachedValue) {
           setIsValidating(true);
         }
       }, 150);
