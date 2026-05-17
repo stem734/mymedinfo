@@ -612,8 +612,14 @@ const CombinedPatientView: React.FC = () => {
   }, [issuedAt, medicationContents, selectedScreenings, selectedImmunisations]);
 
   const sectionLinks = useMemo(() => {
-    const links: Array<{ id: string; label: string }> = [];
-    if (medicationContents.length > 0) links.push({ id: 'bundle-medications', label: 'Medications' });
+    const links: Array<{ id: string; label: string; observerId?: string }> = [];
+    if (medicationContents.length > 0) {
+      links.push({
+        id: 'bundle-medications',
+        label: 'Medications',
+        observerId: 'bundle-medications-complete',
+      });
+    }
     if (selectedScreenings.length > 0) {
       selectedScreenings.forEach((screening) => {
         links.push({ id: `screening-${screening.code.toLowerCase()}`, label: screening.label });
@@ -636,7 +642,7 @@ const CombinedPatientView: React.FC = () => {
       (entries) => {
         const visibleIds = entries
           .filter((entry) => entry.isIntersecting)
-          .map((entry) => entry.target.id)
+          .map((entry) => entry.target.getAttribute('data-completion-id') || entry.target.id)
           .filter(Boolean);
 
         if (visibleIds.length === 0) return;
@@ -654,7 +660,7 @@ const CombinedPatientView: React.FC = () => {
     );
 
     sectionLinks.forEach((link) => {
-      const element = document.getElementById(link.id);
+      const element = document.getElementById(link.observerId || link.id);
       if (element) observer.observe(element);
     });
 
@@ -945,6 +951,12 @@ const CombinedPatientView: React.FC = () => {
               </div>
             </section>
           ))}
+          <div
+            id="bundle-medications-complete"
+            data-completion-id="bundle-medications"
+            aria-hidden="true"
+            style={{ height: 1 }}
+          />
         </section>
       )}
 
