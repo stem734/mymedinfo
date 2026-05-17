@@ -441,7 +441,6 @@ const HealthCheckView: React.FC = () => {
                     )}
                     {validUntil && !metricExpired && (
                       <div className="patient-card-meta" style={{ marginBottom: '0.75rem' }}>
-                        <span className="patient-code-chip">Valid until {validUntil}</span>
                       </div>
                     )}
                     <HealthCheckCard
