@@ -575,11 +575,6 @@ const ResourceView: React.FC = () => {
 
   const pageHeadline = 'Your GP practice has shared some information with you which you may find useful.';
 
-  const pageValidUntil = useMemo(() => {
-    const expiry = getEarliestExpiryDate(issuedAt, contents);
-    return expiry ? expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  }, [contents, issuedAt]);
-
   const guidanceOrganisationName = useMemo(() => {
     if (resolvedContents.some((content) => content.state === 'custom') && orgName) {
       return orgName;
@@ -693,11 +688,9 @@ const ResourceView: React.FC = () => {
         </div>
         <div className="patient-greeting-copy">
           <p className="patient-greeting-title">{pageHeadline}</p>
-          {(issuedDateDisplay || pageValidUntil) && (
+          {issuedDateDisplay && (
             <p className="patient-greeting-meta">
-              {issuedDateDisplay ? `Sent ${issuedDateDisplay}` : ''}
-              {issuedDateDisplay && pageValidUntil ? ' · ' : ''}
-              {pageValidUntil ? `Valid until ${pageValidUntil}` : ''}
+              {`Information sent on ${issuedDateDisplay}`}
             </p>
           )}
         </div>
@@ -760,9 +753,6 @@ const ResourceView: React.FC = () => {
                     <span className={`badge badge-${content.badge.toLowerCase()}`}>
                       {getMedicationStateLabel(content.badge)}
                     </span>
-                    {validUntil && !isExpired && (
-                      <span className="patient-code-chip">Valid until {validUntil}</span>
-                    )}
                   </div>
 
                   <h2 className="patient-medication-title">{displayTitle.primary}</h2>

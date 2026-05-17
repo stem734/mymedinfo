@@ -135,11 +135,6 @@ const LongTermConditionView: React.FC = () => {
             </span>
           </div>
         )}
-        {validUntil && !isExpired && (
-          <div className="patient-card-meta" style={{ marginBottom: '0.85rem' }}>
-            <span className="patient-code-chip">Valid until {validUntil}</span>
-          </div>
-        )}
         <h2 className="patient-section-title">{selectedTemplate.label}</h2>
         <p className="patient-section-copy">{selectedTemplate.headline}</p>
         <p className="patient-section-copy patient-section-copy--formatted">{selectedTemplate.explanation}</p>

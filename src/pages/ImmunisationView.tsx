@@ -174,11 +174,6 @@ const ImmunisationView: React.FC = () => {
               </span>
             </div>
           )}
-          {validUntil && !isExpired && (
-            <div className="patient-card-meta" style={{ marginBottom: '0.85rem' }}>
-              <span className="patient-code-chip">Valid until {validUntil}</span>
-            </div>
-          )}
               </>
             );
           })()}

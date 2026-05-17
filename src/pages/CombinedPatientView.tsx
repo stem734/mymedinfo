@@ -601,16 +601,6 @@ const CombinedPatientView: React.FC = () => {
 
   const pageHeadline = 'Your GP practice has shared some information with you which you may find useful.';
 
-  const pageValidUntil = useMemo(() => {
-    const sources = [
-      ...medicationContents.map((content) => ({ linkExpiryValue: content.linkExpiryValue, linkExpiryUnit: content.linkExpiryUnit })),
-      ...selectedScreenings.map((template) => ({ linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })),
-      ...selectedImmunisations.map((template) => ({ linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })),
-    ];
-    const expiry = getEarliestExpiryDate(issuedAt, sources);
-    return expiry ? expiry.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
-  }, [issuedAt, medicationContents, selectedScreenings, selectedImmunisations]);
-
   const sectionLinks = useMemo(() => {
     const links: Array<{ id: string; label: string; observerId?: string }> = [];
     if (medicationContents.length > 0) {
@@ -720,11 +710,9 @@ const CombinedPatientView: React.FC = () => {
           </div>
           <div className="patient-greeting-copy">
             <p className="patient-greeting-title">{pageHeadline}</p>
-            {(issuedDateDisplay || pageValidUntil) && (
+            {issuedDateDisplay && (
               <p className="patient-greeting-meta">
-                {issuedDateDisplay ? `Sent ${issuedDateDisplay}` : ''}
-                {issuedDateDisplay && pageValidUntil ? ' · ' : ''}
-                {pageValidUntil ? `Valid until ${pageValidUntil}` : ''}
+                {`Information sent on ${issuedDateDisplay}`}
               </p>
             )}
           </div>
@@ -823,9 +811,6 @@ const CombinedPatientView: React.FC = () => {
                         <span className={`badge badge-${content.badge.toLowerCase()}`}>
                           {getMedicationStateLabel(content.badge)}
                         </span>
-                        {validUntil && !isExpired && (
-                          <span className="patient-code-chip">Valid until {validUntil}</span>
-                        )}
                       </div>
 
                       <h2 className="patient-medication-title">{displayTitle.primary}</h2>
@@ -994,11 +979,6 @@ const CombinedPatientView: React.FC = () => {
               </span>
             </div>
           )}
-          {validUntil && !isExpired && (
-            <div className="patient-card-meta" style={{ marginBottom: '0.85rem' }}>
-              <span className="patient-code-chip">Valid until {validUntil}</span>
-            </div>
-          )}
               </>
             );
           })()}
@@ -1121,11 +1101,6 @@ const CombinedPatientView: React.FC = () => {
                     <span>
                       This information is more than {formatExpiryWindowLabel(template.linkExpiryValue, template.linkExpiryUnit)} old and may be out of date. If you have any queries please speak to your GP practice.
                     </span>
-                  </div>
-                )}
-                {validUntil && !isExpired && (
-                  <div className="patient-card-meta" style={{ marginBottom: '0.85rem' }}>
-                    <span className="patient-code-chip">Valid until {validUntil}</span>
                   </div>
                 )}
               </>
