@@ -35,7 +35,8 @@ serve(async (req) => {
       .order('email');
 
     if (error) {
-      return errorResponse(`Failed to load users: ${error.message}`, 500);
+      console.error('List users error:', error);
+      return errorResponse('Failed to load users', 500);
     }
 
     return jsonResponse({
