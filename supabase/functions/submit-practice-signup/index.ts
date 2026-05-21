@@ -109,7 +109,8 @@ serve(async (req) => {
     });
 
     if (insertError) {
-      return errorResponse(`Failed to submit registration: ${insertError.message}`, 500);
+      console.error('Registration submission error:', insertError);
+      return errorResponse('Failed to submit registration', 500);
     }
 
     return jsonResponse({ success: true, status: 'submitted' });
