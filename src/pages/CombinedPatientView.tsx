@@ -25,7 +25,7 @@ import SickDayRulesModal from '../components/SickDayRulesModal';
 import type { SickDayRulesVariant } from '../components/SickDayRulesModal';
 import { NhsCross, NhsTick } from '../components/NhsIcons';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
-import { getExpiryDate, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
+import { isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
 import { saveElementAsPdf } from '../pdfExport';
 import { getVideoEmbedUrl } from '../videoEmbed';
 import { parsePatientLinkCodes } from '../patientLinkCodes';
@@ -102,36 +102,10 @@ const getMedicationDisplayParts = (title: string) => {
   };
 };
 
-const formatValidUntil = (issuedAt: Date | null, value?: number, unit?: 'weeks' | 'months') => {
-  if (!issuedAt || !value || !unit) return '';
-  return getExpiryDate(issuedAt, value, unit).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-};
 
 const formatExpiryWindowLabel = (value?: number, unit?: 'weeks' | 'months') => {
   if (!value || !unit) return '';
   return `${value} ${value === 1 ? unit.replace(/s$/, '') : unit}`;
-};
-
-const getEarliestExpiryDate = (
-  issuedAt: Date | null,
-  contents: Array<{ linkExpiryValue?: number; linkExpiryUnit?: 'weeks' | 'months' }>,
-) : Date | null => {
-  if (!issuedAt) return null;
-  let earliest: Date | null = null;
-
-  contents.forEach((content) => {
-    if (!content.linkExpiryValue || !content.linkExpiryUnit) return;
-    const expiry = getExpiryDate(issuedAt, content.linkExpiryValue, content.linkExpiryUnit);
-    if (!earliest || expiry < earliest) {
-      earliest = expiry;
-    }
-  });
-
-  return earliest;
 };
 
 const sortMedicationGroups = <
@@ -786,7 +760,6 @@ const CombinedPatientView: React.FC = () => {
               <div className={`patient-content-grid${items.length === 1 ? ' patient-content-grid--single' : ''}`}>
                 {items.map((content) => {
                   const displayTitle = getMedicationDisplayParts(content.title);
-                  const validUntil = formatValidUntil(issuedAt, content.linkExpiryValue, content.linkExpiryUnit);
                   const isExpired = Boolean(
                     issuedAt &&
                     content.linkExpiryValue &&
@@ -962,7 +935,6 @@ const CombinedPatientView: React.FC = () => {
       {selectedScreenings.map((template) => (
         <section key={template.id} id={`screening-${template.code.toLowerCase()}`} className="card patient-section-card patient-section-card--bundle">
           {(() => {
-            const validUntil = formatValidUntil(issuedAt, template.linkExpiryValue, template.linkExpiryUnit);
             const isExpired = Boolean(
               issuedAt &&
               template.linkExpiryValue &&
@@ -1086,7 +1058,6 @@ const CombinedPatientView: React.FC = () => {
       {selectedImmunisations.map((template) => (
         <section key={template.id} id={`immunisation-${template.id.toLowerCase()}`} className="card patient-section-card patient-section-card--bundle">
           {(() => {
-            const validUntil = formatValidUntil(issuedAt, template.linkExpiryValue, template.linkExpiryUnit);
             const isExpired = Boolean(
               issuedAt &&
               template.linkExpiryValue &&
