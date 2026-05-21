@@ -13,7 +13,7 @@ import PatientSupportFooter from '../components/PatientSupportFooter';
 import WarningCallout from '../components/WarningCallout';
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
-import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
+import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
 
 /**
@@ -151,19 +151,6 @@ const ImmunisationView: React.FC = () => {
       {selectedVaccines.map((template) => (
         <div key={template.id} className="card patient-section-card">
           {(() => {
-            const validUntil = issuedAt && template.linkExpiryValue && template.linkExpiryUnit
-              ? getExpiryDate(issuedAt, template.linkExpiryValue, template.linkExpiryUnit).toLocaleDateString('en-GB', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric',
-              })
-              : '';
-            const isExpired = Boolean(
-              issuedAt &&
-              template.linkExpiryValue &&
-              template.linkExpiryUnit &&
-              isUrlExpired(issuedAt, template.linkExpiryValue, template.linkExpiryUnit),
-            );
             return (
               <>
           {issuedAt && template.linkExpiryValue && template.linkExpiryUnit && isUrlExpired(issuedAt, template.linkExpiryValue, template.linkExpiryUnit) && (
