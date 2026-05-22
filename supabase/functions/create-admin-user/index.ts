@@ -29,7 +29,8 @@ serve(async (req) => {
       });
 
       if (authError) {
-        return errorResponse(`Failed to update existing auth user: ${authError.message}`, 500);
+        console.error('Auth update error:', authError);
+        return errorResponse('Failed to update existing auth user', 500);
       }
 
       const { error: updateError } = await supabase
@@ -44,7 +45,8 @@ serve(async (req) => {
         .eq('uid', existingUser.uid);
 
       if (updateError) {
-        return errorResponse(`Failed to update user record: ${updateError.message}`, 500);
+        console.error('User update error:', updateError);
+        return errorResponse('Failed to update user record', 500);
       }
 
       const appBaseUrl = (Deno.env.get('APP_BASE_URL') || 'https://www.mymedinfo.info').replace(/\/$/, '');
@@ -72,7 +74,8 @@ serve(async (req) => {
     });
 
     if (createError || !userRecord.user) {
-      return errorResponse(createError?.message || 'Failed to create auth user', 500);
+      console.error('Auth create error:', createError);
+      return errorResponse('Failed to create auth user', 500);
     }
 
     const now = new Date().toISOString();
@@ -87,7 +90,8 @@ serve(async (req) => {
     });
 
     if (insertError) {
-      return errorResponse(`Failed to create user record: ${insertError.message}`, 500);
+      console.error('User record insertion error:', insertError);
+      return errorResponse('Failed to create user record', 500);
     }
 
     // Generate password reset link
@@ -128,6 +132,7 @@ serve(async (req) => {
 
     return jsonResponse({ success: true, uid: userRecord.user.id, created: true, resetLink });
   } catch (err) {
-    return errorResponse(err instanceof Error ? err.message : 'Internal error', 500);
+    console.error('Unexpected edge function error:', err);
+    return errorResponse('Internal error', 500);
   }
 });

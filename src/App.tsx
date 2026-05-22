@@ -1,17 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import type { AuthChangeEvent } from '@supabase/supabase-js';
-import AdminLogin from './pages/AdminLogin';
-import AdminDashboard from './pages/AdminDashboard';
-import PracticeSignup from './pages/PracticeSignup';
-import PracticeLogin from './pages/PracticeLogin';
-import PracticeDashboard from './pages/PracticeDashboard';
-import CardBuilder from './pages/CardBuilder';
-import Landing from './pages/Landing';
-import Demo from './pages/Demo';
-import ResetPassword from './pages/ResetPassword';
-import PatientRouter from './pages/PatientRouter';
-import LegalPage from './pages/LegalPage';
 import { supabase } from './supabase';
 import { getSubdomain } from './subdomainUtils';
 import HeaderNav from './components/HeaderNav';
@@ -19,11 +8,29 @@ import HeaderNav from './components/HeaderNav';
 declare const __APP_COMMIT_HASH__: string;
 declare const __APP_BUILD_STAMP__: string;
 
+const AdminLogin = React.lazy(() => import('./pages/AdminLogin'));
+const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
+const PracticeSignup = React.lazy(() => import('./pages/PracticeSignup'));
+const PracticeLogin = React.lazy(() => import('./pages/PracticeLogin'));
+const PracticeDashboard = React.lazy(() => import('./pages/PracticeDashboard'));
+const CardBuilder = React.lazy(() => import('./pages/CardBuilder'));
+const Landing = React.lazy(() => import('./pages/Landing'));
+const Demo = React.lazy(() => import('./pages/Demo'));
+const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
+const PatientRouter = React.lazy(() => import('./pages/PatientRouter'));
+const LegalPage = React.lazy(() => import('./pages/LegalPage'));
+
 const ClinicianDemo: React.FC<{ show?: boolean }> = ({ show = true }) => {
   if (!show) return null;
 
   return null;
 };
+
+const PageFallback: React.FC = () => (
+  <div className="loading-state">
+    <p>Loading...</p>
+  </div>
+);
 
 const SubdomainRoutes: React.FC = () => {
   const subdomain = getSubdomain();
@@ -126,7 +133,9 @@ const AppContent: React.FC = () => {
         </header>
       )}
       <main id="main-content">
-        <SubdomainRoutes />
+        <Suspense fallback={<PageFallback />}>
+          <SubdomainRoutes />
+        </Suspense>
       </main>
 
       <footer className="footer">

@@ -72,11 +72,13 @@ serve(async (req) => {
 
     const { error } = await supabase.from('login_audit').insert(auditRecord);
     if (error) {
-      return errorResponse(`Failed to record audit: ${error.message}`, 500);
+      console.error('Audit recording error:', error);
+      return errorResponse('Failed to record audit', 500);
     }
 
     return jsonResponse({ success: true });
   } catch (err) {
-    return errorResponse(err instanceof Error ? err.message : 'Internal error', 500);
+    console.error('Unexpected edge function error:', err);
+    return errorResponse('Internal error', 500);
   }
 });

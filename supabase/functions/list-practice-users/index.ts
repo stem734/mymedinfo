@@ -35,13 +35,15 @@ serve(async (req) => {
       .order('email');
 
     if (error) {
-      return errorResponse(`Failed to load users: ${error.message}`, 500);
+      console.error('List users error:', error);
+      return errorResponse('Failed to load users', 500);
     }
 
     return jsonResponse({
       users: data || [],
     });
   } catch (err) {
-    return errorResponse(err instanceof Error ? err.message : 'Internal error', 500);
+    console.error('Unexpected edge function error:', err);
+    return errorResponse('Internal error', 500);
   }
 });

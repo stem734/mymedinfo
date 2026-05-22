@@ -13,17 +13,9 @@ import PatientSupportFooter from '../components/PatientSupportFooter';
 import WarningCallout from '../components/WarningCallout';
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
-import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
+import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
 
-const formatValidUntil = (issuedAt: Date | null, value?: number, unit?: 'weeks' | 'months') => {
-  if (!issuedAt || !value || !unit) return '';
-  return getExpiryDate(issuedAt, value, unit).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-};
 
 const formatExpiryWindowLabel = (value?: number, unit?: 'weeks' | 'months') => {
   if (!value || !unit) return '';
@@ -43,10 +35,6 @@ const LongTermConditionView: React.FC = () => {
   const access = usePracticeContentAccess(practiceIdentifier, 'ltc_enabled', { skip: isDemoMode });
   const selectedTemplate = loadedTemplate;
   const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
-  const validUntil = useMemo(
-    () => formatValidUntil(issuedAt, selectedTemplate?.linkExpiryValue, selectedTemplate?.linkExpiryUnit),
-    [issuedAt, selectedTemplate],
-  );
   const isExpired = useMemo(
     () => Boolean(
       issuedAt &&

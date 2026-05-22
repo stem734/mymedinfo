@@ -74,6 +74,7 @@ serve(async (req) => {
 
     return jsonResponse({ success: true });
   } catch (err) {
-    return errorResponse(err instanceof Error ? err.message : 'Internal error', 500);
+    console.error('Unexpected edge function error:', err);
+    return errorResponse('Internal error', 500);
   }
 });

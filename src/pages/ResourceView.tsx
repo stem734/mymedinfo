@@ -6,7 +6,7 @@ import { DEFAULT_PRACTICE_FEATURE_SETTINGS, type PracticeFeatureSettings } from 
 import { useMedicationCatalog } from '../medicationCatalog';
 import { supabase } from '../supabase';
 import { getDemoNoticeText } from '../demoHelpers';
-import { getExpiryDate, isIssuedDateStale, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
+import { isIssuedDateStale, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
 import { saveElementAsPdf } from '../pdfExport';
 import WarningCallout from '../components/WarningCallout';
 import PatientGuidanceNotice from '../components/PatientGuidanceNotice';
@@ -97,37 +97,12 @@ const getMedicationDisplayParts = (title: string) => {
   };
 };
 
-const formatValidUntil = (issuedAt: Date | null, value?: number, unit?: 'weeks' | 'months') => {
-  if (!issuedAt || !value || !unit) return '';
-  return getExpiryDate(issuedAt, value, unit).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-};
 
 const formatExpiryWindowLabel = (value?: number, unit?: 'weeks' | 'months') => {
   if (!value || !unit) return '';
   return `${value} ${value === 1 ? unit.replace(/s$/, '') : unit}`;
 };
 
-const getEarliestExpiryDate = (
-  issuedAt: Date | null,
-  contents: Array<{ linkExpiryValue?: number; linkExpiryUnit?: 'weeks' | 'months' }>,
-) : Date | null => {
-  if (!issuedAt) return null;
-  let earliest: Date | null = null;
-
-  contents.forEach((content) => {
-    if (!content.linkExpiryValue || !content.linkExpiryUnit) return;
-    const expiry = getExpiryDate(issuedAt, content.linkExpiryValue, content.linkExpiryUnit);
-    if (!earliest || expiry < earliest) {
-      earliest = expiry;
-    }
-  });
-
-  return earliest;
-};
 
 const sortMedicationGroups = <
   T extends {
@@ -728,32 +703,31 @@ const ResourceView: React.FC = () => {
           <div className={`patient-content-grid${items.length === 1 ? ' patient-content-grid--single' : ''}`}>
             {items.map((content) => {
               const displayTitle = getMedicationDisplayParts(content.title);
-                  const validUntil = formatValidUntil(issuedAt, content.linkExpiryValue, content.linkExpiryUnit);
-                  const isExpired = Boolean(
-                    issuedAt &&
+              const isExpired = Boolean(
+                issuedAt &&
                 content.linkExpiryValue &&
                 content.linkExpiryUnit &&
                 isUrlExpired(issuedAt, content.linkExpiryValue, content.linkExpiryUnit),
               );
               return (
-              <article key={content.id} className="patient-content-panel">
-                <div className="card patient-card">
-                  {isExpired && (
-                    <div
-                      className="out-of-date-banner"
-                      style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#8a1538', fontSize: '0.95rem', backgroundColor: '#fbe3ea', padding: '0.85rem 1rem', borderRadius: '8px', border: '2px solid #8a1538', marginBottom: '1rem', fontWeight: 700 }}
-                        >
-                          <AlertCircle size={20} style={{ flexShrink: 0 }} />
-                          <span>
-                            This information is more than {formatExpiryWindowLabel(content.linkExpiryValue, content.linkExpiryUnit)} old and may be out of date. If you have any queries please speak to your GP practice.
-                          </span>
-                        </div>
-                  )}
-                  <div className="patient-card-meta">
-                    <span className={`badge badge-${content.badge.toLowerCase()}`}>
-                      {getMedicationStateLabel(content.badge)}
-                    </span>
-                  </div>
+                <article key={content.id} className="patient-content-panel">
+                  <div className="card patient-card">
+                    {isExpired && (
+                      <div
+                        className="out-of-date-banner"
+                        style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#8a1538', fontSize: '0.95rem', backgroundColor: '#fbe3ea', padding: '0.85rem 1rem', borderRadius: '8px', border: '2px solid #8a1538', marginBottom: '1rem', fontWeight: 700 }}
+                      >
+                        <AlertCircle size={20} style={{ flexShrink: 0 }} />
+                        <span>
+                          This information is more than {formatExpiryWindowLabel(content.linkExpiryValue, content.linkExpiryUnit)} old and may be out of date. If you have any queries please speak to your GP practice.
+                        </span>
+                      </div>
+                    )}
+                    <div className="patient-card-meta">
+                      <span className={`badge badge-${content.badge.toLowerCase()}`}>
+                        {getMedicationStateLabel(content.badge)}
+                      </span>
+                    </div>
 
                   <h2 className="patient-medication-title">{displayTitle.primary}</h2>
                   {displayTitle.secondary && (
@@ -871,8 +845,8 @@ const ResourceView: React.FC = () => {
                       </div>
                     </div>
                   )}
-                </div>
-              </article>
+                  </div>
+                </article>
               );
             })}
           </div>

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useDeferredValue, useMemo, useRef, useState } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
@@ -226,6 +226,66 @@ const normalisePracticeSummary = (value: PracticeSummary | PracticeSummary[] | n
   return coercePracticeSummary(practice);
 };
 
+const buildMedicationPreview = (medication: MedicationRecord, practiceCard?: PracticeMedicationCardRow): MedContent => {
+  if (practiceCard?.source_type === 'custom') {
+    const keyInfoMode = practiceCard.key_info_mode === 'dont' ? 'dont' : medication.keyInfoMode || 'do';
+    const keyInfo = Array.isArray(practiceCard.key_info) ? practiceCard.key_info : medication.keyInfo;
+
+    return {
+      code: medication.code,
+      title: practiceCard.title || medication.title,
+      description: practiceCard.description || medication.description,
+      badge: practiceCard.badge || medication.badge,
+      category: practiceCard.category || medication.category,
+      keyInfoMode,
+      keyInfo,
+      doKeyInfo: Array.isArray(practiceCard.do_key_info) && practiceCard.do_key_info.length > 0
+        ? practiceCard.do_key_info
+        : keyInfoMode === 'do'
+          ? keyInfo
+          : [],
+      dontKeyInfo: Array.isArray(practiceCard.dont_key_info) && practiceCard.dont_key_info.length > 0
+        ? practiceCard.dont_key_info
+        : keyInfoMode === 'dont'
+          ? keyInfo
+          : [],
+      generalKeyInfo: Array.isArray(practiceCard.general_key_info) ? practiceCard.general_key_info : [],
+      nhsLink: typeof practiceCard.nhs_link === 'string' ? practiceCard.nhs_link : medication.nhsLink,
+      trendLinks: Array.isArray(practiceCard.trend_links) ? practiceCard.trend_links : medication.trendLinks,
+      sickDaysNeeded:
+        typeof practiceCard.sick_days_needed === 'boolean'
+          ? practiceCard.sick_days_needed
+          : medication.sickDaysNeeded,
+      reviewMonths:
+        typeof practiceCard.review_months === 'number'
+          ? practiceCard.review_months
+          : medication.reviewMonths,
+      contentReviewDate:
+        typeof practiceCard.content_review_date === 'string'
+          ? practiceCard.content_review_date
+          : medication.contentReviewDate,
+    };
+  }
+
+  return {
+    code: medication.code,
+    title: medication.title,
+    description: medication.description,
+    badge: medication.badge,
+    category: medication.category,
+    keyInfoMode: medication.keyInfoMode || 'do',
+    keyInfo: medication.keyInfo,
+    doKeyInfo: medication.doKeyInfo,
+    dontKeyInfo: medication.dontKeyInfo,
+    generalKeyInfo: medication.generalKeyInfo,
+    nhsLink: medication.nhsLink,
+    trendLinks: medication.trendLinks,
+    sickDaysNeeded: medication.sickDaysNeeded,
+    reviewMonths: medication.reviewMonths,
+    contentReviewDate: medication.contentReviewDate,
+  };
+};
+
 const PracticeDashboard: React.FC = () => {
   const [memberships, setMemberships] = useState<PracticeMembership[]>([]);
   const [selectedPracticeId, setSelectedPracticeId] = useState('');
@@ -237,6 +297,7 @@ const PracticeDashboard: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [librarySearch, setLibrarySearch] = useState('');
   const [activeDomain, setActiveDomain] = useState<DashboardDomain>('medication');
+  const deferredSearch = useDeferredValue(librarySearch);
   const [previewMed, setPreviewMed] = useState<MedContent | null>(null);
   const [draft, setDraft] = useState<CustomCardDraft | null>(null);
   const [draftCode, setDraftCode] = useState('');
@@ -497,7 +558,7 @@ const PracticeDashboard: React.FC = () => {
   }, [practiceCards, selectedPractice]);
 
   const filteredMedications = useMemo(() => {
-    const query = librarySearch.trim().toLowerCase();
+    const query = deferredSearch.trim().toLowerCase();
 
     return allMedications.filter((medication) => {
       if (!query) return true;
@@ -509,7 +570,7 @@ const PracticeDashboard: React.FC = () => {
         medication.category,
       ].some((value) => value.toLowerCase().includes(query));
     });
-  }, [allMedications, librarySearch]);
+  }, [allMedications, deferredSearch]);
 
   const practiceTemplateMap = useMemo(
     () => Object.fromEntries(practiceTemplateRows.map((row) => [`${row.builder_type}:${row.template_id}`, row])),
@@ -619,65 +680,6 @@ const PracticeDashboard: React.FC = () => {
     return `${(total / count).toFixed(1)}/5`;
   }, [selectedPractice]);
 
-  const buildMedicationPreview = (medication: MedicationRecord, practiceCard?: PracticeMedicationCardRow): MedContent => {
-    if (practiceCard?.source_type === 'custom') {
-      const keyInfoMode = practiceCard.key_info_mode === 'dont' ? 'dont' : medication.keyInfoMode || 'do';
-      const keyInfo = Array.isArray(practiceCard.key_info) ? practiceCard.key_info : medication.keyInfo;
-
-      return {
-        code: medication.code,
-        title: practiceCard.title || medication.title,
-        description: practiceCard.description || medication.description,
-        badge: practiceCard.badge || medication.badge,
-        category: practiceCard.category || medication.category,
-        keyInfoMode,
-        keyInfo,
-        doKeyInfo: Array.isArray(practiceCard.do_key_info) && practiceCard.do_key_info.length > 0
-          ? practiceCard.do_key_info
-          : keyInfoMode === 'do'
-            ? keyInfo
-            : [],
-        dontKeyInfo: Array.isArray(practiceCard.dont_key_info) && practiceCard.dont_key_info.length > 0
-          ? practiceCard.dont_key_info
-          : keyInfoMode === 'dont'
-            ? keyInfo
-            : [],
-        generalKeyInfo: Array.isArray(practiceCard.general_key_info) ? practiceCard.general_key_info : [],
-        nhsLink: typeof practiceCard.nhs_link === 'string' ? practiceCard.nhs_link : medication.nhsLink,
-        trendLinks: Array.isArray(practiceCard.trend_links) ? practiceCard.trend_links : medication.trendLinks,
-        sickDaysNeeded:
-          typeof practiceCard.sick_days_needed === 'boolean'
-            ? practiceCard.sick_days_needed
-            : medication.sickDaysNeeded,
-        reviewMonths:
-          typeof practiceCard.review_months === 'number'
-            ? practiceCard.review_months
-            : medication.reviewMonths,
-        contentReviewDate:
-          typeof practiceCard.content_review_date === 'string'
-            ? practiceCard.content_review_date
-            : medication.contentReviewDate,
-      };
-    }
-
-    return {
-      code: medication.code,
-      title: medication.title,
-      description: medication.description,
-      badge: medication.badge,
-      category: medication.category,
-      keyInfoMode: medication.keyInfoMode || 'do',
-      keyInfo: medication.keyInfo,
-      doKeyInfo: medication.doKeyInfo,
-      dontKeyInfo: medication.dontKeyInfo,
-      generalKeyInfo: medication.generalKeyInfo,
-      nhsLink: medication.nhsLink,
-      trendLinks: medication.trendLinks,
-      sickDaysNeeded: medication.sickDaysNeeded,
-      reviewMonths: medication.reviewMonths,
-      contentReviewDate: medication.contentReviewDate,
-    };
-  };
 
   const openCustomEditor = (medication: MedicationRecord) => {
     const practiceCard = practiceCards[medication.code];
@@ -1570,7 +1572,6 @@ const PracticeDashboard: React.FC = () => {
               {filteredMedications.map((medication) => {
                 const practiceCard = practiceCards[medication.code];
                 const state: 'global' | 'custom' | 'unconfigured' = practiceCard?.source_type ?? 'unconfigured';
-                const previewMedication = buildMedicationPreview(medication, practiceCard);
                 const canAcceptGlobalTemplate = medication.source !== 'built-in';
 
                 return (
@@ -1602,7 +1603,7 @@ const PracticeDashboard: React.FC = () => {
                       </p>
                     </div>
                     <div className="dashboard-list-actions dashboard-list-actions--medication">
-                      <button onClick={() => setPreviewMed(previewMedication)} className="dashboard-pill-button">
+                      <button onClick={() => setPreviewMed(buildMedicationPreview(medication, practiceCard))} className="dashboard-pill-button">
                         <Eye size={14} /> {state === 'custom' ? 'Preview Practice' : 'Preview Global'}
                       </button>
 

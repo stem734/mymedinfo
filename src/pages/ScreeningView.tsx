@@ -15,7 +15,7 @@ import { NhsCross, NhsTick } from '../components/NhsIcons';
 import PatientSupportFooter from '../components/PatientSupportFooter';
 import WarningCallout from '../components/WarningCallout';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
-import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
+import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
 
 /**
@@ -48,14 +48,6 @@ const ScreeningView: React.FC = () => {
   const selectedTemplate = loadedTemplate;
   const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
   const issuedAt = useMemo(() => parseSystmOneTimestamp(searchParams.get('codes')), [searchParams]);
-  const validUntil = useMemo(() => {
-    if (!issuedAt || !selectedTemplate?.linkExpiryValue || !selectedTemplate?.linkExpiryUnit) return '';
-    return getExpiryDate(issuedAt, selectedTemplate.linkExpiryValue, selectedTemplate.linkExpiryUnit).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  }, [issuedAt, selectedTemplate]);
 
   useEffect(() => {
     const loadTemplate = async () => {

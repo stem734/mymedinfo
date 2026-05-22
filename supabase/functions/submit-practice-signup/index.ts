@@ -109,11 +109,13 @@ serve(async (req) => {
     });
 
     if (insertError) {
-      return errorResponse(`Failed to submit registration: ${insertError.message}`, 500);
+      console.error('Registration submission error:', insertError);
+      return errorResponse('Failed to submit registration', 500);
     }
 
     return jsonResponse({ success: true, status: 'submitted' });
   } catch (err) {
-    return errorResponse(err instanceof Error ? err.message : 'Internal error', 500);
+    console.error('Unexpected edge function error:', err);
+    return errorResponse('Internal error', 500);
   }
 });

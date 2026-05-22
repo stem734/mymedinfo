@@ -75,5 +75,10 @@ export function jsonResponse(data: unknown, status = 200) {
 
 /** Error response helper. */
 export function errorResponse(message: string, status = 400) {
+  if (status >= 500) {
+    const safeMessage = message.includes(':') ? message.split(':')[0] : message;
+    return jsonResponse({ error: safeMessage }, status);
+  }
+
   return jsonResponse({ error: message }, status);
 }
