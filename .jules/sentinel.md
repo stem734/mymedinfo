@@ -1,0 +1,4 @@
+## 2025-05-15 - Token Verification and Error Sanitization
+**Vulnerability:** The `getAuthUser` helper used `supabase.auth.getClaims(token)`, which only performs local JWT signature verification. This allows revoked or banned users to continue accessing Edge Functions as long as their JWT hasn't expired. Additionally, `errorResponse` leaked parts of internal error messages for 500-level errors.
+**Learning:** Local JWT verification is insufficient for real-time security enforcement in Supabase Edge Functions. Server-side verification via `getUser(token)` is required to check against the current state of the Auth service.
+**Prevention:** Always use `supabase.auth.getUser(token)` for session verification. Ensure all error handling for status codes >= 500 returns a generic "Internal server error" message.
