@@ -44,18 +44,16 @@ export async function getAuthUser(authHeader: string | null) {
       Deno.env.get('SUPABASE_ANON_KEY')!,
   );
 
-  const { data, error } = await supabase.auth.getClaims(token);
-  const userId = data?.claims?.sub;
-  const email = typeof data?.claims?.email === 'string' ? data.claims.email : undefined;
+  const { data: { user }, error } = await supabase.auth.getUser(token);
 
-  if (error || !userId) {
+  if (error || !user) {
     throw new Error('Invalid or expired token');
   }
 
   return {
-    id: userId,
-    email,
-    user_metadata: {},
+    id: user.id,
+    email: user.email,
+    user_metadata: user.user_metadata || {},
   };
 }
 
@@ -76,8 +74,8 @@ export function jsonResponse(data: unknown, status = 200) {
 /** Error response helper. */
 export function errorResponse(message: string, status = 400) {
   if (status >= 500) {
-    const safeMessage = message.includes(':') ? message.split(':')[0] : message;
-    return jsonResponse({ error: safeMessage }, status);
+    // For 500+ errors, return a generic message to avoid leaking internals
+    return jsonResponse({ error: 'Internal server error' }, status);
   }
 
   return jsonResponse({ error: message }, status);
