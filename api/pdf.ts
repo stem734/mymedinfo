@@ -49,11 +49,13 @@ export default {
       const source = url.searchParams.get('source') || '';
       const filename = sanitizeFilename(url.searchParams.get('filename') || undefined);
 
-      if (!source.startsWith('/')) {
+      const targetUrl = new URL(source, request.url);
+
+      // Security: Ensure source is a local path and resolves to the same origin
+      // to prevent Server-Side Request Forgery (SSRF) via protocol-relative URLs.
+      if (!source.startsWith('/') || targetUrl.origin !== url.origin) {
         return new Response('Missing or invalid source path', { status: 400 });
       }
-
-      const targetUrl = new URL(source, request.url);
       const browser = await launchBrowser();
       try {
         const page = await browser.newPage();
