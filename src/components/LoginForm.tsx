@@ -45,12 +45,24 @@ const LoginForm: React.FC<LoginFormProps> = ({
 
       <form onSubmit={onSubmit}>
         <div className="form-field">
-          <label>Email</label>
-          <input type="email" value={email} onChange={(event) => onEmailChange(event.target.value)} required />
+          <label htmlFor="login-email">Email</label>
+          <input
+            id="login-email"
+            type="email"
+            value={email}
+            onChange={(event) => onEmailChange(event.target.value)}
+            required
+          />
         </div>
         <div className="form-field">
-          <label>Password</label>
-          <input type="password" value={password} onChange={(event) => onPasswordChange(event.target.value)} required />
+          <label htmlFor="login-password">Password</label>
+          <input
+            id="login-password"
+            type="password"
+            value={password}
+            onChange={(event) => onPasswordChange(event.target.value)}
+            required
+          />
         </div>
         <button type="submit" disabled={loading} className="action-button action-button--full">
           {loading ? 'Signing in...' : submitLabel}
