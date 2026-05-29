@@ -1,0 +1,4 @@
+## 2025-05-14 - SSRF Vulnerability in PDF generation
+**Vulnerability:** The `api/pdf.ts` endpoint was vulnerable to Server-Side Request Forgery (SSRF). The `source` parameter was checked to start with `/`, but using `//example.com` or `/\example.com` bypassed this check and caused `new URL(source, request.url)` to resolve to an external origin.
+**Learning:** Simple string prefix checks like `startsWith('/')` are insufficient for URL path validation when using the `URL` constructor, as certain character sequences can trigger protocol-relative or backslash-normalized URL resolution to external domains.
+**Prevention:** Always verify that the resolved `URL` object's `origin` matches the expected origin (e.g., `request.url` origin) when handling user-provided paths that will be used by server-side processes like Puppeteer.
