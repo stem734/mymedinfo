@@ -54,6 +54,13 @@ export default {
       }
 
       const targetUrl = new URL(source, request.url);
+
+      // Security check: Ensure the target URL origin matches the request origin
+      // to prevent SSRF via protocol-relative URLs (e.g., //example.com)
+      if (targetUrl.origin !== url.origin) {
+        return new Response('Invalid source origin', { status: 400 });
+      }
+
       const browser = await launchBrowser();
       try {
         const page = await browser.newPage();
