@@ -1,0 +1,4 @@
+## 2025-05-14 - SSRF vulnerability in PDF service
+**Vulnerability:** The `api/pdf.ts` endpoint was vulnerable to Server-Side Request Forgery (SSRF) because it allowed the `source` parameter to be a protocol-relative URL (e.g., `//google.com`). This allowed an attacker to trick the server into fetching and rendering external content as a PDF.
+**Learning:** Checking for `source.startsWith('/')` is insufficient for path-based redirection or fetching, as many URL parsers (including the one used by Puppeteer and the standard `URL` constructor) treat `//` as a protocol-relative URL pointing to an external origin.
+**Prevention:** Enforce strict path validation (ensure exactly one leading `/` and block `//` or `/\\`) and always verify that the resolved target origin matches the expected origin before processing the request.

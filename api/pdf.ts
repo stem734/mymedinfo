@@ -49,11 +49,18 @@ export default {
       const source = url.searchParams.get('source') || '';
       const filename = sanitizeFilename(url.searchParams.get('filename') || undefined);
 
-      if (!source.startsWith('/')) {
+      // Validate source path to prevent SSRF
+      // Must start with exactly one '/' to stay on the same origin
+      if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\')) {
         return new Response('Missing or invalid source path', { status: 400 });
       }
 
-      const targetUrl = new URL(source, request.url);
+      const targetUrl = new URL(source, url.origin);
+      // Extra safety: ensure the resolved target origin matches the request origin
+      if (targetUrl.origin !== url.origin) {
+        return new Response('Invalid source origin', { status: 403 });
+      }
+
       const browser = await launchBrowser();
       try {
         const page = await browser.newPage();
