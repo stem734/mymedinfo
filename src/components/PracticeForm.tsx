@@ -37,21 +37,26 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
   return (
     <form onSubmit={onSubmit} className="practice-form">
       <div className="form-field">
-        <label>Organisation Name *</label>
-        <p className="form-field__help">Enter the exact name as it appears in SystmOne</p>
+        <label htmlFor="practice-name">Organisation Name *</label>
+        <p id="practice-name-help" className="form-field__help">
+          Enter the exact name as it appears in SystmOne
+        </p>
         <input
+          id="practice-name"
           type="text"
           value={values.name}
           onChange={(event) => onChange('name', event.target.value)}
           required
           placeholder="e.g. Riverside Medical Centre"
+          aria-describedby="practice-name-help"
         />
       </div>
 
       <div className="practice-form__grid">
         <div className="form-field">
-          <label>ODS Code *</label>
+          <label htmlFor="practice-ods">ODS Code *</label>
           <input
+            id="practice-ods"
             type="text"
             value={values.odsCode}
             onChange={(event) => onChange('odsCode', event.target.value)}
@@ -61,8 +66,9 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
         </div>
         {showContactName && (
           <div className="form-field">
-            <label>{contactLabel}</label>
+            <label htmlFor="practice-contact-name">{contactLabel}</label>
             <input
+              id="practice-contact-name"
               type="text"
               value={values.contactName}
               onChange={(event) => onChange('contactName', event.target.value)}
@@ -74,15 +80,21 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
       </div>
 
       <div className="form-field">
-        <label>Contact Email *</label>
+        <label htmlFor="practice-contact-email">Contact Email *</label>
         <input
+          id="practice-contact-email"
           type="email"
           value={values.contactEmail}
           onChange={(event) => onChange('contactEmail', event.target.value)}
           required
           placeholder="e.g. sarah.jones@nhs.net"
+          aria-describedby={!emailError ? 'practice-email-help' : undefined}
         />
-        {!emailError && <p className="form-field__help">We will use this address for application updates.</p>}
+        {!emailError && (
+          <p id="practice-email-help" className="form-field__help">
+            We will use this address for application updates.
+          </p>
+        )}
       </div>
 
       {showImportantNotice && (
