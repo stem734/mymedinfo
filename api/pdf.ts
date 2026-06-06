@@ -53,7 +53,14 @@ export default {
         return new Response('Missing or invalid source path', { status: 400 });
       }
 
-      const targetUrl = new URL(source, request.url);
+      const targetUrl = new URL(source, url.origin);
+
+      // Security: Prevent SSRF by ensuring the target URL origin matches the application origin.
+      // This blocks protocol-relative URL bypasses like "//evil.com" or "/\evil.com".
+      if (targetUrl.origin !== url.origin) {
+        return new Response('Invalid source origin', { status: 400 });
+      }
+
       const browser = await launchBrowser();
       try {
         const page = await browser.newPage();
