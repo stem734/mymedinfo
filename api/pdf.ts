@@ -49,11 +49,17 @@ export default {
       const source = url.searchParams.get('source') || '';
       const filename = sanitizeFilename(url.searchParams.get('filename') || undefined);
 
-      if (!source.startsWith('/')) {
+      // SSRF Mitigation: Block protocol-relative URLs and non-absolute paths
+      if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\')) {
         return new Response('Missing or invalid source path', { status: 400 });
       }
 
       const targetUrl = new URL(source, request.url);
+
+      // SSRF Mitigation: Ensure the target URL is on the same origin
+      if (targetUrl.origin !== url.origin) {
+        return new Response('Unauthorized PDF source origin', { status: 403 });
+      }
       const browser = await launchBrowser();
       try {
         const page = await browser.newPage();

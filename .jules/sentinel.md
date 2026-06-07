@@ -1,0 +1,4 @@
+## 2025-05-14 - SSRF via Protocol-Relative URLs in PDF Generation
+**Vulnerability:** The `api/pdf.ts` endpoint was vulnerable to Server-Side Request Forgery (SSRF). While it checked if the `source` parameter started with `/`, it didn't account for protocol-relative URLs (e.g., `//evil.com`) or backslash prefixes (e.g., `/\evil.com`) which `new URL()` resolves to external origins.
+**Learning:** A simple `startsWith('/')` check is insufficient for validating internal paths. Headless browsers like Chromium, when directed to these paths via `new URL(source, base)`, can be tricked into fetching content from unauthorized external domains.
+**Prevention:** Always implement defense-in-depth: explicitly block `//` and `/\` prefixes, and verify that the resolved URL's `origin` matches the expected application origin.
