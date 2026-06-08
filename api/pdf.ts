@@ -49,11 +49,17 @@ export default {
       const source = url.searchParams.get('source') || '';
       const filename = sanitizeFilename(url.searchParams.get('filename') || undefined);
 
-      if (!source.startsWith('/')) {
+      // Secure source validation: must be an internal path and not a protocol-relative URL
+      if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\')) {
         return new Response('Missing or invalid source path', { status: 400 });
       }
 
       const targetUrl = new URL(source, request.url);
+
+      // Ensure target URL is on the same origin as the API request
+      if (targetUrl.origin !== url.origin) {
+        return new Response('Invalid source origin', { status: 400 });
+      }
       const browser = await launchBrowser();
       try {
         const page = await browser.newPage();
