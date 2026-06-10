@@ -44,18 +44,20 @@ export async function getAuthUser(authHeader: string | null) {
       Deno.env.get('SUPABASE_ANON_KEY')!,
   );
 
-  const { data, error } = await supabase.auth.getClaims(token);
-  const userId = data?.claims?.sub;
-  const email = typeof data?.claims?.email === 'string' ? data.claims.email : undefined;
+  // SECURITY: Use getUser(token) instead of getClaims(token) to ensure the
+  // session is verified against the Supabase Auth server. This protects
+  // against revoked sessions, banned users, or deleted accounts.
+  const { data, error } = await supabase.auth.getUser(token);
+  const user = data?.user;
 
-  if (error || !userId) {
+  if (error || !user) {
     throw new Error('Invalid or expired token');
   }
 
   return {
-    id: userId,
-    email,
-    user_metadata: {},
+    id: user.id,
+    email: user.email,
+    user_metadata: user.user_metadata || {},
   };
 }
 
