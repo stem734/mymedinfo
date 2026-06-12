@@ -32,9 +32,9 @@ async function launchBrowser() {
   const executablePath = await chromium.executablePath();
   return puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    defaultViewport: { width: 1280, height: 1600 },
     executablePath,
-    headless: chromium.headless,
+    headless: true,
   });
 }
 
@@ -112,7 +112,7 @@ export default {
           },
         });
 
-        return new Response(pdf, {
+        return new Response(pdf as any, {
           headers: {
             'content-type': 'application/pdf',
             'content-disposition': `attachment; filename="${filename}.pdf"`,
