@@ -32,9 +32,11 @@ async function launchBrowser() {
   const executablePath = await chromium.executablePath();
   return puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultViewport: (chromium as any).defaultViewport,
     executablePath,
-    headless: chromium.headless,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    headless: (chromium as any).headless,
   });
 }
 
@@ -114,7 +116,8 @@ export default {
           },
         });
 
-        return new Response(pdf, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new Response(pdf as any, {
           headers: {
             'content-type': 'application/pdf',
             'content-disposition': `attachment; filename="${filename}.pdf"`,
