@@ -112,6 +112,7 @@ export default {
           },
         });
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         return new Response(pdf as any, {
           headers: {
             'content-type': 'application/pdf',
