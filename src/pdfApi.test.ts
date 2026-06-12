@@ -20,6 +20,12 @@ describe('resolvePdfSourceUrl', () => {
 
     expect(url).toBeNull();
   });
+
+  it('rejects control characters', () => {
+    const url = resolvePdfSourceUrl('/patient\x00/123', 'https://mymedinfo.example/api/pdf');
+
+    expect(url).toBeNull();
+  });
 });
 
 describe('pdf api validation', () => {
@@ -37,4 +43,21 @@ describe('pdf api validation', () => {
       process.env.VERCEL = originalVercelEnv;
     }
   });
+
+  it('sanitizes 500 error responses', async () => {
+    const originalVercelEnv = process.env.VERCEL;
+    process.env.VERCEL = '1';
+
+    try {
+      // This will fail because chromium.executablePath() will likely fail in this environment
+      // or puppeteer.launch will fail.
+      const request = new Request('https://mymedinfo.example/api/pdf?source=/patient/123');
+      const response = await pdfHandler.fetch(request);
+
+      expect(response.status).toBe(500);
+      await expect(response.text()).resolves.toBe('Unable to generate PDF');
+    } finally {
+      process.env.VERCEL = originalVercelEnv;
+    }
+  }, 20000);
 });
