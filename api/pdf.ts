@@ -38,6 +38,17 @@ async function launchBrowser() {
   });
 }
 
+export function resolvePdfSourceUrl(source: string, requestUrl: string): URL | null {
+  if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\')) {
+    return null;
+  }
+
+  const requestOrigin = new URL(requestUrl).origin;
+  const targetUrl = new URL(source, requestUrl);
+
+  return targetUrl.origin === requestOrigin ? targetUrl : null;
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
     try {
@@ -48,12 +59,10 @@ export default {
       const url = new URL(request.url);
       const source = url.searchParams.get('source') || '';
       const filename = sanitizeFilename(url.searchParams.get('filename') || undefined);
-
-      if (!source.startsWith('/')) {
+      const targetUrl = resolvePdfSourceUrl(source, request.url);
+      if (!targetUrl) {
         return new Response('Missing or invalid source path', { status: 400 });
       }
-
-      const targetUrl = new URL(source, request.url);
       const browser = await launchBrowser();
       try {
         const page = await browser.newPage();
