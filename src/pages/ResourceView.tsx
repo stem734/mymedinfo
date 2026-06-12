@@ -44,6 +44,22 @@ const isFreshValidationCache = (value: { expiresAt?: number; valid?: boolean }) 
   typeof value.expiresAt === 'number' &&
   value.expiresAt > Date.now();
 
+const readValidationCache = (cacheKey: string) => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  try {
+    const cached = window.sessionStorage.getItem(cacheKey);
+    if (!cached) return null;
+
+    const parsed = JSON.parse(cached) as { expiresAt?: number; valid?: boolean; practiceFeatures?: PracticeFeatureSettings };
+    return isFreshValidationCache(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
 const GROUP_COPY: Record<'NEW' | 'REAUTH' | 'GENERAL', { title: string }> = {
   NEW: {
     title: 'Newly prescribed',
@@ -163,11 +179,21 @@ const ResourceView: React.FC = () => {
     if (!issuedDate) return '';
     return issuedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   }, [dateParam, issuedAt]);
+  const validationCacheKey = useMemo(
+    () => getValidationCacheKey(practiceLookup.cacheKey),
+    [practiceLookup.cacheKey],
+  );
+  const cachedValidation = useMemo(
+    () => (!previewOnly && !isDemoMode && hasPracticeIdentifier ? readValidationCache(validationCacheKey) : null),
+    [hasPracticeIdentifier, isDemoMode, previewOnly, validationCacheKey],
+  );
 
-  const [isAuthorised, setIsAuthorised] = useState<boolean | null>(null);
+  const [isAuthorised, setIsAuthorised] = useState<boolean | null>(() => (previewOnly || isDemoMode ? true : cachedValidation ? true : null));
   const [authError, setAuthError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [practiceFeatures, setPracticeFeatures] = useState<PracticeFeatureSettings>(DEFAULT_PRACTICE_FEATURE_SETTINGS);
+  const [practiceFeatures, setPracticeFeatures] = useState<PracticeFeatureSettings>(
+    () => (cachedValidation?.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS),
+  );
   const [validationNonce, setValidationNonce] = useState(0);
   const { medicationMap: allMeds } = useMedicationCatalog();
   const [isResolvingContents, setIsResolvingContents] = useState(false);
@@ -310,27 +336,10 @@ const ResourceView: React.FC = () => {
         return;
       }
 
-      const cacheKey = getValidationCacheKey(practiceLookup.cacheKey);
-      const cached = window.sessionStorage.getItem(cacheKey);
-      let usedCachedValue = false;
-      if (cached) {
-        try {
-          const parsed = JSON.parse(cached) as { expiresAt?: number; valid?: boolean; practiceFeatures?: PracticeFeatureSettings };
-          if (isFreshValidationCache(parsed)) {
-            if (!cancelled) {
-              setIsAuthorised(true);
-              setAuthError(null);
-              setIsValidating(false);
-              setPracticeFeatures(parsed.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS);
-              usedCachedValue = true;
-            }
-          }
-        } catch {
-          // Ignore invalid cached values and fall through to live validation.
-        }
-        if (!usedCachedValue) {
-          window.sessionStorage.removeItem(cacheKey);
-        }
+      const cached = readValidationCache(validationCacheKey);
+      const usedCachedValue = Boolean(cached);
+      if (!usedCachedValue) {
+        window.sessionStorage.removeItem(validationCacheKey);
       }
 
       if (!cancelled && !usedCachedValue) {
@@ -356,13 +365,13 @@ const ResourceView: React.FC = () => {
       setPracticeFeatures(result.valid ? result.practiceFeatures : DEFAULT_PRACTICE_FEATURE_SETTINGS);
 
       if (result.valid) {
-        window.sessionStorage.setItem(cacheKey, JSON.stringify({
+        window.sessionStorage.setItem(validationCacheKey, JSON.stringify({
           valid: true,
           expiresAt: Date.now() + VALIDATION_CACHE_TTL_MS,
           practiceFeatures: result.practiceFeatures,
         }));
       } else {
-        window.sessionStorage.removeItem(cacheKey);
+        window.sessionStorage.removeItem(validationCacheKey);
       }
     };
 
@@ -374,7 +383,7 @@ const ResourceView: React.FC = () => {
         window.clearTimeout(loadingTimer);
       }
     };
-  }, [hasPracticeIdentifier, isDemoMode, practiceIdentifier, practiceLookup.cacheKey, previewOnly, validationNonce]);
+  }, [hasPracticeIdentifier, isDemoMode, practiceIdentifier, previewOnly, validationCacheKey, validationNonce]);
 
   useEffect(() => {
     if (isDemoMode || previewOnly) {
@@ -547,6 +556,24 @@ const ResourceView: React.FC = () => {
       ([leftBadge], [rightBadge]) => MEDICATION_BADGE_ORDER[leftBadge] - MEDICATION_BADGE_ORDER[rightBadge],
     );
   }, [contents]);
+  const contentCardViewModels = useMemo(
+    () => groupedContents.map(([badge, items]) => [
+      badge,
+      items.map((content) => ({
+        ...content,
+        displayTitle: getMedicationDisplayParts(content.title),
+        expiryWindowLabel: formatExpiryWindowLabel(content.linkExpiryValue, content.linkExpiryUnit),
+        isExpired: Boolean(
+          issuedAt &&
+          content.linkExpiryValue &&
+          content.linkExpiryUnit &&
+          isUrlExpired(issuedAt, content.linkExpiryValue, content.linkExpiryUnit),
+        ),
+        sickDayRulesVariant: getSickDayRulesVariant(content),
+      })),
+    ] as const),
+    [groupedContents, issuedAt],
+  );
 
   const pageHeadline = 'Your GP practice has shared some information with you which you may find useful.';
 
@@ -686,7 +713,7 @@ const ResourceView: React.FC = () => {
         </div>
       )}
 
-      {groupedContents.map(([badge, items], index) => (
+      {contentCardViewModels.map(([badge, items], index) => (
         <section key={badge} className={`patient-section patient-section--${badge.toLowerCase()}`}>
           <div className={`patient-group-heading patient-group-heading--${badge.toLowerCase()}`}>
             <div className="patient-group-eyebrow">{GROUP_COPY[badge].title}</div>
@@ -695,31 +722,24 @@ const ResourceView: React.FC = () => {
                 badge,
                 items.length,
                 index > 0,
-                index < groupedContents.length - 1,
+                index < contentCardViewModels.length - 1,
               )}
             </p>
           </div>
 
           <div className={`patient-content-grid${items.length === 1 ? ' patient-content-grid--single' : ''}`}>
             {items.map((content) => {
-              const displayTitle = getMedicationDisplayParts(content.title);
-              const isExpired = Boolean(
-                issuedAt &&
-                content.linkExpiryValue &&
-                content.linkExpiryUnit &&
-                isUrlExpired(issuedAt, content.linkExpiryValue, content.linkExpiryUnit),
-              );
               return (
                 <article key={content.id} className="patient-content-panel">
                   <div className="card patient-card">
-                    {isExpired && (
+                    {content.isExpired && (
                       <div
                         className="out-of-date-banner"
                         style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#8a1538', fontSize: '0.95rem', backgroundColor: '#fbe3ea', padding: '0.85rem 1rem', borderRadius: '8px', border: '2px solid #8a1538', marginBottom: '1rem', fontWeight: 700 }}
                       >
                         <AlertCircle size={20} style={{ flexShrink: 0 }} />
                         <span>
-                          This information is more than {formatExpiryWindowLabel(content.linkExpiryValue, content.linkExpiryUnit)} old and may be out of date. If you have any queries please speak to your GP practice.
+                          This information is more than {content.expiryWindowLabel} old and may be out of date. If you have any queries please speak to your GP practice.
                         </span>
                       </div>
                     )}
@@ -729,9 +749,9 @@ const ResourceView: React.FC = () => {
                       </span>
                     </div>
 
-                  <h2 className="patient-medication-title">{displayTitle.primary}</h2>
-                  {displayTitle.secondary && (
-                    <p className="patient-medication-subtitle">{displayTitle.secondary}</p>
+                  <h2 className="patient-medication-title">{content.displayTitle.primary}</h2>
+                  {content.displayTitle.secondary && (
+                    <p className="patient-medication-subtitle">{content.displayTitle.secondary}</p>
                   )}
                   <p className="patient-section-copy">{content.description}</p>
 
@@ -786,14 +806,14 @@ const ResourceView: React.FC = () => {
                   {content.state !== 'placeholder' && content.sickDaysNeeded && (
                     <WarningCallout title="Important: Sick day rules apply">
                       <p style={{ marginBottom: '0.75rem', color: '#212b32' }}>
-                        {getSickDayRulesVariant(content) === 'insulin'
+                        {content.sickDayRulesVariant === 'insulin'
                           ? 'If you become unwell, you should follow insulin-specific sick day guidance.'
                           : 'If you become unwell and are unable to eat or drink normally, you may need to pause this medication.'}
                       </p>
                       <button
                         type="button"
                         onClick={() => {
-                          setSickDayRulesVariant(getSickDayRulesVariant(content));
+                          setSickDayRulesVariant(content.sickDayRulesVariant);
                           setSickDayModalOpen(true);
                         }}
                         className="action-button"
