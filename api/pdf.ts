@@ -32,14 +32,18 @@ async function launchBrowser() {
   const executablePath = await chromium.executablePath();
   return puppeteer.launch({
     args: chromium.args,
-    defaultViewport: chromium.defaultViewport,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    defaultViewport: (chromium as any).defaultViewport,
     executablePath,
-    headless: chromium.headless,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    headless: (chromium as any).headless,
   });
 }
 
 export function resolvePdfSourceUrl(source: string, requestUrl: string): URL | null {
-  if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\')) {
+  // Block protocol-relative paths, backslashes, and control characters
+  // eslint-disable-next-line no-control-regex
+  if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\') || /[\x00-\x1F\x7F]/.test(source)) {
     return null;
   }
 
@@ -112,19 +116,22 @@ export default {
           },
         });
 
-        return new Response(pdf, {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return new Response(pdf as any, {
           headers: {
             'content-type': 'application/pdf',
             'content-disposition': `attachment; filename="${filename}.pdf"`,
             'cache-control': 'no-store',
+            'x-content-type-options': 'nosniff',
+            'x-frame-options': 'DENY',
           },
         });
       } finally {
         await browser.close();
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to generate PDF';
-      return new Response(message, { status: 500 });
+      console.error('PDF generation failed:', error);
+      return new Response('Unable to generate PDF', { status: 500 });
     }
   },
 };
