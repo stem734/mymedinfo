@@ -1,0 +1,4 @@
+## 2025-05-15 - Hardening PDF Generation API
+**Vulnerability:** The `api/pdf.ts` endpoint was vulnerable to potential SSRF bypasses via control characters, header injection in `Content-Disposition`, and information disclosure via unmasked 500 error messages. It also lacked standard security headers.
+**Learning:** Even with basic path checks (e.g., `startsWith("/")`), non-printable control characters (like `%00`) can sometimes bypass filters or cause unexpected behavior in URL resolution and header generation. Leaking stack traces or raw error messages in serverless functions can expose sensitive backend infrastructure details.
+**Prevention:** Always strip control characters `[\x00-\x1F\x7F]` from user-supplied strings used in URLs or headers. Sanitize error responses to return generic messages while logging details internally. Apply defense-in-depth security headers like `X-Content-Type-Options: nosniff` and `X-Frame-Options: DENY` even on API endpoints.

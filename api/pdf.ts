@@ -4,6 +4,8 @@ import chromium from '@sparticuz/chromium';
 const sanitizeFilename = (value: string | undefined) =>
   (value || 'MyMedInfo page')
     .trim()
+    // Strip control characters to prevent header injection in Content-Disposition
+    .replace(/[\x00-\x1F\x7F]/g, '')
     .replace(/[\\/:*?"<>|]+/g, '')
     .replace(/\s+/g, ' ')
     .slice(0, 120) || 'MyMedInfo page';
@@ -39,7 +41,9 @@ async function launchBrowser() {
 }
 
 export function resolvePdfSourceUrl(source: string, requestUrl: string): URL | null {
-  if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\')) {
+  // Block protocol-relative URLs, backslash-prefixed paths, and control
+  // characters (like %00) to prevent SSRF and path normalization bypasses.
+  if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\') || /[\x00-\x1F\x7F]/.test(source)) {
     return null;
   }
 
@@ -117,14 +121,24 @@ export default {
             'content-type': 'application/pdf',
             'content-disposition': `attachment; filename="${filename}.pdf"`,
             'cache-control': 'no-store',
+            'x-content-type-options': 'nosniff',
+            'x-frame-options': 'DENY',
           },
         });
       } finally {
         await browser.close();
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to generate PDF';
-      return new Response(message, { status: 500 });
+      // Log the full error for debugging, but return a generic message to
+      // the client to prevent internal information leakage.
+      console.error('PDF generation error:', error);
+      return new Response('Unable to generate PDF', {
+        status: 500,
+        headers: {
+          'x-content-type-options': 'nosniff',
+          'x-frame-options': 'DENY',
+        },
+      });
     }
   },
 };
