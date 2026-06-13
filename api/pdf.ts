@@ -5,6 +5,7 @@ const sanitizeFilename = (value: string | undefined) =>
   (value || 'MyMedInfo page')
     .trim()
     // Strip control characters to prevent header injection in Content-Disposition
+    // eslint-disable-next-line no-control-regex
     .replace(/[\x00-\x1F\x7F]/g, '')
     .replace(/[\\/:*?"<>|]+/g, '')
     .replace(/\s+/g, ' ')
@@ -43,6 +44,7 @@ async function launchBrowser() {
 export function resolvePdfSourceUrl(source: string, requestUrl: string): URL | null {
   // Block protocol-relative URLs, backslash-prefixed paths, and control
   // characters (like %00) to prevent SSRF and path normalization bypasses.
+  // eslint-disable-next-line no-control-regex
   if (!source.startsWith('/') || source.startsWith('//') || source.startsWith('/\\') || /[\x00-\x1F\x7F]/.test(source)) {
     return null;
   }
