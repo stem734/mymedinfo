@@ -20,6 +20,12 @@ describe('resolvePdfSourceUrl', () => {
 
     expect(url).toBeNull();
   });
+
+  it('rejects paths with control characters', () => {
+    const url = resolvePdfSourceUrl('/patient/123\x00', 'https://mymedinfo.example/api/pdf');
+
+    expect(url).toBeNull();
+  });
 });
 
 describe('pdf api validation', () => {
