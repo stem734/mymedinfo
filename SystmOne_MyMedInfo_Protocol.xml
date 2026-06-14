@@ -1,0 +1,423 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SystmOneProtocol>
+  <!--MyMedInfo Patient Information Leaflets Protocol-->
+  <!--Automatically generates and sends MyMedInfo patient information URLs based on medication prescriptions-->
+  <!--Last Updated: 2026-06-14-->
+
+  <TemplateDefinition Male="y" Female="y" Type="16">
+    <Protocol KeyReportFilter="NWPCN_ACTIVITY_REPORT" ManualTrigger="y">
+      <AutomaticTrigger>
+        <Trigger>None</Trigger>
+        <TriggerEveryOccurrence>false</TriggerEveryOccurrence>
+        <PromptToLaunchIfMultipleApply>true</PromptToLaunchIfMultipleApply>
+      </AutomaticTrigger>
+
+      <!-- Start Node -->
+      <Node Uid="0" X="2592" Y="24">Start</Node>
+
+      <!-- Date Declaration - for URL timestamp -->
+      <Node Uid="141" X="2436" Y="24" Name="@Date" ValType="0">DeclareVariable</Node>
+
+      <!-- Medication Counter for tracking selected medications -->
+      <Node Uid="158" X="2268" Y="24" RGB="-1715942" Name="@MedicationCount" ValType="0">DeclareVariable</Node>
+
+      <!-- =====================================================
+           SULFONYLUREAS (Codes 101/102)
+           ===================================================== -->
+      <Node Uid="68" X="2088" Y="24" RGB="-3023124" Name="@SulfStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="70" X="1896" Y="24" RGB="-3023124" Name="@SulfReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="72" X="2064" Y="120" RGB="-3023124" Report="SULF_START_REPORT">InReport</Node>
+      <Node Uid="73" X="1956" Y="264" RGB="-3023124" Variable="@SulfStart" Operator="5" VariableType="2" LeftStringValue="101">AssignVariable</Node>
+      <Node Uid="75" X="2052" Y="348" RGB="-3023124" Report="SULF_REAUTH_REPORT">InReport</Node>
+      <Node Uid="77" X="1992" Y="528" RGB="-3023124" Variable="@SulfReauth" Operator="5" VariableType="2" LeftStringValue="102">AssignVariable</Node>
+      <Node Uid="159" X="1932" Y="192" RGB="-1715942" Variable="@MedicationCount" Operator="1" VariableType="0" LeftVariable="@MedicationCount" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           INSULIN (Codes 401/402)
+           ===================================================== -->
+      <Node Uid="84" X="720" Y="24" RGB="-2100781" Name="@InsulStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="85" X="900" Y="24" RGB="-2100781" Name="@InsulReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="86" X="996" Y="120" RGB="-2100781" Report="INSULIN_START_REPORT">InReport</Node>
+      <Node Uid="87" X="888" Y="264" RGB="-2100781" Variable="@InsulStart" Operator="5" VariableType="2" LeftStringValue="401">AssignVariable</Node>
+      <Node Uid="88" X="1068" Y="312" RGB="-2100781" Report="INSULIN_REAUTH_REPORT">InReport</Node>
+      <Node Uid="89" X="936" Y="444" RGB="-2100781" Variable="@InsulReauth" Operator="5" VariableType="2" LeftStringValue="402">AssignVariable</Node>
+      <Node Uid="166" X="876" Y="192" RGB="-1715942" Variable="@MedicationCount" Operator="1" VariableType="0" LeftVariable="@MedicationCount" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           EMOLIENTS (Codes 301/302)
+           ===================================================== -->
+      <Node Uid="98" X="1296" Y="24" RGB="-2763269" Name="@EmolStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="99" X="1092" Y="24" RGB="-2763269" Name="@EmolReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="100" X="1368" Y="120" RGB="-2763269" Report="EMOL_START_REPORT">InReport</Node>
+      <Node Uid="101" X="1248" Y="264" RGB="-2763269" Variable="@EmolStart" Operator="5" VariableType="2" LeftStringValue="301">AssignVariable</Node>
+      <Node Uid="102" X="1356" Y="360" RGB="-2763269" Report="EMOL_REAUTH_REPORT">InReport</Node>
+      <Node Uid="103" X="1260" Y="516" RGB="-2763269" Variable="@EmolReauth" Operator="5" VariableType="2" LeftStringValue="302">AssignVariable</Node>
+      <Node Uid="164" X="1248" Y="192" RGB="-1715942" Variable="@MedicationCount" Operator="1" VariableType="0" LeftVariable="@MedicationCount" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           MOUNJARO (Codes 501/502)
+           ===================================================== -->
+      <Node Uid="106" X="312" Y="24" RGB="-593996" Name="@MounjStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="107" X="504" Y="24" RGB="-593996" Name="@MounjReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="116" X="600" Y="120" RGB="-593996" Report="MOUNJ_START_REPORT">InReport</Node>
+      <Node Uid="117" X="480" Y="264" RGB="-593996" Variable="@MounjStart" Operator="5" VariableType="2" LeftStringValue="501">AssignVariable</Node>
+      <Node Uid="118" X="516" Y="360" RGB="-593996" Report="MOUNJ_REAUTH_REPORT">InReport</Node>
+      <Node Uid="119" X="456" Y="516" RGB="-593996" Variable="@MounjReauth" Operator="5" VariableType="2" LeftStringValue="502">AssignVariable</Node>
+      <Node Uid="168" X="480" Y="192" RGB="-1715942" Variable="@MedicationCount" Operator="1" VariableType="0" LeftVariable="@MedicationCount" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           SGLT2 INHIBITORS (Codes 201/202)
+           ===================================================== -->
+      <Node Uid="110" X="1704" Y="24" RGB="-22617" Name="@SGLT2Start" ValType="2" ValStr="?">DeclareVariable</Node>
+      <Node Uid="111" X="1488" Y="24" RGB="-22617" Name="@SGLT2Reauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="124" X="1776" Y="120" RGB="-22617" Report="SGLT2_START_REPORT">InReport</Node>
+      <Node Uid="125" X="1656" Y="264" RGB="-22617" Variable="@SGLT2Start" Operator="5" VariableType="2" LeftStringValue="201">AssignVariable</Node>
+      <Node Uid="126" X="1728" Y="360" RGB="-22617" Report="SGLT2_REAUTH_REPORT">InReport</Node>
+      <Node Uid="127" X="1644" Y="528" RGB="-22617" Variable="@SGLT2Reauth" Operator="5" VariableType="2" LeftStringValue="202">AssignVariable</Node>
+      <Node Uid="162" X="1656" Y="192" RGB="-1715942" Variable="@MedicationCount" Operator="1" VariableType="0" LeftVariable="@MedicationCount" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- Check if any medications found -->
+      <Node Uid="170" X="264" Y="468" Name="@MedicationCount" VariableType="0" Operator="9" ValOne="1.0">TestVariable</Node>
+
+      <!-- Save date for URL timestamp -->
+      <Node Uid="172" X="156" Y="576" Name="@Date" Code="DATE_CODE">SaveVariable</Node>
+
+      <!-- Format date for URL -->
+      <Node Uid="174" X="132" Y="648" Variable="@Date" Operator="5" VariableType="0" LeftCode="DATE_CODE" LeftCodeTimeValue="1" LeftCodeTimeUnit="2" OnlyIncludeValues="y" LeftValueOne="0.0" CdtVarName="URLDT">AssignVariable</Node>
+
+      <!-- Communication Node - Send patient information -->
+      <Node Uid="97" X="204" Y="744" RGB="-10757935" Output="1">Communication
+        <SendComm MsgType="2">
+          <MsgPreset Desc="" Subject="Important information about your medication" Template="-1" RecipCon="-1" RecipTeam="-1" rc="XaIvi">
+Hi. &lt;title&gt; &lt;surname&gt; | NHS No &lt;nhs_number&gt;
+
+Please see the linked information on your medication:
+
+https://www.mymedinfo.info/patient?org=&lt;organisation_name&gt;&amp;codes=@SulfStart@SulfReauth@SGLT2Start@SGLT2Reauth@EmolStart@EmolReauth@InsulStart@InsulReauth@MounjStart@MounjReauth@URLDT
+
+Kind regards,
+&lt;organisation_name&gt;
+          </MsgPreset>
+        </SendComm>
+      </Node>
+
+      <!-- Alternative communication for patients without recorded contact details -->
+      <Node Uid="128" X="372" Y="804" Report="PATIENT_CONTACT_REPORT">InReport</Node>
+      <Node Uid="130" X="276" Y="972" RGB="-10757935" Output="1">Communication
+        <SendComm>
+          <MsgPreset Desc="" Subject="Important information about your medication" Template="-1" RecipCon="-1" RecipTeam="-1" rc="XaIvi">
+Hi. &lt;title&gt; &lt;surname&gt; | NHS No &lt;nhs_number&gt;
+
+Please see the linked information on your medication:
+
+https://www.mymedinfo.info/patient?org=&lt;organisation_name&gt;&amp;codes=@SulfStart@SulfReauth@SGLT2Start@SGLT2Reauth@EmolStart@EmolReauth@InsulStart@InsulReauth@MounjStart@MounjReauth@URLDT
+
+&lt;organisation_name&gt;
+          </MsgPreset>
+        </SendComm>
+      </Node>
+
+      <!-- Prompt to add contact details if missing -->
+      <Node Uid="131" X="420" Y="900">Question
+        <Q>
+          <p><p al="1"/><p al="1"><t>Patient has no email or SMS recorded</t></p><p al="1"/><p al="1"><t>Do you want to add these so medication information can be sent?</t></p></p>
+        </Q>
+        <Answer>Yes</Answer>
+        <Answer>No</Answer>
+      </Node>
+
+      <Node Uid="133" X="312" Y="900" Report="PATIENT_DEMOGRAPHICS_REPORT">InReport</Node>
+      <Node Uid="134" X="492" Y="744" ActionUid="tel" Blocking="y">Action</Node>
+
+      <!-- Protocol Flow Links -->
+      <Link StartUid="0" StartIndex="0" EndUid="141"/>
+      <Link StartUid="141" StartIndex="0" EndUid="158"/>
+      <Link StartUid="158" StartIndex="0" EndUid="68"/>
+
+      <!-- Sulfonylurea Links -->
+      <Link StartUid="68" StartIndex="0" EndUid="70"/>
+      <Link StartUid="70" StartIndex="0" EndUid="110"/>
+      <Link StartUid="72" StartIndex="0" EndUid="159"/>
+      <Link StartUid="72" StartIndex="1" EndUid="75"/>
+      <Link StartUid="73" StartIndex="0" EndUid="124"/>
+      <Link StartUid="75" StartIndex="0" EndUid="161"/>
+      <Link StartUid="75" StartIndex="1" EndUid="124"/>
+      <Link StartUid="77" StartIndex="0" EndUid="124"/>
+
+      <!-- SGLT2 Links -->
+      <Link StartUid="110" StartIndex="0" EndUid="111"/>
+      <Link StartUid="111" StartIndex="0" EndUid="98"/>
+      <Link StartUid="124" StartIndex="0" EndUid="162"/>
+      <Link StartUid="124" StartIndex="1" EndUid="126"/>
+      <Link StartUid="125" StartIndex="0" EndUid="100"/>
+      <Link StartUid="126" StartIndex="0" EndUid="163"/>
+      <Link StartUid="126" StartIndex="1" EndUid="100"/>
+      <Link StartUid="127" StartIndex="0" EndUid="100"/>
+
+      <!-- Emolients Links -->
+      <Link StartUid="98" StartIndex="0" EndUid="99"/>
+      <Link StartUid="99" StartIndex="0" EndUid="85"/>
+      <Link StartUid="100" StartIndex="0" EndUid="164"/>
+      <Link StartUid="100" StartIndex="1" EndUid="102"/>
+      <Link StartUid="101" StartIndex="0" EndUid="86"/>
+      <Link StartUid="102" StartIndex="0" EndUid="165"/>
+      <Link StartUid="102" StartIndex="1" EndUid="86"/>
+      <Link StartUid="103" StartIndex="0" EndUid="86"/>
+
+      <!-- Insulin Links -->
+      <Link StartUid="85" StartIndex="0" EndUid="84"/>
+      <Link StartUid="84" StartIndex="0" EndUid="107"/>
+      <Link StartUid="86" StartIndex="0" EndUid="166"/>
+      <Link StartUid="86" StartIndex="1" EndUid="88"/>
+      <Link StartUid="87" StartIndex="0" EndUid="116"/>
+      <Link StartUid="88" StartIndex="0" EndUid="167"/>
+      <Link StartUid="88" StartIndex="1" EndUid="116"/>
+      <Link StartUid="89" StartIndex="0" EndUid="116"/>
+
+      <!-- Mounjaro Links -->
+      <Link StartUid="107" StartIndex="0" EndUid="106"/>
+      <Link StartUid="116" StartIndex="0" EndUid="168"/>
+      <Link StartUid="116" StartIndex="1" EndUid="118"/>
+      <Link StartUid="117" StartIndex="0" EndUid="170"/>
+      <Link StartUid="118" StartIndex="0" EndUid="169"/>
+      <Link StartUid="118" StartIndex="1" EndUid="170"/>
+      <Link StartUid="119" StartIndex="0" EndUid="170"/>
+
+      <!-- Final Links -->
+      <Link StartUid="159" StartIndex="0" EndUid="73"/>
+      <Link StartUid="161" StartIndex="0" EndUid="77"/>
+      <Link StartUid="162" StartIndex="0" EndUid="125"/>
+      <Link StartUid="163" StartIndex="0" EndUid="127"/>
+      <Link StartUid="164" StartIndex="0" EndUid="101"/>
+      <Link StartUid="165" StartIndex="0" EndUid="103"/>
+      <Link StartUid="166" StartIndex="0" EndUid="87"/>
+      <Link StartUid="167" StartIndex="0" EndUid="89"/>
+      <Link StartUid="168" StartIndex="0" EndUid="117"/>
+      <Link StartUid="169" StartIndex="0" EndUid="119"/>
+      <Link StartUid="170" StartIndex="0" EndUid="172"/>
+      <Link StartUid="172" StartIndex="0" EndUid="174"/>
+      <Link StartUid="174" StartIndex="0" EndUid="97"/>
+
+      <!-- Alternative communication path -->
+      <Link StartUid="97" StartIndex="1" EndUid="128"/>
+      <Link StartUid="128" StartIndex="0" EndUid="133"/>
+      <Link StartUid="128" StartIndex="1" EndUid="131"/>
+      <Link StartUid="130" StartIndex="1" EndUid="131"/>
+      <Link StartUid="131" StartIndex="0" EndUid="134"/>
+      <Link StartUid="133" StartIndex="0" EndUid="130"/>
+      <Link StartUid="134" StartIndex="0" EndUid="97"/>
+
+    </Protocol>
+
+    <Name>Auto Patient Information Leaflets - MyMedInfo</Name>
+    <Description>Automatically detects medication reports and generates MyMedInfo patient information URLs for all relevant medications</Description>
+    <Category>NWPCN;Safety Quality Efficiency</Category>
+    <Icon>pillSingle</Icon>
+    <Source>-1</Source>
+    <SourceGroup>NWPCN_SOURCE_GROUP</SourceGroup>
+    <Position>15-3a1229-2p-26n-p2n-2e-3cl-2o-s-173r-1-l-2f-1rih-2i2h-363a-1o-323b-1cv-2u</Position>
+  </TemplateDefinition>
+
+  <!-- =====================================================
+       PLACEHOLDER REPORTS - Add these to your SystmOne system
+       ===================================================== -->
+
+  <!-- Main Activity Filter Report -->
+  <Report CrcNumber="0000000001" Id="NWPCN_ACTIVITY_REPORT">
+    <Name>NWPCN Activity Report - MyMedInfo</Name>
+    <Category>NWPCN;Workforce</Category>
+    <Definition>
+      <DefinitionType>1704</DefinitionType>
+      <ComparisonType>2</ComparisonType>
+      <Parameters>USER_ID</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>1408</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>USER_ROLE</Parameters>
+    </Definition>
+  </Report>
+
+  <!-- =====================================================
+       MEDICATION START REPORTS (XX1 Codes)
+       ===================================================== -->
+
+  <Report CrcNumber="0000000101" Id="SULF_START_REPORT">
+    <Name>DRUG101 | Sulfonylurea - Started today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>Current~true~181~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000201" Id="SGLT2_START_REPORT">
+    <Name>DRUG201 | SGLT2 Inhibitor - Started today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>Current~true~1117~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000301" Id="EMOL_START_REPORT">
+    <Name>DRUG301 | Emollient - Started today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>Current~true~659~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000401" Id="INSULIN_START_REPORT">
+    <Name>DRUG401 | Insulin - Started today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>Current~true~450~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000501" Id="MOUNJ_START_REPORT">
+    <Name>DRUG501 | Mounjaro - Started today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>Current~true~1118~</Parameters>
+    </Definition>
+  </Report>
+
+  <!-- =====================================================
+       MEDICATION REAUTHORISATION REPORTS (XX2 Codes)
+       ===================================================== -->
+
+  <Report CrcNumber="0000000102" Id="SULF_REAUTH_REPORT">
+    <Name>DRUG102 | Sulfonylurea - Reauthorised today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;-365;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>All~true~181~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000202" Id="SGLT2_REAUTH_REPORT">
+    <Name>DRUG202 | SGLT2 Inhibitor - Reauthorised today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;-365;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>All~true~1117~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000302" Id="EMOL_REAUTH_REPORT">
+    <Name>DRUG302 | Emollient - Reauthorised today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;-365;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>All~true~659~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000402" Id="INSULIN_REAUTH_REPORT">
+    <Name>DRUG402 | Insulin - Reauthorised today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;-365;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>All~true~450~</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000000502" Id="MOUNJ_REAUTH_REPORT">
+    <Name>DRUG502 | Mounjaro - Reauthorised today</Name>
+    <Category>NWPCN;Medication Reports</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;-365;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+    <Definition>
+      <DefinitionType>103</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>All~true~1118~</Parameters>
+    </Definition>
+  </Report>
+
+  <!-- =====================================================
+       PATIENT CONTACT REPORTS
+       ===================================================== -->
+
+  <Report CrcNumber="0000001000" Id="PATIENT_CONTACT_REPORT">
+    <Name>Patients with mobile number recorded</Name>
+    <Category>NWPCN;Demographics</Category>
+    <Definition>
+      <DefinitionType>1520</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>7~false~~false</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="0000001001" Id="PATIENT_DEMOGRAPHICS_REPORT">
+    <Name>Has SMS or Email consent recorded</Name>
+    <Category>NWPCN;Demographics</Category>
+    <Definition>
+      <DefinitionType>1734</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>0</Parameters>
+    </Definition>
+  </Report>
+
+</SystmOneProtocol>
