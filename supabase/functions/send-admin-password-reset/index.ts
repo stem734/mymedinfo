@@ -73,7 +73,7 @@ serve(async (req) => {
       });
     }
 
-    return jsonResponse({ success: true, resetLink });
+    return jsonResponse({ success: true });
   } catch (err) {
     console.error('Unexpected edge function error:', err);
     return errorResponse('Internal error', 500);

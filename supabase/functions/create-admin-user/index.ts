@@ -56,11 +56,38 @@ serve(async (req) => {
         options: { redirectTo: `${appBaseUrl}/reset-password` },
       });
 
+      // Send email if reset link is available
+      const resendApiKey = Deno.env.get('RESEND_API_KEY');
+      const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
+      const resetLink = linkData?.properties?.action_link || '';
+
+      if (resendApiKey && resendFromEmail && resetLink) {
+        const resend = new Resend(resendApiKey);
+        await resend.emails.send({
+          from: resendFromEmail,
+          to: normalisedEmail,
+          subject: 'Reset your MyMedInfo administrator password',
+          text: `Hello ${displayName},\n\nUse this secure link to reset your MyMedInfo administrator password:\n${resetLink}\n\nIf you did not request this, you can ignore this email.\n`,
+          html: `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #212b32;">
+              <h2 style="color: #005eb8;">Reset your MyMedInfo password</h2>
+              <p>Hello ${displayName},</p>
+              <p>Use the button below to reset your MyMedInfo administrator password.</p>
+              <p style="margin: 24px 0;">
+                <a href="${resetLink}" style="background: #005eb8; color: white; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">Reset Password</a>
+              </p>
+              <p>If the button does not work, copy and paste this link into your browser:</p>
+              <p><a href="${resetLink}">${resetLink}</a></p>
+              <p>If you did not request this, you can ignore this email.</p>
+            </div>
+          `,
+        });
+      }
+
       return jsonResponse({
         success: true,
         uid: existingUser.uid,
         created: false,
-        resetLink: linkData?.properties?.action_link || '',
       });
     }
 
@@ -130,7 +157,7 @@ serve(async (req) => {
       });
     }
 
-    return jsonResponse({ success: true, uid: userRecord.user.id, created: true, resetLink });
+    return jsonResponse({ success: true, uid: userRecord.user.id, created: true });
   } catch (err) {
     console.error('Unexpected edge function error:', err);
     return errorResponse('Internal error', 500);
