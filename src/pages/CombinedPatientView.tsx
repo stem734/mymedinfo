@@ -209,12 +209,17 @@ const CombinedPatientView: React.FC = () => {
     [hasPracticeIdentifier, isDemoMode, validationCacheKey],
   );
 
-  const [isAuthorised, setIsAuthorised] = useState<boolean | null>(() => (isDemoMode ? true : cachedValidation ? true : null));
+  const [isAuthorised, setIsAuthorised] = useState<boolean | null>(() => {
+    if (isDemoMode) return true;
+    if (!hasPracticeIdentifier) return null;
+    return cachedValidation ? true : null;
+  });
   const [authError, setAuthError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [practiceFeatures, setPracticeFeatures] = useState<PracticeFeatureSettings>(
-    () => (cachedValidation?.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS),
-  );
+  const [practiceFeatures, setPracticeFeatures] = useState<PracticeFeatureSettings>(() => {
+    if (isDemoMode) return DEFAULT_PRACTICE_FEATURE_SETTINGS;
+    return cachedValidation?.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS;
+  });
   const [validationNonce, setValidationNonce] = useState(0);
   const { medicationMap: allMeds } = useMedicationCatalog();
   const [resolvedContents, setResolvedContents] = useState<Array<{
@@ -265,11 +270,7 @@ const CombinedPatientView: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isDemoMode) {
-      setIsAuthorised(true);
-      setAuthError(null);
-      setIsValidating(false);
-      setPracticeFeatures(DEFAULT_PRACTICE_FEATURE_SETTINGS);
+    if (isDemoMode || !hasPracticeIdentifier) {
       return;
     }
 
@@ -277,25 +278,16 @@ const CombinedPatientView: React.FC = () => {
     let loadingTimer: number | undefined;
 
     const validate = async () => {
-      if (!hasPracticeIdentifier) {
-        if (!cancelled) {
-          setIsAuthorised(null);
-          setAuthError(null);
-          setIsValidating(false);
-        }
-        return;
-      }
-
       const cached = readValidationCache(validationCacheKey);
       const usedCachedValue = Boolean(cached);
       if (!usedCachedValue) {
         window.sessionStorage.removeItem(validationCacheKey);
-      }
-
-      if (!cancelled && !usedCachedValue) {
-        setIsAuthorised(null);
-        setAuthError(null);
-        setPracticeFeatures(DEFAULT_PRACTICE_FEATURE_SETTINGS);
+        // Reset to pending state only when starting fresh validation
+        if (!cancelled) {
+          setIsAuthorised(null);
+          setAuthError(null);
+          setPracticeFeatures(DEFAULT_PRACTICE_FEATURE_SETTINGS);
+        }
       }
 
       loadingTimer = window.setTimeout(() => {
