@@ -856,7 +856,11 @@ const AdminDashboard: React.FC = () => {
         <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
           <div className="dashboard-panel-header">
             <h2 className="dashboard-panel-title">Add Practice</h2>
-            <button onClick={() => setShowAddForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4c6272' }}>
+            <button
+              onClick={() => setShowAddForm(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4c6272' }}
+              aria-label="Close add practice form"
+            >
               <X size={20} />
             </button>
           </div>
@@ -882,7 +886,11 @@ const AdminDashboard: React.FC = () => {
         <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
           <div className="dashboard-panel-header">
             <h2 className="dashboard-panel-title">Add Administrator</h2>
-            <button onClick={() => setShowAddAdminForm(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4c6272' }}>
+            <button
+              onClick={() => setShowAddAdminForm(false)}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4c6272' }}
+              aria-label="Close add administrator form"
+            >
               <X size={20} />
             </button>
           </div>

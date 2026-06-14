@@ -96,13 +96,13 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
       </div>
 
       {showImportantNotice && (
-        <div className="form-callout">
+        <div className="form-callout" role="note">
           <strong>Important:</strong> The Organisation Name must match exactly what appears in SystmOne.
           This is how the system identifies your practice when patients access medication information.
         </div>
       )}
 
-      {error && <div className="form-banner form-banner--error">{error}</div>}
+      {error && <div className="form-banner form-banner--error" role="alert">{error}</div>}
 
       <button type="submit" disabled={loading} className="action-button action-button--full">
         {loading ? 'Submitting...' : submitLabel}

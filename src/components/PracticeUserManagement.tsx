@@ -406,12 +406,22 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
     <form onSubmit={editingUser ? handleUpdate : handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div className="dashboard-form-grid">
         <div className="dashboard-field">
-          <label>Name</label>
-          <input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} />
+          <label htmlFor="user-name">Name</label>
+          <input
+            id="user-name"
+            value={form.name}
+            onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+          />
         </div>
         <div className="dashboard-field">
-          <label>Email *</label>
-          <input type="email" value={form.email} onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))} required />
+          <label htmlFor="user-email">Email *</label>
+          <input
+            id="user-email"
+            type="email"
+            value={form.email}
+            onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
+            required
+          />
         </div>
       </div>
 
@@ -449,8 +459,9 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       </div>
 
       <div className="dashboard-field" style={{ maxWidth: '420px' }}>
-        <label>Default Practice</label>
+        <label htmlFor="user-default-practice">Default Practice</label>
         <select
+          id="user-default-practice"
           value={form.defaultPracticeId}
           onChange={(event) => setForm((current) => ({ ...current, defaultPracticeId: event.target.value }))}
           disabled={form.practiceIds.length === 0}
