@@ -10,6 +10,7 @@ type SignupBody = {
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MAX_RECENT_EMAIL_SIGNUPS = 3;
+const MAX_RECENT_IP_SIGNUPS = 10;
 
 const normaliseText = (value: unknown, maxLength: number) =>
   typeof value === 'string' ? value.trim().slice(0, maxLength) : '';
@@ -79,13 +80,30 @@ serve(async (req) => {
     }
 
     const since = new Date(Date.now() - DAY_MS).toISOString();
-    const { count: recentEmailSignups, error: emailCountError } = await supabase
-      .from('practices')
-      .select('id', { count: 'exact', head: true })
-      .eq('contact_email', contactEmail)
-      .gte('signed_up_at', since);
 
-    if (emailCountError) {
+    // Extract client IP from request headers
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
+                    req.headers.get('cf-connecting-ip') ||
+                    req.headers.get('x-client-ip') ||
+                    'unknown';
+
+    const [
+      { count: recentEmailSignups, error: emailCountError },
+      { count: recentIpSignups, error: ipCountError },
+    ] = await Promise.all([
+      supabase
+        .from('practices')
+        .select('id', { count: 'exact', head: true })
+        .eq('contact_email', contactEmail)
+        .gte('signed_up_at', since),
+      supabase
+        .from('practices')
+        .select('id', { count: 'exact', head: true })
+        .eq('signup_ip', clientIp)
+        .gte('signed_up_at', since),
+    ]);
+
+    if (emailCountError || ipCountError) {
       return errorResponse('Unable to validate registration request', 500);
     }
 
@@ -93,11 +111,16 @@ serve(async (req) => {
       return errorResponse('Too many registration attempts from this contact email. Please try again tomorrow.', 429);
     }
 
+    if ((recentIpSignups ?? 0) >= MAX_RECENT_IP_SIGNUPS) {
+      return errorResponse('Too many registration attempts from this IP address. Please try again tomorrow.', 429);
+    }
+
     const { error: insertError } = await supabase.from('practices').insert({
       name,
       ods_code: odsCode,
       contact_email: contactEmail,
       contact_name: contactName,
+      signup_ip: clientIp,
       is_active: false,
       auth_uid: null,
       selected_medications: [],

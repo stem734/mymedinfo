@@ -1,3 +1,8 @@
+## 2025-06-14 - Add IP-Based Rate Limiting to Practice Signup
+**Vulnerability:** The `submit-practice-signup` Edge Function only enforced email-based rate limiting (max 3 signups per email per day). An attacker could bypass this by using multiple email addresses to spam signup requests from a single IP address.
+**Learning:** Email-only rate limiting is insufficient for preventing abuse. Attackers can easily generate new email addresses (e.g., via temporary email services) or mass-create accounts. IP-based rate limiting provides a secondary defense layer that is harder to bypass without distributed infrastructure.
+**Prevention:** Implement multi-factor rate limiting: combine email-based checks with IP-based checks. Store the client IP address (`x-forwarded-for`, `cf-connecting-ip`, or `x-client-ip` headers) with each signup request and enforce limits on both email and IP dimensions independently. Use database indexes on (ip, timestamp) for efficient rate limit checks.
+
 ## 2025-06-14 - Prevent Admin Password Reset Link Leakage
 **Vulnerability:** The `send-admin-password-reset` and `create-admin-user` Edge Functions returned the `resetLink` in their JSON responses, allowing an attacker to intercept the API response and bypass secure email delivery. An attacker could call these endpoints, extract the resetLink from the response, and reset another admin's password without their knowledge or email verification.
 **Learning:** Security-sensitive tokens (password reset links, email verification links, MFA codes) must ONLY be transmitted via secure out-of-band channels (email, SMS, authenticator apps), never in API responses. Even if the API uses HTTPS, logging, monitoring, or proxy systems may record the response, exposing the sensitive token.
