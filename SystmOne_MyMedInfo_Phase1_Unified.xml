@@ -1,0 +1,470 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<SystmOneProtocol>
+  <!--MyMedInfo Unified Protocol - Phase 1-->
+  <!--Detects medications, screening, and immunisation codes-->
+  <!--Generates comprehensive MyMedInfo URLs with all detected content types-->
+  <!--Exported: 2026-06-14 by MyMedInfo Development-->
+
+  <TemplateDefinition Male="y" Female="y" Type="16">
+    <Protocol KeyReportFilter="31837153" ManualTrigger="y">
+      <AutomaticTrigger>
+        <Trigger>None</Trigger>
+        <TriggerEveryOccurrence>false</TriggerEveryOccurrence>
+        <PromptToLaunchIfMultipleApply>true</PromptToLaunchIfMultipleApply>
+      </AutomaticTrigger>
+
+      <Node Uid="0" X="2592" Y="24">Start</Node>
+
+      <!-- =====================================================
+           DATE AND COUNTER VARIABLES
+           ===================================================== -->
+      <Node Uid="141" X="2436" Y="24" Name="@Date" ValType="0">DeclareVariable</Node>
+      <Node Uid="158" X="2268" Y="24" RGB="-1715942" Name="@Cards" ValType="0">DeclareVariable</Node>
+
+      <!-- =====================================================
+           MEDICATIONS - SULFONYLUREAS (101/102)
+           ===================================================== -->
+      <Node Uid="68" X="2088" Y="24" RGB="-3023124" Name="@SulfStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="70" X="1896" Y="24" RGB="-3023124" Name="@SulfReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="72" X="2064" Y="120" RGB="-3023124" Report="40122147">InReport</Node>
+      <Node Uid="73" X="1956" Y="264" RGB="-3023124" Variable="@SulfStart" Operator="5" VariableType="2" LeftStringValue="101">AssignVariable</Node>
+      <Node Uid="75" X="2052" Y="348" RGB="-3023124" Report="40122156">InReport</Node>
+      <Node Uid="77" X="1992" Y="528" RGB="-3023124" Variable="@SulfReauth" Operator="5" VariableType="2" LeftStringValue="102">AssignVariable</Node>
+      <Node Uid="159" X="1932" Y="192" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           MEDICATIONS - INSULIN (401/402)
+           ===================================================== -->
+      <Node Uid="84" X="720" Y="24" RGB="-2100781" Name="@InsulStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="85" X="900" Y="24" RGB="-2100781" Name="@InsulReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="86" X="996" Y="120" RGB="-2100781" Report="40283413">InReport</Node>
+      <Node Uid="87" X="888" Y="264" RGB="-2100781" Variable="@InsulStart" Operator="5" VariableType="2" LeftStringValue="401">AssignVariable</Node>
+      <Node Uid="88" X="1068" Y="312" RGB="-2100781" Report="40283412">InReport</Node>
+      <Node Uid="89" X="936" Y="444" RGB="-2100781" Variable="@InsulReauth" Operator="5" VariableType="2" LeftStringValue="402">AssignVariable</Node>
+      <Node Uid="166" X="876" Y="192" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           MEDICATIONS - EMOLIENTS (301/302)
+           ===================================================== -->
+      <Node Uid="98" X="1296" Y="24" RGB="-2763269" Name="@EmolStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="99" X="1092" Y="24" RGB="-2763269" Name="@EmolReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="100" X="1368" Y="120" RGB="-2763269" Report="40282682">InReport</Node>
+      <Node Uid="101" X="1248" Y="264" RGB="-2763269" Variable="@EmolStart" Operator="5" VariableType="2" LeftStringValue="301">AssignVariable</Node>
+      <Node Uid="102" X="1356" Y="360" RGB="-2763269" Report="40282681">InReport</Node>
+      <Node Uid="103" X="1260" Y="516" RGB="-2763269" Variable="@EmolReauth" Operator="5" VariableType="2" LeftStringValue="302">AssignVariable</Node>
+      <Node Uid="164" X="1248" Y="192" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           MEDICATIONS - MOUNJARO (501/502)
+           ===================================================== -->
+      <Node Uid="106" X="312" Y="24" RGB="-593996" Name="@MounjStart" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="107" X="504" Y="24" RGB="-593996" Name="@MounjReauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="116" X="600" Y="120" RGB="-593996" Report="40597360">InReport</Node>
+      <Node Uid="117" X="480" Y="264" RGB="-593996" Variable="@MounjStart" Operator="5" VariableType="2" LeftStringValue="501">AssignVariable</Node>
+      <Node Uid="118" X="516" Y="360" RGB="-593996" Report="40597355">InReport</Node>
+      <Node Uid="119" X="456" Y="516" RGB="-593996" Variable="@MounjReauth" Operator="5" VariableType="2" LeftStringValue="502">AssignVariable</Node>
+      <Node Uid="168" X="480" Y="192" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           MEDICATIONS - SGLT2 INHIBITORS (201/202)
+           ===================================================== -->
+      <Node Uid="110" X="1704" Y="24" RGB="-22617" Name="@SGLT2Start" ValType="2" ValStr="?">DeclareVariable</Node>
+      <Node Uid="111" X="1488" Y="24" RGB="-22617" Name="@SGLT2Reauth" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="124" X="1776" Y="120" RGB="-22617" Report="40283418">InReport</Node>
+      <Node Uid="125" X="1656" Y="264" RGB="-22617" Variable="@SGLT2Start" Operator="5" VariableType="2" LeftStringValue="201">AssignVariable</Node>
+      <Node Uid="126" X="1728" Y="360" RGB="-22617" Report="40283417">InReport</Node>
+      <Node Uid="127" X="1644" Y="528" RGB="-22617" Variable="@SGLT2Reauth" Operator="5" VariableType="2" LeftStringValue="202">AssignVariable</Node>
+      <Node Uid="162" X="1656" Y="192" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           SCREENING - CERVICAL (CS1)
+           ===================================================== -->
+      <Node Uid="200" X="2400" Y="600" RGB="-6750004" Name="@CervicalScreening" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="201" X="2400" Y="720" RGB="-6750004" Report="50001001">InReport</Node>
+      <Node Uid="202" X="2280" Y="840" RGB="-6750004" Variable="@CervicalScreening" Operator="5" VariableType="2" LeftStringValue="CS1">AssignVariable</Node>
+      <Node Uid="203" X="2400" Y="912" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           SCREENING - BOWEL (BS1)
+           ===================================================== -->
+      <Node Uid="210" X="2700" Y="600" RGB="-6750004" Name="@BowelScreening" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="211" X="2700" Y="720" RGB="-6750004" Report="50001002">InReport</Node>
+      <Node Uid="212" X="2580" Y="840" RGB="-6750004" Variable="@BowelScreening" Operator="5" VariableType="2" LeftStringValue="BS1">AssignVariable</Node>
+      <Node Uid="213" X="2700" Y="912" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           SCREENING - BREAST (BR1)
+           ===================================================== -->
+      <Node Uid="220" X="3000" Y="600" RGB="-6750004" Name="@BreastScreening" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="221" X="3000" Y="720" RGB="-6750004" Report="50001003">InReport</Node>
+      <Node Uid="222" X="2880" Y="840" RGB="-6750004" Variable="@BreastScreening" Operator="5" VariableType="2" LeftStringValue="BR1">AssignVariable</Node>
+      <Node Uid="223" X="3000" Y="912" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           SCREENING - AAA (AAA1)
+           ===================================================== -->
+      <Node Uid="230" X="3300" Y="600" RGB="-6750004" Name="@AAAScreening" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="231" X="3300" Y="720" RGB="-6750004" Report="50001004">InReport</Node>
+      <Node Uid="232" X="3180" Y="840" RGB="-6750004" Variable="@AAAScreening" Operator="5" VariableType="2" LeftStringValue="AAA1">AssignVariable</Node>
+      <Node Uid="233" X="3300" Y="912" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           SCREENING - DIABETIC EYE (DE1)
+           ===================================================== -->
+      <Node Uid="240" X="3600" Y="600" RGB="-6750004" Name="@DiabeticEyeScreening" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="241" X="3600" Y="720" RGB="-6750004" Report="50001005">InReport</Node>
+      <Node Uid="242" X="3480" Y="840" RGB="-6750004" Variable="@DiabeticEyeScreening" Operator="5" VariableType="2" LeftStringValue="DE1">AssignVariable</Node>
+      <Node Uid="243" X="3600" Y="912" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           IMMUNISATION - FLU (IM1)
+           ===================================================== -->
+      <Node Uid="300" X="2400" Y="1200" RGB="-8847616" Name="@FluImmunisation" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="301" X="2400" Y="1320" RGB="-8847616" Report="50002001">InReport</Node>
+      <Node Uid="302" X="2280" Y="1440" RGB="-8847616" Variable="@FluImmunisation" Operator="5" VariableType="2" LeftStringValue="IM1">AssignVariable</Node>
+      <Node Uid="303" X="2400" Y="1512" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           IMMUNISATION - COVID (IM2)
+           ===================================================== -->
+      <Node Uid="310" X="2700" Y="1200" RGB="-8847616" Name="@CovidImmunisation" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="311" X="2700" Y="1320" RGB="-8847616" Report="50002002">InReport</Node>
+      <Node Uid="312" X="2580" Y="1440" RGB="-8847616" Variable="@CovidImmunisation" Operator="5" VariableType="2" LeftStringValue="IM2">AssignVariable</Node>
+      <Node Uid="313" X="2700" Y="1512" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           IMMUNISATION - SHINGLES (IM3)
+           ===================================================== -->
+      <Node Uid="320" X="3000" Y="1200" RGB="-8847616" Name="@ShinglesImmunisation" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="321" X="3000" Y="1320" RGB="-8847616" Report="50002003">InReport</Node>
+      <Node Uid="322" X="2880" Y="1440" RGB="-8847616" Variable="@ShinglesImmunisation" Operator="5" VariableType="2" LeftStringValue="IM3">AssignVariable</Node>
+      <Node Uid="323" X="3000" Y="1512" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           IMMUNISATION - PNEUMOCOCCAL (IM4)
+           ===================================================== -->
+      <Node Uid="330" X="3300" Y="1200" RGB="-8847616" Name="@PneumoImmunisation" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="331" X="3300" Y="1320" RGB="-8847616" Report="50002004">InReport</Node>
+      <Node Uid="332" X="3180" Y="1440" RGB="-8847616" Variable="@PneumoImmunisation" Operator="5" VariableType="2" LeftStringValue="IM4">AssignVariable</Node>
+      <Node Uid="333" X="3300" Y="1512" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           IMMUNISATION - MMR (IM6)
+           ===================================================== -->
+      <Node Uid="340" X="3600" Y="1200" RGB="-8847616" Name="@MMRImmunisation" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="341" X="3600" Y="1320" RGB="-8847616" Report="50002005">InReport</Node>
+      <Node Uid="342" X="3480" Y="1440" RGB="-8847616" Variable="@MMRImmunisation" Operator="5" VariableType="2" LeftStringValue="IM6">AssignVariable</Node>
+      <Node Uid="343" X="3600" Y="1512" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           IMMUNISATION - HPV (IM7)
+           ===================================================== -->
+      <Node Uid="350" X="3900" Y="1200" RGB="-8847616" Name="@HPVImmunisation" ValType="2" ValStr=",">DeclareVariable</Node>
+      <Node Uid="351" X="3900" Y="1320" RGB="-8847616" Report="50002006">InReport</Node>
+      <Node Uid="352" X="3780" Y="1440" RGB="-8847616" Variable="@HPVImmunisation" Operator="5" VariableType="2" LeftStringValue="IM7">AssignVariable</Node>
+      <Node Uid="353" X="3900" Y="1512" RGB="-1715942" Variable="@Cards" Operator="1" VariableType="0" LeftVariable="@Cards" RightConstant="1.0">AssignVariable</Node>
+
+      <!-- =====================================================
+           URL GENERATION AND COMMUNICATION
+           ===================================================== -->
+      <Node Uid="128" X="372" Y="804" Report="12477651">InReport</Node>
+      <Node Uid="170" X="264" Y="468" Name="@Cards" VariableType="0" Operator="9" ValOne="1.0">TestVariable</Node>
+      <Node Uid="172" X="156" Y="576" Name="@Date" Code="Xa0cj">SaveVariable</Node>
+      <Node Uid="174" X="132" Y="648" Variable="@Date" Operator="5" VariableType="0" LeftCode="Xa0cj" LeftCodeTimeValue="1" LeftCodeTimeUnit="2" OnlyIncludeValues="y" LeftValueOne="0.0" CdtVarName="URLDT">AssignVariable</Node>
+
+      <!-- Communication Node -->
+      <Node Uid="97" X="204" Y="744" RGB="-10757935" Output="1">Communication
+        <SendComm MsgType="2">
+          <MsgPreset Desc="" Subject="Important information about your medication" Template="-1" RecipCon="-1" RecipTeam="-1" rc="XaIvi">
+Hi. &lt;title&gt; &lt;surname&gt; | NHS No &lt;nhs_number&gt;
+
+Please see the linked information on your care:
+
+https://www.mymedinfo.info/patient?org=&lt;organisation_name&gt;&amp;codes=@SulfStart@SulfReauth@SGLT2Start@SGLT2Reauth@EmolStart@EmolReauth@InsulStart@InsulReauth@MounjStart@MounjReauth@CervicalScreening@BowelScreening@BreastScreening@AAAScreening@DiabeticEyeScreening@FluImmunisation@CovidImmunisation@ShinglesImmunisation@PneumoImmunisation@MMRImmunisation@HPVImmunisation@URLDT
+
+Kind regards,
+&lt;organisation_name&gt;
+          </MsgPreset>
+        </SendComm>
+      </Node>
+
+      <!-- Alternative communication for missing contact details -->
+      <Node Uid="130" X="276" Y="972" RGB="-10757935" Output="1">Communication
+        <SendComm>
+          <MsgPreset Desc="" Subject="Important information about your medication" Template="-1" RecipCon="-1" RecipTeam="-1" rc="XaIvi">
+Hi. &lt;title&gt; &lt;surname&gt; | NHS No &lt;nhs_number&gt;
+
+Please see the linked information on your care:
+
+https://www.mymedinfo.info/patient?org=&lt;organisation_name&gt;&amp;codes=@SulfStart@SulfReauth@SGLT2Start@SGLT2Reauth@EmolStart@EmolReauth@InsulStart@InsulReauth@MounjStart@MounjReauth@CervicalScreening@BowelScreening@BreastScreening@AAAScreening@DiabeticEyeScreening@FluImmunisation@CovidImmunisation@ShinglesImmunisation@PneumoImmunisation@MMRImmunisation@HPVImmunisation@URLDT
+
+&lt;organisation_name&gt;
+          </MsgPreset>
+        </SendComm>
+      </Node>
+
+      <!-- Question for adding contact details -->
+      <Node Uid="131" X="420" Y="900">Question
+        <Q>
+          <p><p al="1"/><p al="1"><t>Patient has no email or SMS recorded</t></p><p al="1"/><p al="1"><t>Do you want to add these so information can be sent?</t></p></p>
+        </Q>
+        <Answer>Yes</Answer>
+        <Answer>No</Answer>
+      </Node>
+
+      <Node Uid="133" X="312" Y="900" Report="29184905">InReport</Node>
+      <Node Uid="134" X="492" Y="744" ActionUid="tel" Blocking="y">Action</Node>
+
+      <!-- =====================================================
+           PROTOCOL FLOW LINKS
+           ===================================================== -->
+
+      <!-- Start and initialization -->
+      <Link StartUid="0" StartIndex="0" EndUid="141"/>
+      <Link StartUid="141" StartIndex="0" EndUid="158"/>
+      <Link StartUid="158" StartIndex="0" EndUid="68"/>
+
+      <!-- Medication links -->
+      <Link StartUid="68" StartIndex="0" EndUid="70"/>
+      <Link StartUid="70" StartIndex="0" EndUid="110"/>
+      <Link StartUid="72" StartIndex="0" EndUid="159"/>
+      <Link StartUid="72" StartIndex="1" EndUid="75"/>
+      <Link StartUid="73" StartIndex="0" EndUid="124"/>
+      <Link StartUid="75" StartIndex="0" EndUid="161"/>
+      <Link StartUid="75" StartIndex="1" EndUid="124"/>
+      <Link StartUid="77" StartIndex="0" EndUid="124"/>
+      <Link StartUid="110" StartIndex="0" EndUid="111"/>
+      <Link StartUid="111" StartIndex="0" EndUid="98"/>
+      <Link StartUid="124" StartIndex="0" EndUid="162"/>
+      <Link StartUid="124" StartIndex="1" EndUid="126"/>
+      <Link StartUid="125" StartIndex="0" EndUid="100"/>
+      <Link StartUid="126" StartIndex="0" EndUid="163"/>
+      <Link StartUid="126" StartIndex="1" EndUid="100"/>
+      <Link StartUid="127" StartIndex="0" EndUid="100"/>
+      <Link StartUid="98" StartIndex="0" EndUid="99"/>
+      <Link StartUid="99" StartIndex="0" EndUid="85"/>
+      <Link StartUid="100" StartIndex="0" EndUid="164"/>
+      <Link StartUid="100" StartIndex="1" EndUid="102"/>
+      <Link StartUid="101" StartIndex="0" EndUid="86"/>
+      <Link StartUid="102" StartIndex="0" EndUid="165"/>
+      <Link StartUid="102" StartIndex="1" EndUid="86"/>
+      <Link StartUid="103" StartIndex="0" EndUid="86"/>
+      <Link StartUid="85" StartIndex="0" EndUid="84"/>
+      <Link StartUid="84" StartIndex="0" EndUid="107"/>
+      <Link StartUid="86" StartIndex="0" EndUid="166"/>
+      <Link StartUid="86" StartIndex="1" EndUid="88"/>
+      <Link StartUid="87" StartIndex="0" EndUid="116"/>
+      <Link StartUid="88" StartIndex="0" EndUid="167"/>
+      <Link StartUid="88" StartIndex="1" EndUid="116"/>
+      <Link StartUid="89" StartIndex="0" EndUid="116"/>
+      <Link StartUid="107" StartIndex="0" EndUid="106"/>
+      <Link StartUid="116" StartIndex="0" EndUid="168"/>
+      <Link StartUid="116" StartIndex="1" EndUid="118"/>
+      <Link StartUid="117" StartIndex="0" EndUid="170"/>
+      <Link StartUid="118" StartIndex="0" EndUid="169"/>
+      <Link StartUid="118" StartIndex="1" EndUid="170"/>
+      <Link StartUid="119" StartIndex="0" EndUid="170"/>
+
+      <!-- Medication counter increments -->
+      <Link StartUid="159" StartIndex="0" EndUid="73"/>
+      <Link StartUid="161" StartIndex="0" EndUid="77"/>
+      <Link StartUid="162" StartIndex="0" EndUid="125"/>
+      <Link StartUid="163" StartIndex="0" EndUid="127"/>
+      <Link StartUid="164" StartIndex="0" EndUid="101"/>
+      <Link StartUid="165" StartIndex="0" EndUid="103"/>
+      <Link StartUid="166" StartIndex="0" EndUid="87"/>
+      <Link StartUid="167" StartIndex="0" EndUid="89"/>
+      <Link StartUid="168" StartIndex="0" EndUid="117"/>
+      <Link StartUid="169" StartIndex="0" EndUid="119"/>
+
+      <!-- Screening links -->
+      <Link StartUid="170" StartIndex="0" EndUid="200"/>
+      <Link StartUid="200" StartIndex="0" EndUid="201"/>
+      <Link StartUid="201" StartIndex="0" EndUid="202"/>
+      <Link StartUid="202" StartIndex="0" EndUid="203"/>
+      <Link StartUid="203" StartIndex="0" EndUid="210"/>
+      <Link StartUid="210" StartIndex="0" EndUid="211"/>
+      <Link StartUid="211" StartIndex="0" EndUid="212"/>
+      <Link StartUid="212" StartIndex="0" EndUid="213"/>
+      <Link StartUid="213" StartIndex="0" EndUid="220"/>
+      <Link StartUid="220" StartIndex="0" EndUid="221"/>
+      <Link StartUid="221" StartIndex="0" EndUid="222"/>
+      <Link StartUid="222" StartIndex="0" EndUid="223"/>
+      <Link StartUid="223" StartIndex="0" EndUid="230"/>
+      <Link StartUid="230" StartIndex="0" EndUid="231"/>
+      <Link StartUid="231" StartIndex="0" EndUid="232"/>
+      <Link StartUid="232" StartIndex="0" EndUid="233"/>
+      <Link StartUid="233" StartIndex="0" EndUid="240"/>
+      <Link StartUid="240" StartIndex="0" EndUid="241"/>
+      <Link StartUid="241" StartIndex="0" EndUid="242"/>
+      <Link StartUid="242" StartIndex="0" EndUid="243"/>
+
+      <!-- Immunisation links -->
+      <Link StartUid="243" StartIndex="0" EndUid="300"/>
+      <Link StartUid="300" StartIndex="0" EndUid="301"/>
+      <Link StartUid="301" StartIndex="0" EndUid="302"/>
+      <Link StartUid="302" StartIndex="0" EndUid="303"/>
+      <Link StartUid="303" StartIndex="0" EndUid="310"/>
+      <Link StartUid="310" StartIndex="0" EndUid="311"/>
+      <Link StartUid="311" StartIndex="0" EndUid="312"/>
+      <Link StartUid="312" StartIndex="0" EndUid="313"/>
+      <Link StartUid="313" StartIndex="0" EndUid="320"/>
+      <Link StartUid="320" StartIndex="0" EndUid="321"/>
+      <Link StartUid="321" StartIndex="0" EndUid="322"/>
+      <Link StartUid="322" StartIndex="0" EndUid="323"/>
+      <Link StartUid="323" StartIndex="0" EndUid="330"/>
+      <Link StartUid="330" StartIndex="0" EndUid="331"/>
+      <Link StartUid="331" StartIndex="0" EndUid="332"/>
+      <Link StartUid="332" StartIndex="0" EndUid="333"/>
+      <Link StartUid="333" StartIndex="0" EndUid="340"/>
+      <Link StartUid="340" StartIndex="0" EndUid="341"/>
+      <Link StartUid="341" StartIndex="0" EndUid="342"/>
+      <Link StartUid="342" StartIndex="0" EndUid="343"/>
+      <Link StartUid="343" StartIndex="0" EndUid="350"/>
+      <Link StartUid="350" StartIndex="0" EndUid="351"/>
+      <Link StartUid="351" StartIndex="0" EndUid="352"/>
+      <Link StartUid="352" StartIndex="0" EndUid="353"/>
+
+      <!-- URL generation and communication -->
+      <Link StartUid="353" StartIndex="0" EndUid="172"/>
+      <Link StartUid="172" StartIndex="0" EndUid="174"/>
+      <Link StartUid="174" StartIndex="0" EndUid="97"/>
+      <Link StartUid="97" StartIndex="1" EndUid="128"/>
+      <Link StartUid="128" StartIndex="0" EndUid="133"/>
+      <Link StartUid="128" StartIndex="1" EndUid="131"/>
+      <Link StartUid="130" StartIndex="1" EndUid="131"/>
+      <Link StartUid="131" StartIndex="0" EndUid="134"/>
+      <Link StartUid="133" StartIndex="0" EndUid="130"/>
+      <Link StartUid="134" StartIndex="0" EndUid="97"/>
+
+    </Protocol>
+
+    <Name>Auto Patient Information Leaflets - MyMedInfo (Phase 1 - Unified)</Name>
+    <Description>Unified protocol detecting medications, screening, and immunisations. Generates comprehensive MyMedInfo URLs with all relevant content types.</Description>
+    <Category>NWPCN;Safety Quality Efficiency</Category>
+    <Icon>pillSingle</Icon>
+    <Source>-1</Source>
+    <SourceGroup>31717</SourceGroup>
+    <Position>15-3a1229-2p-26n-p2n-2e-3cl-2o-s-173r-1-l-2f-1rih-2i2h-363a-1o-323b-1cv-2u</Position>
+  </TemplateDefinition>
+
+  <!-- =====================================================
+       PLACEHOLDER REPORTS - Replace with your SystmOne report IDs
+       ===================================================== -->
+
+  <!-- Medications - Already in original XML, using same IDs -->
+  <!-- Reference existing medication reports from uploaded XML -->
+
+  <!-- Screening Reports -->
+  <Report CrcNumber="5000100001" Id="50001001">
+    <Name>Cervical Screening - Eligible/Overdue</Name>
+    <Category>NWPCN;Screening</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000100002" Id="50001002">
+    <Name>Bowel Screening - Eligible/Overdue</Name>
+    <Category>NWPCN;Screening</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000100003" Id="50001003">
+    <Name>Breast Screening - Eligible/Overdue</Name>
+    <Category>NWPCN;Screening</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000100004" Id="50001004">
+    <Name>AAA Screening - Eligible/Overdue</Name>
+    <Category>NWPCN;Screening</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000100005" Id="50001005">
+    <Name>Diabetic Eye Screening - Eligible/Overdue</Name>
+    <Category>NWPCN;Screening</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <!-- Immunisation Reports -->
+  <Report CrcNumber="5000200001" Id="50002001">
+    <Name>Flu Vaccine - Eligible/Overdue</Name>
+    <Category>NWPCN;Immunisation</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000200002" Id="50002002">
+    <Name>COVID Vaccine - Eligible/Overdue</Name>
+    <Category>NWPCN;Immunisation</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000200003" Id="50002003">
+    <Name>Shingles Vaccine - Eligible/Overdue</Name>
+    <Category>NWPCN;Immunisation</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000200004" Id="50002004">
+    <Name>Pneumococcal Vaccine - Eligible/Overdue</Name>
+    <Category>NWPCN;Immunisation</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000200005" Id="50002005">
+    <Name>MMR Vaccine - Eligible/Overdue</Name>
+    <Category>NWPCN;Immunisation</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+  <Report CrcNumber="5000200006" Id="50002006">
+    <Name>HPV Vaccine - Eligible/Overdue</Name>
+    <Category>NWPCN;Immunisation</Category>
+    <Definition>
+      <DefinitionType>1401</DefinitionType>
+      <ComparisonType>0</ComparisonType>
+      <Parameters>R;1;0;1;0;1;0;1;;-1;false;0</Parameters>
+    </Definition>
+  </Report>
+
+</SystmOneProtocol>
