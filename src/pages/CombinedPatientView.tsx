@@ -185,10 +185,35 @@ const CombinedPatientView: React.FC = () => {
     [builtInImmunisationTemplates],
   );
 
-  const [isAuthorised, setIsAuthorised] = useState<boolean | null>(null);
+  // Bolt: Use lazy initializers to avoid cascading renders on mount by reading from cache immediately.
+  const [isAuthorised, setIsAuthorised] = useState<boolean | null>(() => {
+    if (isDemoMode) return true;
+    if (!hasPracticeIdentifier) return null;
+    const cacheKey = getValidationCacheKey(practiceLookup.cacheKey);
+    const cached = typeof window !== 'undefined' ? window.sessionStorage.getItem(cacheKey) : null;
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (isFreshValidationCache(parsed)) return true;
+      } catch { /* ignore */ }
+    }
+    return null;
+  });
   const [authError, setAuthError] = useState<string | null>(null);
   const [isValidating, setIsValidating] = useState(false);
-  const [practiceFeatures, setPracticeFeatures] = useState<PracticeFeatureSettings>(DEFAULT_PRACTICE_FEATURE_SETTINGS);
+  const [practiceFeatures, setPracticeFeatures] = useState<PracticeFeatureSettings>(() => {
+    if (isDemoMode) return DEFAULT_PRACTICE_FEATURE_SETTINGS;
+    if (!hasPracticeIdentifier) return DEFAULT_PRACTICE_FEATURE_SETTINGS;
+    const cacheKey = getValidationCacheKey(practiceLookup.cacheKey);
+    const cached = typeof window !== 'undefined' ? window.sessionStorage.getItem(cacheKey) : null;
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (isFreshValidationCache(parsed)) return parsed.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS;
+      } catch { /* ignore */ }
+    }
+    return DEFAULT_PRACTICE_FEATURE_SETTINGS;
+  });
   const [validationNonce, setValidationNonce] = useState(0);
   const { medicationMap: allMeds } = useMedicationCatalog();
   const [resolvedContents, setResolvedContents] = useState<Array<{
@@ -239,13 +264,8 @@ const CombinedPatientView: React.FC = () => {
   };
 
   useEffect(() => {
-    if (isDemoMode) {
-      setIsAuthorised(true);
-      setAuthError(null);
-      setIsValidating(false);
-      setPracticeFeatures(DEFAULT_PRACTICE_FEATURE_SETTINGS);
-      return;
-    }
+    // Bolt: Skip redundant state updates if lazy initializer already set them for demo mode.
+    if (isDemoMode) return;
 
     let cancelled = false;
     let loadingTimer: number | undefined;
@@ -267,12 +287,17 @@ const CombinedPatientView: React.FC = () => {
         try {
           const parsed = JSON.parse(cached) as { expiresAt?: number; valid?: boolean; practiceFeatures?: PracticeFeatureSettings };
           if (isFreshValidationCache(parsed)) {
+            usedCachedValue = true;
             if (!cancelled) {
-              setIsAuthorised(true);
-              setAuthError(null);
-              setIsValidating(false);
-              setPracticeFeatures(parsed.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS);
-              usedCachedValue = true;
+              // Bolt: Only update state if it differs (prevents cascading render on mount).
+              setIsAuthorised(prev => (prev === true ? prev : true));
+              setAuthError(prev => (prev === null ? prev : null));
+              setIsValidating(prev => (prev === false ? prev : false));
+              setPracticeFeatures(prev => {
+                const next = parsed.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS;
+                // Shallow comparison is enough for DEFAULT_PRACTICE_FEATURE_SETTINGS ref
+                return prev === next ? prev : next;
+              });
             }
           }
         } catch {
@@ -598,9 +623,9 @@ const CombinedPatientView: React.FC = () => {
   }, [medicationContents.length, selectedScreenings, selectedImmunisations]);
 
   useEffect(() => {
-    setCompletedSectionIds(new Set());
-
-    if (sectionLinks.length === 0 || typeof IntersectionObserver === 'undefined') return;
+    if (sectionLinks.length === 0 || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -628,7 +653,10 @@ const CombinedPatientView: React.FC = () => {
       if (element) observer.observe(element);
     });
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      setCompletedSectionIds(new Set());
+    };
   }, [sectionLinks]);
 
   const summaryParts = [
