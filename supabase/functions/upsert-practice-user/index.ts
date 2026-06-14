@@ -67,7 +67,6 @@ serve(async (req) => {
         success: true,
         uid: existingUser.uid,
         created: false,
-        resetLink: '',
       });
     }
 
@@ -114,7 +113,7 @@ serve(async (req) => {
       return errorResponse('Failed to generate reset link', 500);
     }
 
-    const resetLink = linkData?.properties?.action_link || '';
+    const resetLink = linkData?.properties?.action_link;
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
 
@@ -145,7 +144,6 @@ serve(async (req) => {
       success: true,
       uid: userRecord.user.id,
       created: true,
-      resetLink,
     });
   } catch (err) {
     console.error('Unexpected edge function error:', err);
