@@ -13,6 +13,16 @@ const normaliseStringArray = (value: unknown): string[] =>
     ? value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
     : [];
 
+const isValidHttpUrl = (url: string | undefined): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -51,6 +61,19 @@ serve(async (req) => {
 
     if (!body.title?.trim() || !body.description?.trim() || !body.category?.trim()) {
       return errorResponse('Title, description, and category are required');
+    }
+
+    // Validate URLs to prevent XSS via javascript: or data: URIs
+    if (!isValidHttpUrl(body.nhsLink)) {
+      return errorResponse('NHS link must be a valid HTTP or HTTPS URL', 400);
+    }
+
+    if (body.trendLinks && Array.isArray(body.trendLinks)) {
+      for (const link of body.trendLinks) {
+        if (!isValidHttpUrl(link.url)) {
+          return errorResponse('All trend links must be valid HTTP or HTTPS URLs', 400);
+        }
+      }
     }
 
     const badge = body.badge === 'REAUTH' || body.badge === 'GENERAL' ? body.badge : 'NEW';

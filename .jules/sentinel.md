@@ -1,3 +1,8 @@
+## 2025-06-14 - Prevent Stored XSS via URL Fields
+**Vulnerability:** The `save-medication` and `save-practice-medication-card` Edge Functions accepted `nhs_link` and `trend_links` URLs without protocol validation. An attacker could inject `javascript:` URIs (e.g., `javascript:alert('xss')`) or `data:` URIs that would execute when rendered in the frontend.
+**Learning:** User-supplied URLs must be validated to only allow safe protocols (http:// and https://). Dangerous protocols like `javascript:`, `data:`, `vbscript:`, and `file:` can execute arbitrary code in the browser. URL validation must happen server-side before storing data, not relying on frontend sanitization alone.
+**Prevention:** Always validate URLs using the URL API to parse the protocol. Reject any URLs that don't use http: or https: protocols. Apply this validation both when accepting user input and before rendering URLs in href/src attributes on the frontend.
+
 ## 2025-06-14 - Add IP-Based Rate Limiting to Practice Signup
 **Vulnerability:** The `submit-practice-signup` Edge Function only enforced email-based rate limiting (max 3 signups per email per day). An attacker could bypass this by using multiple email addresses to spam signup requests from a single IP address.
 **Learning:** Email-only rate limiting is insufficient for preventing abuse. Attackers can easily generate new email addresses (e.g., via temporary email services) or mass-create accounts. IP-based rate limiting provides a secondary defense layer that is harder to bypass without distributed infrastructure.

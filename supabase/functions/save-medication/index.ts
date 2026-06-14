@@ -13,6 +13,16 @@ const normaliseMedicationFamilyName = (value: string) =>
     .replace(/\s+/g, ' ')
     .trim();
 
+const isValidHttpUrl = (url: string | undefined): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -40,6 +50,19 @@ serve(async (req) => {
 
     if (!data.title || !data.description || !data.badge || !data.contentReviewDate || typeof data.linkExpiryValue !== 'number') {
       return errorResponse('Title, description, type, review date, and expiry value are required');
+    }
+
+    // Validate URLs to prevent XSS via javascript: or data: URIs
+    if (!isValidHttpUrl(data.nhsLink)) {
+      return errorResponse('NHS link must be a valid HTTP or HTTPS URL', 400);
+    }
+
+    if (data.trendLinks && Array.isArray(data.trendLinks)) {
+      for (const link of data.trendLinks) {
+        if (!isValidHttpUrl(link.url)) {
+          return errorResponse('All trend links must be valid HTTP or HTTPS URLs', 400);
+        }
+      }
     }
 
     const supabase = createServiceClient();
