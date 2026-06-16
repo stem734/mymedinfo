@@ -83,9 +83,20 @@ const SubdomainRoutes: React.FC = () => {
 const AppContent: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const subdomain = getSubdomain();
   const showClinicianDemo = location.pathname === '/patient' || location.pathname === '/demo';
   const isPatientRoute = location.pathname === '/patient';
   const isLandingRoute = location.pathname === '/';
+  const isAdminDashboardRoute =
+    (subdomain === 'admin' && location.pathname === '/dashboard') ||
+    location.pathname === '/admin/dashboard';
+  const useEmbeddedPortalShell = isAdminDashboardRoute;
+  const mainClassName = [
+    'app-main',
+    isLandingRoute ? 'app-main--landing' : '',
+    isPatientRoute ? 'app-main--patient' : '',
+    useEmbeddedPortalShell ? 'app-main--portal' : '',
+  ].filter(Boolean).join(' ');
   const buildLabel = new Date(__APP_BUILD_STAMP__).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -122,7 +133,7 @@ const AppContent: React.FC = () => {
   return (
     <div className="app-container">
       <a href="#main-content" className="sr-only">Skip to content</a>
-      {!isPatientRoute && !isLandingRoute && (
+      {!isPatientRoute && !isLandingRoute && !useEmbeddedPortalShell && (
         <header className="site-header">
           <div className="site-header__inner">
             <a className="site-header__logo-link" href="/" aria-label="MyMedInfo home">
@@ -132,30 +143,32 @@ const AppContent: React.FC = () => {
           </div>
         </header>
       )}
-      <main id="main-content">
+      <main id="main-content" className={mainClassName}>
         <Suspense fallback={<PageFallback />}>
           <SubdomainRoutes />
         </Suspense>
       </main>
 
-      <footer className="footer">
-        <span className="footer__border" aria-hidden="true" />
-        <div className="footer__container">
-          <div className="footer__meta">
-            <p className="footer__copyright">
-              © {new Date().getFullYear()} <a href="https://www.nottinghamwestpcn.co.uk/" target="_blank" rel="noopener noreferrer">Nottingham West Primary Care Network</a> - MyMedInfo
-            </p>
-            <p className="footer__version" title={`Commit ${__APP_COMMIT_HASH__}`}>
-              <span className="footer__beta">Beta</span>
-              <span>GitHub ref {gitRefLabel}</span>
-              <span className="footer__build-stamp">{buildLabel}</span>
-            </p>
+      {!useEmbeddedPortalShell && (
+        <footer className="footer">
+          <span className="footer__border" aria-hidden="true" />
+          <div className="footer__container">
+            <div className="footer__meta">
+              <p className="footer__copyright">
+                © {new Date().getFullYear()} <a href="https://www.nottinghamwestpcn.co.uk/" target="_blank" rel="noopener noreferrer">Nottingham West Primary Care Network</a> - MyMedInfo
+              </p>
+              <p className="footer__version" title={`Commit ${__APP_COMMIT_HASH__}`}>
+                <span className="footer__beta">Beta</span>
+                <span>GitHub ref {gitRefLabel}</span>
+                <span className="footer__build-stamp">{buildLabel}</span>
+              </p>
+            </div>
+            <div className="footer__links">
+              <a href="/legal">Legal &amp; Compliance</a>
+            </div>
           </div>
-          <div className="footer__links">
-            <a href="/legal">Legal &amp; Compliance</a>
-          </div>
-        </div>
-      </footer>
+        </footer>
+      )}
 
       <ClinicianDemo show={showClinicianDemo} />
     </div>

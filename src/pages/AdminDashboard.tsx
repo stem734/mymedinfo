@@ -2,7 +2,26 @@ import React, { useMemo, useState, useEffect } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { CheckCircle, XCircle, Trash2, RefreshCw, Plus, X, Edit2, ChevronDown, ChevronRight } from 'lucide-react';
+import {
+  Activity,
+  BookOpen,
+  Building2,
+  CheckCircle,
+  ChevronDown,
+  ChevronRight,
+  Edit2,
+  FlaskConical,
+  LayoutDashboard,
+  LogOut,
+  Plus,
+  RefreshCw,
+  Settings,
+  ShieldCheck,
+  Trash2,
+  Users,
+  X,
+  XCircle,
+} from 'lucide-react';
 import ConfirmDialog from '../components/ConfirmDialog';
 import PracticeUserManagement from '../components/PracticeUserManagement';
 import { useToast } from '../components/toastContext';
@@ -114,18 +133,24 @@ const PRACTICE_FUNCTIONS: Array<{
   { key: 'ltc_enabled', label: 'Long term conditions', isEnabled: (practice) => practice.ltc_enabled === true },
 ];
 
-type AdminTab = 'practices' | 'practiceUsers' | 'admins' | 'library' | 'setup' | 'audit' | 'demo';
+type AdminTab = 'overview' | 'practices' | 'practiceUsers' | 'admins' | 'library' | 'setup' | 'audit' | 'demo';
+
+type AdminTabMeta = {
+  id: AdminTab;
+  label: string;
+  icon: React.ReactNode;
+};
 
 const parseAdminTabFromSearch = (search: string): AdminTab | null => {
   const value = new URLSearchParams(search).get('tab');
-  return value === 'practices' || value === 'practiceUsers' || value === 'admins' || value === 'library' || value === 'setup' || value === 'audit' || value === 'demo'
+  return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'admins' || value === 'library' || value === 'setup' || value === 'audit' || value === 'demo'
     ? value
     : null;
 };
 
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromSearch(window.location.search) || 'practices');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromSearch(window.location.search) || 'overview');
   const [practices, setPractices] = useState<Practice[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [loginAudit, setLoginAudit] = useState<LoginAuditEntry[]>([]);
@@ -180,6 +205,26 @@ const AdminDashboard: React.FC = () => {
   } | null>(null);
   const toast = useToast();
   const navigate = useNavigate();
+
+  const adminTabs: AdminTabMeta[] = [
+    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" /> },
+    { id: 'practices', label: 'Practices', icon: <Building2 size={16} aria-hidden="true" /> },
+    { id: 'practiceUsers', label: 'Users', icon: <Users size={16} aria-hidden="true" /> },
+    { id: 'admins', label: 'Administrators', icon: <ShieldCheck size={16} aria-hidden="true" /> },
+    { id: 'library', label: 'Pathway Library', icon: <BookOpen size={16} aria-hidden="true" /> },
+    { id: 'setup', label: 'Setup', icon: <Settings size={16} aria-hidden="true" /> },
+    { id: 'audit', label: 'User Audit', icon: <Activity size={16} aria-hidden="true" /> },
+    { id: 'demo', label: 'Demo Access', icon: <FlaskConical size={16} aria-hidden="true" /> },
+  ];
+
+  const setAdminTab = (tab: AdminTab) => {
+    setActiveTab(tab);
+  };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate(resolvePath('/admin'));
+  };
 
   useEffect(() => {
     const requestedTab = parseAdminTabFromSearch(location.search);
@@ -747,6 +792,19 @@ const AdminDashboard: React.FC = () => {
 
   if (!authenticated) return null;
 
+  const activePracticeCount = practices.filter((practice) => practice.is_active).length;
+  const enabledServiceCount = practices.reduce(
+    (total, practice) => total + PRACTICE_FUNCTIONS.filter((feature) => feature.isEnabled(practice)).length,
+    0,
+  );
+  const filteredPractices = practices.filter((practice) => {
+    const matchesSearch = practiceSearch === '' || [practice.name, practice.ods_code || '', practice.contact_email || ''].some((field) =>
+      field.toLowerCase().includes(practiceSearch.toLowerCase()),
+    );
+    const matchesStatus = practiceStatusFilter === 'all' || (practiceStatusFilter === 'active' ? practice.is_active : !practice.is_active);
+    return matchesSearch && matchesStatus;
+  });
+
   return (
     <>
       {confirmDialog && (
@@ -759,42 +817,106 @@ const AdminDashboard: React.FC = () => {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
-    <div className="dashboard-shell">
-      <div className="dashboard-header">
-        <div className="dashboard-header-copy">
-          <h1>Admin Dashboard</h1>
-          <p>Manage practices, users, administrators, and patient-facing outputs from one place.</p>
+    <div className="admin-portal-shell">
+      <header className="admin-portal-header">
+        <div className="admin-portal-header__top">
+          <a className="admin-portal-header__brand" href="/" aria-label="MyMedInfo home">
+            <img className="admin-portal-header__logo" src="/mymedinfo-mark.svg" alt="" aria-hidden="true" />
+            <span className="admin-portal-header__brand-text">
+              <span className="admin-portal-header__title">MyMedInfo</span>
+              <span className="admin-portal-header__badge">Admin</span>
+            </span>
+          </a>
+          <button type="button" className="admin-portal-logout" onClick={handleSignOut}>
+            <LogOut size={16} aria-hidden="true" />
+            Sign out
+          </button>
         </div>
-      </div>
+        <nav className="admin-portal-nav" aria-label="Admin management areas">
+          {adminTabs.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              className={`admin-portal-nav__item${activeTab === tab.id ? ' admin-portal-nav__item--active' : ''}`}
+              onClick={() => setAdminTab(tab.id)}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </nav>
+      </header>
 
-      <div className="dashboard-tabs">
-        <button className={`dashboard-tab${activeTab === 'practices' ? ' dashboard-tab--active' : ''}`} onClick={() => setActiveTab('practices')}>
-          Practices
-        </button>
-        <button className={`dashboard-tab${activeTab === 'practiceUsers' ? ' dashboard-tab--active' : ''}`} onClick={() => setActiveTab('practiceUsers')}>
-          Users
-        </button>
-        <button className={`dashboard-tab${activeTab === 'admins' ? ' dashboard-tab--active' : ''}`} onClick={() => setActiveTab('admins')}>
-          Administrators
-        </button>
-        <button className={`dashboard-tab${activeTab === 'library' ? ' dashboard-tab--active' : ''}`} onClick={() => setActiveTab('library')}>
-          Pathway Library
-        </button>
-        <button className={`dashboard-tab${activeTab === 'setup' ? ' dashboard-tab--active' : ''}`} onClick={() => setActiveTab('setup')}>
-          Setup
-        </button>
-        <button className={`dashboard-tab${activeTab === 'audit' ? ' dashboard-tab--active' : ''}`} onClick={() => setActiveTab('audit')}>
-          User Audit
-        </button>
-        <button className={`dashboard-tab${activeTab === 'demo' ? ' dashboard-tab--active' : ''}`} onClick={() => setActiveTab('demo')}>
-          Demo Access
-        </button>
-      </div>
+      <div className="admin-portal-content dashboard-shell">
+        <div className="admin-portal-title-row">
+          <div className="dashboard-header-copy">
+            <p className="admin-portal-kicker">Management portal</p>
+            <h1>Admin Dashboard</h1>
+            <p>Manage practices, users, administrators, and patient-facing outputs from one place.</p>
+          </div>
+        </div>
 
       {loadError && (
         <div className="dashboard-banner dashboard-banner--error" style={{ marginBottom: '1rem' }}>
           {loadError}
         </div>
+      )}
+
+      {activeTab === 'overview' && (
+        <section className="admin-overview-grid dashboard-section">
+          <div className="dashboard-panel admin-overview-panel admin-overview-panel--wide">
+            <div className="dashboard-panel-header">
+              <div>
+                <h2 className="dashboard-panel-title">Overview</h2>
+                <p className="dashboard-panel-subtitle">
+                  Aggregate service health for the whole MyMedInfo management portal.
+                </p>
+              </div>
+              <button type="button" onClick={loadDashboardData} className="dashboard-pill-button dashboard-pill-button--muted">
+                <RefreshCw size={16} /> Refresh
+              </button>
+            </div>
+            <div className="admin-portal-stats" aria-label="Admin overview">
+              <div className="admin-portal-stat-card">
+                <span className="admin-portal-stat-card__value">{practices.length}</span>
+                <span className="admin-portal-stat-card__label">Registered practices</span>
+              </div>
+              <div className="admin-portal-stat-card">
+                <span className="admin-portal-stat-card__value">{activePracticeCount}</span>
+                <span className="admin-portal-stat-card__label">Active practices</span>
+              </div>
+              <div className="admin-portal-stat-card">
+                <span className="admin-portal-stat-card__value">{adminUsers.length}</span>
+                <span className="admin-portal-stat-card__label">Administrators</span>
+              </div>
+              <div className="admin-portal-stat-card">
+                <span className="admin-portal-stat-card__value">{enabledServiceCount}</span>
+                <span className="admin-portal-stat-card__label">Enabled services</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="dashboard-panel admin-overview-panel">
+            <h2 className="dashboard-panel-title">Management Areas</h2>
+            <p className="dashboard-panel-subtitle">
+              Use the left panel to move into the operational tools behind these totals.
+            </p>
+            <div className="admin-overview-actions">
+              <button type="button" onClick={() => setAdminTab('practices')} className="dashboard-pill-button dashboard-pill-button--primary">
+                Practices
+              </button>
+              <button type="button" onClick={() => setAdminTab('practiceUsers')} className="dashboard-pill-button dashboard-pill-button--muted">
+                Users
+              </button>
+              <button type="button" onClick={() => setAdminTab('admins')} className="dashboard-pill-button dashboard-pill-button--muted">
+                Administrators
+              </button>
+              <button type="button" onClick={() => setAdminTab('library')} className="dashboard-pill-button dashboard-pill-button--muted">
+                Pathway Library
+              </button>
+            </div>
+          </div>
+        </section>
       )}
 
       {(adminActionMessage || adminActionLink) && (
@@ -817,8 +939,7 @@ const AdminDashboard: React.FC = () => {
               <div className="dashboard-inline-actions" style={{ marginTop: '1rem' }}>
                 <button
                   onClick={() => navigator.clipboard.writeText(adminActionLink)}
-                  className="action-button"
-                  style={{ backgroundColor: '#005eb8' }}
+                  className="action-button admin-action-button--primary"
                 >
                   Copy Link
                 </button>
@@ -827,8 +948,7 @@ const AdminDashboard: React.FC = () => {
                     setAdminActionLink('');
                     setAdminActionMessage('');
                   }}
-                  className="action-button"
-                  style={{ backgroundColor: '#4c6272' }}
+                  className="action-button admin-action-button--secondary"
                 >
                   Clear
                 </button>
@@ -842,8 +962,7 @@ const AdminDashboard: React.FC = () => {
                   setAdminActionLink('');
                   setAdminActionMessage('');
                 }}
-                className="action-button"
-                style={{ backgroundColor: '#4c6272' }}
+                className="action-button admin-action-button--secondary"
               >
                 Clear
               </button>
@@ -914,7 +1033,7 @@ const AdminDashboard: React.FC = () => {
                 placeholder="e.g. admin@nhs.net"
               />
             </div>
-            <button type="submit" className="action-button" style={{ alignSelf: 'flex-start' }}>
+            <button type="submit" className="action-button admin-action-button--primary" style={{ alignSelf: 'flex-start' }}>
               <Plus size={16} /> Add Administrator
             </button>
           </form>
@@ -930,10 +1049,10 @@ const AdminDashboard: React.FC = () => {
           bodyClassName="dashboard-modal__body"
           footer={(
             <>
-              <button type="button" onClick={() => setEditingPractice(null)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+              <button type="button" onClick={() => setEditingPractice(null)} className="action-button admin-action-button--secondary">
                 Cancel
               </button>
-              <button type="submit" form="edit-practice-form" className="action-button" style={{ backgroundColor: 'var(--nhs-green)' }}>
+              <button type="submit" form="edit-practice-form" className="action-button admin-action-button--primary">
                 Save Changes
               </button>
             </>
@@ -1007,10 +1126,10 @@ const AdminDashboard: React.FC = () => {
           bodyClassName="dashboard-modal__body"
           footer={(
             <>
-              <button type="button" onClick={() => setEditingAdmin(null)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+              <button type="button" onClick={() => setEditingAdmin(null)} className="action-button admin-action-button--secondary">
                 Cancel
               </button>
-              <button type="submit" form="edit-admin-form" className="action-button" style={{ backgroundColor: 'var(--nhs-green)' }}>
+              <button type="submit" form="edit-admin-form" className="action-button admin-action-button--primary">
                 Save Changes
               </button>
             </>
@@ -1056,10 +1175,10 @@ const AdminDashboard: React.FC = () => {
           closeOnOverlayClick={false}
           footer={(
             <>
-              <button type="button" onClick={closeLocalResourceForm} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+              <button type="button" onClick={closeLocalResourceForm} className="action-button admin-action-button--secondary">
                 Cancel
               </button>
-              <button type="submit" form="local-resource-form" className="action-button" style={{ backgroundColor: 'var(--nhs-green)' }}>
+              <button type="submit" form="local-resource-form" className="action-button admin-action-button--primary">
                 Save Resource
               </button>
             </>
@@ -1223,7 +1342,7 @@ const AdminDashboard: React.FC = () => {
             <p className="dashboard-panel-subtitle">Manage global administrator access on top of the shared user account model.</p>
           </div>
           {!showAddAdminForm && (
-            <button onClick={() => setShowAddAdminForm(true)} className="action-button" style={{ backgroundColor: '#005eb8' }}>
+            <button onClick={() => setShowAddAdminForm(true)} className="action-button admin-action-button--primary">
               <Plus size={16} /> Add Administrator
             </button>
           )}
@@ -1234,39 +1353,60 @@ const AdminDashboard: React.FC = () => {
         ) : adminUsers.length === 0 ? (
           <p style={{ color: '#4c6272' }}>No administrator accounts found yet.</p>
         ) : (
-          <div className="dashboard-list">
-            {adminUsers.map((adminUser) => (
-              <div
-                key={adminUser.uid}
-                className="dashboard-list-card"
-              >
-                <div className="dashboard-list-main">
-                  <div className="dashboard-list-title">{adminUser.name}</div>
-                  <div className="dashboard-meta">
-                    <span>{adminUser.email}</span>
-                    <span className={`dashboard-badge ${adminUser.is_active ? 'dashboard-badge--green' : 'dashboard-badge--red'}`}>
-                      {adminUser.is_active ? 'ACTIVE' : 'INACTIVE'}
-                    </span>
-                    <span className={`dashboard-badge ${adminUser.role === 'owner' ? 'dashboard-badge--amber' : 'dashboard-badge--blue'}`}>
-                      {adminUser.role.toUpperCase()}
-                    </span>
-                  </div>
-                </div>
-                <div className="dashboard-list-actions">
-                  <button onClick={() => openAdminEditForm(adminUser)} className="dashboard-pill-button dashboard-pill-button--muted">
-                    <Edit2 size={16} /> Edit
-                  </button>
-                  <button onClick={() => resetAdminPassword(adminUser)} className="dashboard-pill-button dashboard-pill-button--primary">
-                    <RefreshCw size={16} /> Reset Password
-                  </button>
-                  {adminUser.role !== 'owner' && (
-                    <button onClick={() => deleteAdmin(adminUser)} className="dashboard-pill-button dashboard-pill-button--danger">
-                      <Trash2 size={16} /> Remove
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table admin-data-table--admins">
+              <colgroup>
+                <col className="admin-data-table__col-admin-user" />
+                <col className="admin-data-table__col-status" />
+                <col className="admin-data-table__col-role" />
+                <col className="admin-data-table__col-actions" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">Administrator</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Role</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {adminUsers.map((adminUser) => (
+                  <tr key={adminUser.uid}>
+                    <td>
+                      <div className="admin-table-identity">
+                        <strong>{adminUser.name}</strong>
+                        <span>{adminUser.email}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`dashboard-badge ${adminUser.is_active ? 'dashboard-badge--green' : 'dashboard-badge--red'}`}>
+                        {adminUser.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`dashboard-badge ${adminUser.role === 'owner' ? 'dashboard-badge--amber' : 'dashboard-badge--blue'}`}>
+                        {adminUser.role}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="admin-table-actions">
+                        <button onClick={() => openAdminEditForm(adminUser)} className="dashboard-pill-button dashboard-pill-button--muted">
+                          <Edit2 size={16} /> Edit
+                        </button>
+                        <button onClick={() => resetAdminPassword(adminUser)} className="dashboard-pill-button dashboard-pill-button--primary">
+                          <RefreshCw size={16} /> Reset Password
+                        </button>
+                        {adminUser.role !== 'owner' && (
+                          <button onClick={() => deleteAdmin(adminUser)} className="dashboard-pill-button dashboard-pill-button--danger">
+                            <Trash2 size={16} /> Remove
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -1282,7 +1422,7 @@ const AdminDashboard: React.FC = () => {
             <p className="dashboard-panel-subtitle">Control which practices can use the service and keep their setup details up to date.</p>
           </div>
           {!showAddForm && (
-            <button onClick={() => setShowAddForm(true)} className="action-button" style={{ backgroundColor: '#007f3b' }}>
+            <button onClick={() => setShowAddForm(true)} className="action-button admin-action-button--primary">
               <Plus size={16} /> Add Practice
             </button>
           )}
@@ -1325,129 +1465,142 @@ const AdminDashboard: React.FC = () => {
                 </button>
               </div>
             </div>
-            <div className="dashboard-list">
-              {practices
-                .filter(p => {
-                  const matchesSearch = practiceSearch === '' || [p.name, p.ods_code || '', p.contact_email || ''].some(field =>
-                    field.toLowerCase().includes(practiceSearch.toLowerCase())
-                  );
-                  const matchesStatus = practiceStatusFilter === 'all' || (practiceStatusFilter === 'active' ? p.is_active : !p.is_active);
-                  return matchesSearch && matchesStatus;
-                })
-                .map(practice => (
-              <div
-                key={practice.id}
-                className={`dashboard-list-card dashboard-list-card--practice ${practice.is_active ? 'dashboard-list-card--practice-active' : 'dashboard-list-card--practice-inactive'}`}
-              >
-                {(() => {
-                  const activeFunctions = PRACTICE_FUNCTIONS.filter((feature) => feature.isEnabled(practice));
-                  const isExpanded = Boolean(expandedPracticeCards[practice.id]);
+            {filteredPractices.length === 0 ? (
+              <p style={{ color: '#4c6272' }}>No practices match the current filters.</p>
+            ) : (
+              <div className="admin-data-table-wrap">
+                <table className="admin-data-table admin-data-table--practices">
+                  <colgroup>
+                    <col className="admin-data-table__col-practice-name" />
+                    <col className="admin-data-table__col-status" />
+                    <col className="admin-data-table__col-ods" />
+                    <col className="admin-data-table__col-contact" />
+                    <col className="admin-data-table__col-functions" />
+                    <col className="admin-data-table__col-activity" />
+                    <col className="admin-data-table__col-actions-wide" />
+                  </colgroup>
+                  <thead>
+                    <tr>
+                      <th scope="col">Practice</th>
+                      <th scope="col">Status</th>
+                      <th scope="col">ODS</th>
+                      <th scope="col">Contact</th>
+                      <th scope="col">Functions</th>
+                      <th scope="col">Activity</th>
+                      <th scope="col">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPractices.map((practice) => {
+                      const activeFunctions = PRACTICE_FUNCTIONS.filter((feature) => feature.isEnabled(practice));
+                      const isExpanded = Boolean(expandedPracticeCards[practice.id]);
 
-                  return (
-                    <>
-                      <div className="dashboard-practice-top">
-                        <div className="dashboard-list-main">
-                          <div
-                            className="dashboard-practice-card-header"
-                            role="button"
-                            tabIndex={0}
-                            aria-expanded={isExpanded}
-                            onClick={() => togglePracticeCard(practice.id)}
-                            onKeyDown={(event) => {
-                              if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                togglePracticeCard(practice.id);
-                              }
-                            }}
-                          >
-                            <div className="dashboard-practice-identity">
-                              <div className="dashboard-practice-heading-row">
-                                <div className="dashboard-list-title dashboard-list-title--practice">{practice.name}</div>
-                                <span className={`dashboard-badge ${practice.is_active ? 'dashboard-badge--green' : 'dashboard-badge--red'}`}>
-                                  {practice.is_active ? <CheckCircle size={16} /> : <XCircle size={16} />}
-                                  {practice.is_active ? 'Active' : 'Inactive'}
-                                </span>
+                      return (
+                        <React.Fragment key={practice.id}>
+                          <tr className={practice.is_active ? 'admin-data-table__row--active' : 'admin-data-table__row--inactive'}>
+                            <td>
+                              <div className="admin-table-identity">
+                                <strong>{practice.name}</strong>
+                                <span>{practice.id}</span>
                               </div>
-                              <div className="dashboard-meta dashboard-meta--practice">
-                                {practice.ods_code && <span>ODS: {practice.ods_code}</span>}
-                                {practice.contact_email && <span>{practice.contact_email}</span>}
+                            </td>
+                            <td>
+                              <span className={`dashboard-badge ${practice.is_active ? 'dashboard-badge--green' : 'dashboard-badge--red'}`}>
+                                {practice.is_active ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                                {practice.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </td>
+                            <td>{practice.ods_code || <span className="admin-table-muted">Not set</span>}</td>
+                            <td>{practice.contact_email || <span className="admin-table-muted">Not set</span>}</td>
+                            <td>
+                              <div className="admin-table-stack">
+                                <strong>{activeFunctions.length}</strong>
+                                <span>{activeFunctions.length === 1 ? 'function enabled' : 'functions enabled'}</span>
                               </div>
-                            </div>
-                            <div className="dashboard-list-actions dashboard-list-actions--practice-primary">
-                              <button
-                                onClick={(event) => {
-                                  event.stopPropagation();
-                                  togglePracticeCard(practice.id);
-                                }}
-                                className="dashboard-pill-button dashboard-pill-button--muted"
-                                aria-expanded={isExpanded}
-                              >
-                                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                                {isExpanded ? 'Hide details' : 'Expand details'}
-                              </button>
-                              <button onClick={(event) => { event.stopPropagation(); openEditForm(practice); }} className="dashboard-pill-button dashboard-pill-button--primary">
-                                <Edit2 size={14} /> Edit
-                              </button>
-                              {practice.is_active ? (
-                                <button onClick={(event) => { event.stopPropagation(); toggleActive(practice); }} className="dashboard-pill-button dashboard-pill-button--danger">
-                                  <XCircle size={14} /> Deactivate
+                            </td>
+                            <td>
+                              <div className="admin-table-stack">
+                                <span>{practice.link_visit_count ?? 0} uses</span>
+                                <span>{practice.last_accessed ? new Date(practice.last_accessed).toLocaleDateString('en-GB') : 'No visits yet'}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div className="admin-table-actions admin-table-actions--wide">
+                                <button
+                                  onClick={() => togglePracticeCard(practice.id)}
+                                  className="dashboard-pill-button dashboard-pill-button--muted"
+                                  aria-expanded={isExpanded}
+                                >
+                                  {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                  {isExpanded ? 'Hide details' : 'Details'}
                                 </button>
-                              ) : (
-                                <button onClick={(event) => { event.stopPropagation(); toggleActive(practice); }} className="dashboard-pill-button dashboard-pill-button--success">
-                                  <CheckCircle size={14} /> Activate
+                                <button onClick={() => openEditForm(practice)} className="dashboard-pill-button dashboard-pill-button--primary">
+                                  <Edit2 size={14} /> Edit
                                 </button>
-                              )}
-                              <button onClick={(event) => { event.stopPropagation(); resetPracticeCounters(practice); }} className="dashboard-pill-button dashboard-pill-button--muted">
-                                <RefreshCw size={14} /> Reset
-                              </button>
-                              <button onClick={(event) => { event.stopPropagation(); deletePractice(practice); }} className="dashboard-pill-button dashboard-pill-button--muted">
-                                <Trash2 size={16} /> Delete
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {isExpanded && (
-                        <>
-                          <div className="dashboard-practice-stats">
-                            <div className="dashboard-practice-stat">
-                              <span className="dashboard-practice-stat-label">Uses</span>
-                              <strong>{practice.link_visit_count ?? 0}</strong>
-                            </div>
-                            <div className="dashboard-practice-stat">
-                              <span className="dashboard-practice-stat-label">Satisfaction</span>
-                              <strong>{getPracticeSatisfaction(practice)}</strong>
-                            </div>
-                            <div className="dashboard-practice-stat">
-                              <span className="dashboard-practice-stat-label">Last active</span>
-                              <strong>{practice.last_accessed ? new Date(practice.last_accessed).toLocaleDateString() || 'N/A' : 'No visits yet'}</strong>
-                            </div>
-                          </div>
-                          <div className="dashboard-practice-feature-panel dashboard-practice-feature-panel--full">
-                            <div className="dashboard-practice-feature-title">Active functions</div>
-                            {activeFunctions.length > 0 ? (
-                              <div className="dashboard-practice-feature-list">
-                                {activeFunctions.map((feature) => (
-                                  <div key={feature.key} className="dashboard-practice-feature-item is-enabled">
-                                    <span className="dashboard-practice-feature-icon is-enabled">
-                                      <CheckCircle size={14} />
-                                    </span>
-                                    <span>{feature.label}</span>
+                                {practice.is_active ? (
+                                  <button onClick={() => toggleActive(practice)} className="dashboard-pill-button dashboard-pill-button--danger">
+                                    <XCircle size={14} /> Deactivate
+                                  </button>
+                                ) : (
+                                  <button onClick={() => toggleActive(practice)} className="dashboard-pill-button dashboard-pill-button--success">
+                                    <CheckCircle size={14} /> Activate
+                                  </button>
+                                )}
+                                <button onClick={() => resetPracticeCounters(practice)} className="dashboard-pill-button dashboard-pill-button--muted">
+                                  <RefreshCw size={14} /> Reset
+                                </button>
+                                <button onClick={() => deletePractice(practice)} className="dashboard-pill-button dashboard-pill-button--muted">
+                                  <Trash2 size={16} /> Delete
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                          {isExpanded && (
+                            <tr className="admin-data-table__detail-row">
+                              <td colSpan={7}>
+                                <div className="dashboard-practice-detail-grid">
+                                  <div className="dashboard-practice-stats">
+                                    <div className="dashboard-practice-stat">
+                                      <span className="dashboard-practice-stat-label">Uses</span>
+                                      <strong>{practice.link_visit_count ?? 0}</strong>
+                                    </div>
+                                    <div className="dashboard-practice-stat">
+                                      <span className="dashboard-practice-stat-label">Satisfaction</span>
+                                      <strong>{getPracticeSatisfaction(practice)}</strong>
+                                    </div>
+                                    <div className="dashboard-practice-stat">
+                                      <span className="dashboard-practice-stat-label">Last active</span>
+                                      <strong>{practice.last_accessed ? new Date(practice.last_accessed).toLocaleDateString('en-GB') : 'No visits yet'}</strong>
+                                    </div>
                                   </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <p className="dashboard-practice-feature-empty">No functions enabled for this practice yet.</p>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </>
-                  );
-                })()}
+                                  <div className="dashboard-practice-feature-panel dashboard-practice-feature-panel--full">
+                                    <div className="dashboard-practice-feature-title">Active functions</div>
+                                    {activeFunctions.length > 0 ? (
+                                      <div className="dashboard-practice-feature-list">
+                                        {activeFunctions.map((feature) => (
+                                          <div key={feature.key} className="dashboard-practice-feature-item is-enabled">
+                                            <span className="dashboard-practice-feature-icon is-enabled">
+                                              <CheckCircle size={14} />
+                                            </span>
+                                            <span>{feature.label}</span>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    ) : (
+                                      <p className="dashboard-practice-feature-empty">No functions enabled for this practice yet.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-            ))}
-          </div>
+            )}
         </>
         )}
       </div>
@@ -1479,7 +1632,7 @@ const AdminDashboard: React.FC = () => {
             <h2 className="dashboard-panel-title">Local Resource Library</h2>
             <p className="dashboard-panel-subtitle">Maintain reusable local support links that can be applied to cards across every service.</p>
           </div>
-          <button onClick={() => openLocalResourceForm()} className="action-button" style={{ backgroundColor: '#007f3b' }}>
+          <button onClick={() => openLocalResourceForm()} className="action-button admin-action-button--primary">
             <Plus size={16} /> Add Resource
           </button>
         </div>
@@ -1500,7 +1653,7 @@ const AdminDashboard: React.FC = () => {
               style={{ width: '100%', padding: '0.75rem 0.9rem', border: '2px solid #d8dde0', borderRadius: '8px', fontSize: '0.95rem' }}
             />
           </div>
-          <button onClick={loadLocalResources} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+          <button onClick={loadLocalResources} className="action-button admin-action-button--secondary">
             <RefreshCw size={16} /> Refresh
           </button>
         </div>
@@ -1510,34 +1663,68 @@ const AdminDashboard: React.FC = () => {
         ) : filteredLocalResources.length === 0 ? (
           <p style={{ color: '#4c6272' }}>No local resources found yet.</p>
         ) : (
-          <div className="dashboard-list">
-            {filteredLocalResources.map((resource) => (
-            <div key={resource.id} className="dashboard-list-card">
-              <div className="dashboard-list-main">
-                <div className="dashboard-list-title">{resource.title}</div>
-                <div className="dashboard-meta">
-                  {resource.category && <span>{resource.category}</span>}
-                  <span className={`dashboard-badge ${resource.is_active ? 'dashboard-badge--green' : 'dashboard-badge--red'}`}>
-                    {resource.is_active ? 'ACTIVE' : 'INACTIVE'}
-                  </span>
-                  {resource.website && <span>{resource.website}</span>}
-                  {resource.phone && <span>{resource.phone}</span>}
-                  {resource.email && <span>{resource.email}</span>}
-                  {resource.city && <span>{resource.city}</span>}
-                  {resource.county_area && <span>{resource.county_area}</span>}
-                </div>
-                {resource.description && <p style={{ margin: '0.45rem 0 0', color: '#4c6272' }}>{resource.description}</p>}
-              </div>
-              <div className="dashboard-list-actions">
-                <button onClick={() => openLocalResourceForm(resource)} className="dashboard-pill-button dashboard-pill-button--primary">
-                  <Edit2 size={16} /> Edit
-                </button>
-                <button onClick={() => removeLocalResource(resource)} className="dashboard-pill-button dashboard-pill-button--danger">
-                  <Trash2 size={16} /> Remove
-                </button>
-              </div>
-            </div>
-            ))}
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table admin-data-table--resources">
+              <colgroup>
+                <col className="admin-data-table__col-resource-title" />
+                <col className="admin-data-table__col-status" />
+                <col className="admin-data-table__col-category" />
+                <col className="admin-data-table__col-contact" />
+                <col className="admin-data-table__col-link" />
+                <col className="admin-data-table__col-actions" />
+              </colgroup>
+              <thead>
+                <tr>
+                  <th scope="col">Resource</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Category</th>
+                  <th scope="col">Contact / Location</th>
+                  <th scope="col">Website</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredLocalResources.map((resource) => (
+                  <tr key={resource.id}>
+                    <td>
+                      <div className="admin-table-identity">
+                        <strong>{resource.title}</strong>
+                        {resource.description && <span>{resource.description}</span>}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`dashboard-badge ${resource.is_active ? 'dashboard-badge--green' : 'dashboard-badge--red'}`}>
+                        {resource.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>{resource.category || <span className="admin-table-muted">Uncategorised</span>}</td>
+                    <td>
+                      <div className="admin-table-stack">
+                        {resource.phone && <span>{resource.phone}</span>}
+                        {resource.email && <span>{resource.email}</span>}
+                        {(resource.city || resource.county_area) && (
+                          <span>{[resource.city, resource.county_area].filter(Boolean).join(', ')}</span>
+                        )}
+                        {!resource.phone && !resource.email && !resource.city && !resource.county_area && (
+                          <span className="admin-table-muted">Not set</span>
+                        )}
+                      </div>
+                    </td>
+                    <td>{resource.website || <span className="admin-table-muted">Not set</span>}</td>
+                    <td>
+                      <div className="admin-table-actions">
+                        <button onClick={() => openLocalResourceForm(resource)} className="dashboard-pill-button dashboard-pill-button--primary">
+                          <Edit2 size={16} /> Edit
+                        </button>
+                        <button onClick={() => removeLocalResource(resource)} className="dashboard-pill-button dashboard-pill-button--danger">
+                          <Trash2 size={16} /> Remove
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -1552,7 +1739,7 @@ const AdminDashboard: React.FC = () => {
               </h2>
               <p className="dashboard-panel-subtitle">Successful sign-ins grouped by user so repeated logins stay tidy.</p>
             </div>
-            <button onClick={loadLoginAudit} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+            <button onClick={loadLoginAudit} className="action-button admin-action-button--secondary">
               <RefreshCw size={16} /> Refresh Logins
             </button>
           </div>
@@ -1562,63 +1749,97 @@ const AdminDashboard: React.FC = () => {
           ) : groupedLoginAudit.length === 0 ? (
             <p style={{ color: '#4c6272' }}>No successful sign-ins recorded yet.</p>
           ) : (
-            <div className="dashboard-list" style={{ marginBottom: '1rem' }}>
-              {groupedLoginAudit.map((group) => {
-                const isExpanded = Boolean(expandedLoginAudit[group.key]);
+            <div className="admin-data-table-wrap" style={{ marginBottom: '1rem' }}>
+              <table className="admin-data-table admin-data-table--audit">
+                <colgroup>
+                  <col className="admin-data-table__col-audit-user" />
+                  <col className="admin-data-table__col-actor" />
+                  <col className="admin-data-table__col-portal" />
+                  <col className="admin-data-table__col-logins" />
+                  <col className="admin-data-table__col-latest" />
+                  <col className="admin-data-table__col-ip" />
+                  <col className="admin-data-table__col-browser" />
+                  <col className="admin-data-table__col-actions" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th scope="col">User</th>
+                    <th scope="col">Type</th>
+                    <th scope="col">Portal</th>
+                    <th scope="col">Logins</th>
+                    <th scope="col">Latest Sign-in</th>
+                    <th scope="col">Latest IP</th>
+                    <th scope="col">Latest Browser</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {groupedLoginAudit.map((group) => {
+                    const isExpanded = Boolean(expandedLoginAudit[group.key]);
 
-                return (
-                  <div key={group.key} className="dashboard-list-card">
-                    <div className="dashboard-list-main">
-                      <div className="dashboard-panel-header" style={{ gap: '1rem', alignItems: 'flex-start' }}>
-                        <div>
-                          <div className="dashboard-list-title">{group.actorName}</div>
-                          <div className="dashboard-meta">
-                            <span>{group.email}</span>
-                            <span className={`dashboard-badge ${group.actorType === 'admin' ? 'dashboard-badge--blue' : 'dashboard-badge--green'}`}>
-                              {group.actorType.toUpperCase()}
-                            </span>
-                            <span className="dashboard-badge dashboard-badge--amber">{group.portal.toUpperCase()} PORTAL</span>
-                            {group.adminRole && (
-                              <span className="dashboard-badge dashboard-badge--muted">{group.adminRole.toUpperCase()}</span>
-                            )}
-                            <span>{group.entries.length} login{group.entries.length === 1 ? '' : 's'}</span>
-                            <span>Last: {new Date(group.latestCreatedAtMs).toLocaleString('en-GB')}</span>
-                          </div>
-                          <div className="dashboard-meta" style={{ marginTop: '0.35rem' }}>
-                            <span>Latest IP: {group.latestIpAddress || 'Unavailable'}</span>
-                            <span title={group.latestUserAgent}>Latest browser: {group.latestUserAgent ? group.latestUserAgent.slice(0, 90) : 'Unavailable'}</span>
-                          </div>
-                        </div>
-                        <button
-                          onClick={() => toggleLoginAuditGroup(group.key)}
-                          className="dashboard-pill-button dashboard-pill-button--muted"
-                          style={{ flexShrink: 0 }}
-                        >
-                          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-                          {isExpanded ? 'Hide history' : 'View history'}
-                        </button>
-                      </div>
-
-                      {isExpanded && (
-                        <div className="dashboard-audit-history">
-                          {group.entries.map((entry, index) => (
-                            <div key={entry.id} className="dashboard-audit-history-row">
-                              <div className="dashboard-meta" style={{ margin: 0 }}>
-                                <span>{index === 0 ? 'Latest login' : `Previous login ${index}`}</span>
-                                <span>{new Date(entry.createdAtMs).toLocaleString('en-GB')}</span>
-                                <span>IP: {entry.ipAddress || 'Unavailable'}</span>
-                              </div>
-                              <div className="dashboard-meta" style={{ marginTop: '0.25rem' }}>
-                                <span title={entry.userAgent}>Browser: {entry.userAgent || 'Unavailable'}</span>
-                              </div>
+                    return (
+                      <React.Fragment key={group.key}>
+                        <tr>
+                          <td>
+                            <div className="admin-table-identity">
+                              <strong>{group.actorName}</strong>
+                              <span>{group.email}</span>
+                              {group.adminRole && <span className="admin-table-muted">{group.adminRole}</span>}
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                          </td>
+                          <td>
+                            <span className={`dashboard-badge ${group.actorType === 'admin' ? 'dashboard-badge--blue' : 'dashboard-badge--green'}`}>
+                              {group.actorType}
+                            </span>
+                          </td>
+                          <td>
+                            <span className="dashboard-badge dashboard-badge--amber">{group.portal}</span>
+                          </td>
+                          <td>{group.entries.length}</td>
+                          <td>{new Date(group.latestCreatedAtMs).toLocaleString('en-GB')}</td>
+                          <td>{group.latestIpAddress || <span className="admin-table-muted">Unavailable</span>}</td>
+                          <td>
+                            <span title={group.latestUserAgent}>
+                              {group.latestUserAgent ? group.latestUserAgent.slice(0, 90) : 'Unavailable'}
+                            </span>
+                          </td>
+                          <td>
+                            <div className="admin-table-actions">
+                              <button
+                                onClick={() => toggleLoginAuditGroup(group.key)}
+                                className="dashboard-pill-button dashboard-pill-button--muted"
+                              >
+                                {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                                {isExpanded ? 'Hide history' : 'History'}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                        {isExpanded && (
+                          <tr className="admin-data-table__detail-row">
+                            <td colSpan={8}>
+                              <div className="dashboard-audit-history">
+                                {group.entries.map((entry, index) => (
+                                  <div key={entry.id} className="dashboard-audit-history-row">
+                                    <div className="dashboard-meta" style={{ margin: 0 }}>
+                                      <span>{index === 0 ? 'Latest login' : `Previous login ${index}`}</span>
+                                      <span>{new Date(entry.createdAtMs).toLocaleString('en-GB')}</span>
+                                      <span>IP: {entry.ipAddress || 'Unavailable'}</span>
+                                    </div>
+                                    <div className="dashboard-meta" style={{ marginTop: '0.25rem' }}>
+                                      <span title={entry.userAgent}>Browser: {entry.userAgent || 'Unavailable'}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
@@ -1637,42 +1858,38 @@ const AdminDashboard: React.FC = () => {
           <div className="dashboard-inline-actions dashboard-inline-actions--wrap">
             <button
               onClick={() => navigate(buildDemoPatientUrlForType('medication'))}
-              className="action-button"
-              style={{ backgroundColor: '#005eb8' }}
+              className="action-button admin-action-button--primary"
             >
               Medication
             </button>
             <button
               onClick={() => navigate(buildDemoPatientUrlForType('healthcheck'))}
-              className="action-button"
-              style={{ backgroundColor: '#4c6272' }}
+              className="action-button admin-action-button--secondary"
             >
               Health Check
             </button>
             <button
               onClick={() => navigate(buildDemoPatientUrlForType('screening'))}
-              className="action-button"
-              style={{ backgroundColor: '#007f3b' }}
+              className="action-button admin-action-button--primary"
             >
               Screening
             </button>
             <button
               onClick={() => navigate(buildDemoPatientUrlForType('immunisation'))}
-              className="action-button"
-              style={{ backgroundColor: '#7a3db8' }}
+              className="action-button admin-action-button--secondary"
             >
               Immunisation
             </button>
             <button
               onClick={() => navigate(buildDemoPatientUrlForType('ltc'))}
-              className="action-button"
-              style={{ backgroundColor: '#212b32' }}
+              className="action-button admin-action-button--secondary"
             >
               Long Term Condition
             </button>
           </div>
         </div>
       )}
+      </div>
     </div>
     </>
   );
