@@ -85,7 +85,8 @@ type CustomCardDraft = {
   contentReviewDate: string;
 };
 
-type DashboardDomain = 'overview' | 'medication' | PracticeTemplateBuilderType;
+type ServiceDomain = 'medication' | PracticeTemplateBuilderType;
+type DashboardDomain = 'overview' | ServiceDomain;
 type EditablePatientTemplate = ScreeningTemplate | ImmunisationTemplate | LongTermConditionTemplate;
 
 type PracticeTemplateDraft = {
@@ -111,7 +112,7 @@ type DisclaimerRequest = {
 
 const EMPTY_TREND_LINK = { title: '', url: '' };
 
-const DASHBOARD_DOMAINS: Array<{ id: DashboardDomain; label: string }> = [
+const DASHBOARD_DOMAINS: Array<{ id: ServiceDomain; label: string }> = [
   { id: 'medication', label: 'Medication cards' },
   { id: 'healthcheck', label: 'Health checks' },
   { id: 'screening', label: 'Screening' },
@@ -119,7 +120,7 @@ const DASHBOARD_DOMAINS: Array<{ id: DashboardDomain; label: string }> = [
   { id: 'ltc', label: 'Long term conditions' },
 ];
 
-const DOMAIN_ICONS: Record<DashboardDomain, React.ReactNode> = {
+const DOMAIN_ICONS: Record<ServiceDomain, React.ReactNode> = {
   medication: <Pill size={15} aria-hidden="true" />,
   healthcheck: <HeartPulse size={15} aria-hidden="true" />,
   screening: <Search size={15} aria-hidden="true" />,
@@ -186,7 +187,7 @@ const PRACTICE_MEMBERSHIP_SELECT_WITH_FEATURES = `
   )
 `;
 
-const domainFeatureEnabled = (practice: PracticeSummary, domain: DashboardDomain) =>
+const domainFeatureEnabled = (practice: PracticeSummary, domain: ServiceDomain) =>
   domain === 'medication' ? practice.medication_enabled !== false : practice[DOMAIN_FEATURE_KEY[domain]] === true;
 
 const isMissingColumnError = (error: unknown) => {
