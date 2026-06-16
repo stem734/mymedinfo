@@ -853,6 +853,14 @@ const AdminDashboard: React.FC = () => {
           })}
 
           <span className="admin-portal-nav__section-label">Content</span>
+          <button
+            type="button"
+            className="admin-portal-nav__item"
+            onClick={() => navigate(resolvePath('/admin/card-builder'))}
+          >
+            <Edit2 size={16} aria-hidden="true" />
+            <span>Card Builder</span>
+          </button>
           {(['library'] as AdminTab[]).map((id) => {
             const tab = adminTabs.find((t) => t.id === id)!;
             return (
@@ -1690,9 +1698,14 @@ const AdminDashboard: React.FC = () => {
             <h2 className="dashboard-panel-title">Local Resource Library</h2>
             <p className="dashboard-panel-subtitle">Maintain reusable local support links that can be applied to cards across every service.</p>
           </div>
-          <button onClick={() => openLocalResourceForm()} className="action-button admin-action-button--primary">
-            <Plus size={16} /> Add Resource
-          </button>
+          <div className="dashboard-inline-actions">
+            <button onClick={() => navigate(resolvePath('/admin/card-builder'))} className="action-button admin-action-button--secondary">
+              <Edit2 size={16} /> Open Card Builder
+            </button>
+            <button onClick={() => openLocalResourceForm()} className="action-button admin-action-button--primary">
+              <Plus size={16} /> Add Resource
+            </button>
+          </div>
         </div>
 
         {localResourceError && (
