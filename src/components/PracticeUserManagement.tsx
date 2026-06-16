@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Edit2, Mail, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import { Edit2, Mail, Plus, RefreshCw, Trash2, KeyRound } from 'lucide-react';
 import { supabase } from '../supabase';
 import ConfirmDialog from './ConfirmDialog';
 import Modal from './Modal';
@@ -54,29 +54,6 @@ const normalisePractice = (
   return practice ?? null;
 };
 
-const getUserAccountType = (appUser: AppUserSummary) => {
-  if (appUser.global_role && appUser.memberships.length > 0) {
-    return {
-      label: 'GLOBAL ADMIN + PRACTICE USER',
-      toneClassName: 'dashboard-badge--amber',
-      helperText: 'Global administrator access is managed separately from practice access.',
-    };
-  }
-
-  if (appUser.global_role) {
-    return {
-      label: 'GLOBAL ADMIN ONLY',
-      toneClassName: 'dashboard-badge--amber',
-      helperText: 'This account has global access but no practice memberships.',
-    };
-  }
-
-  return {
-    label: 'PRACTICE USER',
-    toneClassName: 'dashboard-badge--blue',
-    helperText: '',
-  };
-};
 
 const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practices }) => {
   const [users, setUsers] = useState<AppUserSummary[]>([]);
@@ -501,18 +478,20 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       )}
 
       {(actionMessage || actionLink) && (
-        <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
-          <h2 className="dashboard-panel-title">User Action</h2>
-          {actionMessage && <p className="dashboard-panel-subtitle" style={{ marginBottom: '1rem' }}>{actionMessage}</p>}
+        <div className="dashboard-panel dashboard-section">
+          <div className="dashboard-panel-header">
+            <div>
+              <h2 className="dashboard-panel-title">User Action</h2>
+              {actionMessage && <p className="dashboard-panel-subtitle">{actionMessage}</p>}
+            </div>
+            {actionLink && (
+              <button onClick={() => navigator.clipboard.writeText(actionLink)} className="admin-action-btn admin-action-btn--edit">
+                <Mail size={14} /> Copy Link
+              </button>
+            )}
+          </div>
           {actionLink && (
-            <>
-              <textarea readOnly value={actionLink} rows={4} style={{ width: '100%', resize: 'vertical' }} className="dashboard-field" />
-              <div className="dashboard-inline-actions" style={{ marginTop: '1rem' }}>
-                <button onClick={() => navigator.clipboard.writeText(actionLink)} className="action-button admin-action-button--primary">
-                  <Mail size={16} /> Copy Link
-                </button>
-              </div>
-            </>
+            <div className="admin-code-block" style={{ marginTop: 12 }}>{actionLink}</div>
           )}
         </div>
       )}
@@ -561,13 +540,13 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
             <h2 className="dashboard-panel-title">Users ({users.length})</h2>
             <p className="dashboard-panel-subtitle">Manage practice access here. Global administrator access is shown clearly and should be managed from the Administrators tab.</p>
           </div>
-          <div className="dashboard-inline-actions">
-            <button onClick={() => void loadUsers()} className="action-button admin-action-button--secondary">
-              <RefreshCw size={16} /> Refresh
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button onClick={() => void loadUsers()} className="admin-action-btn admin-action-btn--icon" title="Refresh">
+              <RefreshCw size={15} />
             </button>
             {!showAddForm && !editingUser && (
-              <button onClick={openAddForm} className="action-button admin-action-button--primary">
-                <Plus size={16} /> Add User
+              <button onClick={openAddForm} className="admin-action-btn admin-action-btn--edit">
+                <Plus size={14} /> Add User
               </button>
             )}
           </div>
@@ -578,102 +557,75 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         ) : users.length === 0 ? (
           <p style={{ color: '#4c6272' }}>No users found yet.</p>
         ) : (
-          <div className="practice-user-management__table-wrap">
-            <table className="practice-user-management__table">
-              <colgroup>
-                <col className="practice-user-management__col-user" />
-                <col className="practice-user-management__col-status" />
-                <col className="practice-user-management__col-access" />
-                <col className="practice-user-management__col-role" />
-                <col className="practice-user-management__col-practices" />
-                <col className="practice-user-management__col-actions" />
-              </colgroup>
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table" style={{ minWidth: 760, tableLayout: 'auto' }}>
               <thead>
                 <tr>
                   <th scope="col">User</th>
                   <th scope="col">Status</th>
-                  <th scope="col">Access Type</th>
                   <th scope="col">Global Role</th>
                   <th scope="col">Practice Access</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((appUser) => {
-                  const accountType = getUserAccountType(appUser);
-
-                  return (
-                    <tr key={appUser.uid}>
-                      <td>
-                        <div className="practice-user-management__identity">
-                          <strong>{appUser.name || appUser.email}</strong>
-                          <span>{appUser.email}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`dashboard-badge ${appUser.is_active ? 'dashboard-badge--green' : 'dashboard-badge--red'}`}>
-                          {appUser.is_active ? 'Active' : 'Inactive'}
+                {users.map((appUser) => (
+                  <tr key={appUser.uid}>
+                    <td>
+                      <div className="admin-table-identity">
+                        <strong>{appUser.name || appUser.email}</strong>
+                        {appUser.name && <span className="admin-table-identity__email">{appUser.email}</span>}
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`admin-status-dot ${appUser.is_active ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
+                        <span className="admin-status-dot__circle" aria-hidden="true" />
+                        {appUser.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                    </td>
+                    <td>
+                      {appUser.global_role ? (
+                        <span className={`admin-role-badge admin-role-badge--${appUser.global_role}`}>
+                          {appUser.global_role === 'owner' ? 'Owner' : 'Admin'}
                         </span>
-                      </td>
-                      <td>
-                        <div className="practice-user-management__access-type">
-                          <span className={`dashboard-badge ${accountType.toneClassName}`}>
-                            {accountType.label}
-                          </span>
-                          {accountType.helperText && (
-                            <span className="practice-user-management__helper">
-                              {accountType.helperText}
+                      ) : (
+                        <span className="admin-table-muted">—</span>
+                      )}
+                    </td>
+                    <td>
+                      {appUser.memberships.length > 0 ? (
+                        <div className="admin-service-pills">
+                          {appUser.memberships.map((membership) => (
+                            <span
+                              key={membership.id}
+                              className={`admin-service-pill ${membership.practice.is_active ? 'admin-service-pill--on' : 'admin-service-pill--off'}`}
+                              title={membership.is_default ? 'Default practice' : undefined}
+                            >
+                              {membership.practice.name}{membership.is_default ? ' ★' : ''}
                             </span>
-                          )}
+                          ))}
                         </div>
-                      </td>
-                      <td>
-                        {appUser.global_role ? (
-                          <span className={`dashboard-badge ${appUser.global_role === 'owner' ? 'dashboard-badge--amber' : 'dashboard-badge--blue'}`}>
-                            {appUser.global_role}
-                          </span>
-                        ) : (
-                          <span className="practice-user-management__empty-value">None</span>
+                      ) : (
+                        <span className="admin-table-muted">No access assigned</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="admin-table-actions">
+                        <button onClick={() => openEditForm(appUser)} className="admin-action-btn admin-action-btn--edit">
+                          <Edit2 size={14} /> Edit
+                        </button>
+                        <button onClick={() => void sendPasswordReset(appUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
+                          <KeyRound size={15} />
+                        </button>
+                        {!appUser.global_role && (
+                          <button onClick={() => deleteUser(appUser)} className="admin-action-btn admin-action-btn--icon" title="Delete user">
+                            <Trash2 size={15} />
+                          </button>
                         )}
-                      </td>
-                      <td>
-                        <div className="practice-user-management__practice-cell">
-                          <span className="practice-user-management__practice-count">
-                            {appUser.memberships.length} practice{appUser.memberships.length === 1 ? '' : 's'}
-                          </span>
-                          {appUser.memberships.length > 0 ? (
-                            <div className="dashboard-chip-row">
-                              {appUser.memberships.map((membership) => (
-                                <span key={membership.id} className={`dashboard-chip${membership.is_default ? ' dashboard-chip--active' : ''}`}>
-                                  {membership.practice.name}{membership.is_default ? ' (Default)' : ''}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
-                            <span className="practice-user-management__empty-value">
-                              No practice access assigned
-                            </span>
-                          )}
-                        </div>
-                      </td>
-                      <td>
-                        <div className="practice-user-management__actions">
-                          <button onClick={() => openEditForm(appUser)} className="dashboard-pill-button dashboard-pill-button--primary">
-                            <Edit2 size={14} /> Edit
-                          </button>
-                          <button onClick={() => void sendPasswordReset(appUser)} className="dashboard-pill-button">
-                            <Mail size={14} /> Reset Password
-                          </button>
-                          {!appUser.global_role && (
-                            <button onClick={() => deleteUser(appUser)} className="dashboard-pill-button dashboard-pill-button--danger">
-                              <Trash2 size={14} /> Delete
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>

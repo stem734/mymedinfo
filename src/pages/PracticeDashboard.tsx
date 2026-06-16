@@ -3,13 +3,20 @@ import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import {
+  Activity,
   CheckCircle,
   Edit2,
   Eye,
   FlaskConical,
+  HeartPulse,
+  LayoutDashboard,
+  LogOut,
+  Pill,
   Plus,
   Save,
+  Search,
   Star,
+  Syringe,
   Trash2,
 } from 'lucide-react';
 import type { MedContent } from '../medicationData';
@@ -78,7 +85,7 @@ type CustomCardDraft = {
   contentReviewDate: string;
 };
 
-type DashboardDomain = 'medication' | PracticeTemplateBuilderType;
+type DashboardDomain = 'overview' | 'medication' | PracticeTemplateBuilderType;
 type EditablePatientTemplate = ScreeningTemplate | ImmunisationTemplate | LongTermConditionTemplate;
 
 type PracticeTemplateDraft = {
@@ -111,6 +118,14 @@ const DASHBOARD_DOMAINS: Array<{ id: DashboardDomain; label: string }> = [
   { id: 'immunisation', label: 'Immunisations' },
   { id: 'ltc', label: 'Long term conditions' },
 ];
+
+const DOMAIN_ICONS: Record<DashboardDomain, React.ReactNode> = {
+  medication: <Pill size={15} aria-hidden="true" />,
+  healthcheck: <HeartPulse size={15} aria-hidden="true" />,
+  screening: <Search size={15} aria-hidden="true" />,
+  immunisation: <Syringe size={15} aria-hidden="true" />,
+  ltc: <Activity size={15} aria-hidden="true" />,
+};
 
 const NON_MEDICATION_DOMAIN_LABELS: Record<PracticeTemplateBuilderType, string> = {
   healthcheck: 'Health checks',
@@ -296,7 +311,10 @@ const PracticeDashboard: React.FC = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [librarySearch, setLibrarySearch] = useState('');
-  const [activeDomain, setActiveDomain] = useState<DashboardDomain>('medication');
+  const [activeDomain, setActiveDomain] = useState<DashboardDomain>('overview');
+  const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
   const deferredSearch = useDeferredValue(librarySearch);
   const [previewMed, setPreviewMed] = useState<MedContent | null>(null);
   const [draft, setDraft] = useState<CustomCardDraft | null>(null);
@@ -321,6 +339,34 @@ const PracticeDashboard: React.FC = () => {
   const navigate = useNavigate();
   const isMountedRef = useRef(true);
   const hasLoadedMembershipsRef = useRef(false);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate(resolvePath('/practice'));
+  };
+
+  const requestServiceActivation = async (service: string, practiceName: string) => {
+    if (!selectedPracticeId || pendingRequests.has(service)) return;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { error } = await supabase.from('service_activation_requests').insert({
+        practice_id: selectedPracticeId,
+        practice_name: practiceName,
+        requested_by_uid: user.id,
+        requested_by_email: user.email ?? currentUserEmail,
+        service,
+        status: 'pending',
+      });
+      if (!error) {
+        setPendingRequests((prev) => new Set([...prev, service]));
+        setSuccessMessage(`Activation request sent for ${service}. Your administrator will review it shortly.`);
+        setTimeout(() => setSuccessMessage(''), 5000);
+      }
+    } catch {
+      // silently ignore — non-critical
+    }
+  };
 
   const loadMemberships = useCallback(async () => {
     if (!isMountedRef.current) return;
@@ -416,6 +462,21 @@ const PracticeDashboard: React.FC = () => {
     }
   }, [navigate]);
 
+  const loadPendingRequests = useCallback(async (practiceId: string) => {
+    try {
+      const { data } = await supabase
+        .from('service_activation_requests')
+        .select('service')
+        .eq('practice_id', practiceId)
+        .eq('status', 'pending');
+      if (data && isMountedRef.current) {
+        setPendingRequests(new Set(data.map((row: { service: string }) => row.service)));
+      }
+    } catch {
+      // Non-blocking — service requests table may not be deployed yet
+    }
+  }, []);
+
   const loadPracticeCards = useCallback(async (practiceId: string) => {
     if (!isMountedRef.current) return;
     setLoadingCards(true);
@@ -481,9 +542,23 @@ const PracticeDashboard: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    isMountedRef.current = true;
+
     const hydrate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
+        setCurrentUserEmail(session.user.email ?? '');
+
+        // Check if this user also has admin access
+        const { data: userRow } = await supabase
+          .from('users')
+          .select('global_role')
+          .eq('uid', session.user.id)
+          .maybeSingle();
+        if (userRow?.global_role === 'owner' || userRow?.global_role === 'admin') {
+          setIsAdmin(true);
+        }
+
         await loadMemberships();
       } else {
         navigate(resolvePath('/practice'));
@@ -523,7 +598,8 @@ const PracticeDashboard: React.FC = () => {
     safeSessionStorageSet(PRACTICE_SELECTION_STORAGE_KEY, selectedPracticeId);
     void loadPracticeCards(selectedPracticeId);
     void loadPracticeTemplates(selectedPracticeId);
-  }, [loadPracticeCards, loadPracticeTemplates, selectedPracticeId]);
+    void loadPendingRequests(selectedPracticeId);
+  }, [loadPracticeCards, loadPendingRequests, loadPracticeTemplates, selectedPracticeId]);
 
   const selectedMembership = useMemo(
     () => memberships.find((membership) => membership.practice_id === selectedPracticeId) || null,
@@ -621,7 +697,7 @@ const PracticeDashboard: React.FC = () => {
     return globalRowsByDomain;
   }, [globalTemplateRows]);
 
-  const activeTemplateDomain = activeDomain === 'medication' ? null : activeDomain;
+  const activeTemplateDomain = (activeDomain === 'overview' || activeDomain === 'medication') ? null : activeDomain;
   const selectedDomainTemplates = activeTemplateDomain ? nonMedicationTemplates[activeTemplateDomain] : [];
 
   const serviceSummaries = useMemo(() => {
@@ -645,11 +721,11 @@ const PracticeDashboard: React.FC = () => {
     });
   }, [allMedications.length, customCount, nonMedicationTemplates, practiceTemplateRows, selectedPractice]);
 
-  const activeServiceCount = serviceSummaries.filter((service) => service.isActive).length;
   const activeServiceSummaries = serviceSummaries.filter((service) => service.isActive);
 
   useEffect(() => {
     if (!selectedPractice || serviceSummaries.length === 0) return;
+    if (activeDomain === 'overview') return;
     if (serviceSummaries.some((service) => service.id === activeDomain && service.isActive)) return;
 
     const firstActiveService = serviceSummaries.find((service) => service.isActive);
@@ -1026,8 +1102,7 @@ const PracticeDashboard: React.FC = () => {
     );
   } else {
     bodyContent = (
-      <div className="dashboard-shell">
-
+      <>
       {confirmDialog && (
         <ConfirmDialog
           title={confirmDialog.title}
@@ -1050,74 +1125,44 @@ const PracticeDashboard: React.FC = () => {
         />
       )}
 
-      <div className="dashboard-header">
-        <div className="dashboard-org-header">
-          <img className="dashboard-org-header__logo" src="/nhs-wordmark-blue.jpg" alt="NHS" />
-          <div className="dashboard-org-header__text">
-            <h1>{selectedPractice.name}</h1>
-            <p>Medication cards and shared patient information for this practice.</p>
-          </div>
-        </div>
-      </div>
-
-      {memberships.length > 1 && (
-        <section className="dashboard-section">
-          <div className="dashboard-panel" style={{ borderLeft: '4px solid #005eb8' }}>
-            <div className="dashboard-panel-header">
-              <div>
-                <h2 className="dashboard-panel-title">Switch Editing Practice</h2>
-                <p className="dashboard-panel-subtitle">
-                  The selected practice below controls which drug cards, statistics, and disclaimers you are editing right now.
-                </p>
-              </div>
+      <div className="practice-portal-shell">
+        {/* Sidebar */}
+        <div className="practice-portal-sidebar">
+          <div className="practice-portal-sidebar__brand">
+            <div className="practice-portal-sidebar__mark" aria-hidden="true">
+              <img src="/mymedinfo-mark.svg" alt="" style={{ width: 20, height: 20, filter: 'brightness(0) invert(1)' }} />
             </div>
-            <div className="dashboard-field" style={{ maxWidth: '420px' }}>
-              <label>Editing Practice</label>
-              <select value={selectedPracticeId} onChange={(event) => setSelectedPracticeId(event.target.value)}>
-                {memberships.map((membership) => (
-                  <option key={membership.practice_id} value={membership.practice_id}>
-                    {membership.practice.name}{membership.practice.is_active ? '' : ' (Inactive)'}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </section>
-      )}
-
-      {!selectedPractice.is_active && (
-        <div className="dashboard-banner dashboard-banner--info" style={{ marginBottom: '1rem' }}>
-          This practice is currently inactive. You can still review and prepare medication cards, but patient links will not validate until the practice is activated by an administrator.
-        </div>
-      )}
-
-      {error && (
-        <div className="dashboard-banner dashboard-banner--error" style={{ marginBottom: '1rem' }}>
-          {error}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="dashboard-banner dashboard-banner--success" style={{ marginBottom: '1rem' }}>
-          <CheckCircle size={18} /> {successMessage}
-        </div>
-      )}
-
-      <section className="dashboard-section">
-        <div className="dashboard-panel" style={{ borderLeft: '4px solid #005eb8' }}>
-          <div className="dashboard-panel-header">
             <div>
-              <h2 className="dashboard-panel-title">Active Services</h2>
-              <p className="dashboard-panel-subtitle">
-                {activeServiceCount} of {serviceSummaries.length} patient information services are active for this practice.
-              </p>
+              <div className="practice-portal-sidebar__brand-name">MyMedInfo</div>
+              <span className="practice-portal-sidebar__brand-badge">Practice Portal</span>
             </div>
           </div>
 
-          <div className="dashboard-service-grid">
+          <div className="practice-portal-sidebar__body">
+            <div className="practice-portal-sidebar__practice-box">
+              <div className="practice-portal-sidebar__practice-label">Current Practice</div>
+              <div className="practice-portal-sidebar__practice-name">{selectedPractice.name}</div>
+            </div>
+
+            <button
+              type="button"
+              className={['practice-portal-nav-item', activeDomain === 'overview' ? 'practice-portal-nav-item--active' : ''].filter(Boolean).join(' ')}
+              onClick={() => { setActiveDomain('overview'); setDraft(null); setTemplateDraft(null); }}
+            >
+              <LayoutDashboard size={15} aria-hidden="true" />
+              <span>Overview</span>
+            </button>
+
+            <span className="practice-portal-sidebar__section-label">Services</span>
             {serviceSummaries.map((service) => (
               <button
                 key={service.id}
+                type="button"
+                className={[
+                  'practice-portal-nav-item',
+                  activeDomain === service.id && service.isActive ? 'practice-portal-nav-item--active' : '',
+                  !service.isActive ? 'practice-portal-nav-item--disabled' : '',
+                ].filter(Boolean).join(' ')}
                 onClick={() => {
                   if (service.isActive) {
                     setActiveDomain(service.id);
@@ -1125,114 +1170,197 @@ const PracticeDashboard: React.FC = () => {
                     setTemplateDraft(null);
                   }
                 }}
-                className={`dashboard-service-card${activeDomain === service.id && service.isActive ? ' dashboard-service-card--active' : ''}${!service.isActive ? ' dashboard-service-card--inactive' : ''}`}
                 disabled={!service.isActive}
-                style={{ cursor: service.isActive ? 'pointer' : 'default' }}
+                title={!service.isActive ? `${service.label} not enabled for this practice` : undefined}
               >
-                <span className={`dashboard-badge ${service.isActive ? 'dashboard-badge--green' : 'dashboard-badge--muted'}`}>
-                  {service.isActive ? 'ACTIVE' : 'NOT ACTIVE'}
-                </span>
-                <strong>{service.label}</strong>
-                <span>
-                  {service.practiceVersionCount} practice version{service.practiceVersionCount === 1 ? '' : 's'} / {service.totalTemplateCount} template{service.totalTemplateCount === 1 ? '' : 's'}
-                </span>
+                {DOMAIN_ICONS[service.id]}
+                <span style={{ flex: 1 }}>{service.label}</span>
+                {!service.isActive && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); void requestServiceActivation(service.id, selectedPractice.name); }}
+                    title={pendingRequests.has(service.id) ? 'Request already sent' : 'Request activation from admin'}
+                    style={{
+                      background: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 4,
+                      color: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)',
+                      fontSize: 10,
+                      fontWeight: 700,
+                      padding: '2px 6px',
+                      cursor: pendingRequests.has(service.id) ? 'default' : 'pointer',
+                      lineHeight: 1.4,
+                      flexShrink: 0,
+                    }}
+                    disabled={pendingRequests.has(service.id)}
+                  >
+                    {pendingRequests.has(service.id) ? 'Requested' : 'Request'}
+                  </button>
+                )}
               </button>
             ))}
           </div>
 
-          {activeServiceSummaries.length > 0 ? (
-            <div className="dashboard-tabs" role="tablist" aria-label="Card domains" style={{ marginTop: '1rem', marginBottom: 0 }}>
-              {activeServiceSummaries.map((service) => (
-                <button
-                  key={`${service.id}-tab`}
-                  type="button"
-                  role="tab"
-                  aria-selected={activeDomain === service.id}
-                  onClick={() => {
-                    setActiveDomain(service.id);
-                    setDraft(null);
-                    setTemplateDraft(null);
-                  }}
-                  className={`dashboard-tab${activeDomain === service.id ? ' dashboard-tab--active' : ''}`}
+          <div className="practice-portal-sidebar__bottom">
+            {memberships.length > 1 && (
+              <div style={{ padding: '6px 10px 8px', marginBottom: '4px' }}>
+                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4, letterSpacing: '0.06em' }}>Switch practice</div>
+                <select
+                  value={selectedPracticeId}
+                  onChange={(e) => setSelectedPracticeId(e.target.value)}
+                  style={{ width: '100%', fontSize: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, color: '#cbd5e1', padding: '4px 6px', fontFamily: 'inherit' }}
                 >
-                  {service.label}
-                </button>
-              ))}
+                  {memberships.map((m) => (
+                    <option key={m.practice_id} value={m.practice_id}>
+                      {m.practice.name}{m.practice.is_active ? '' : ' (Inactive)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                className="practice-portal-nav-item"
+                onClick={() => navigate(resolvePath('/admin/dashboard'))}
+                style={{ width: '100%', color: '#fbbf24' }}
+              >
+                <LayoutDashboard size={15} aria-hidden="true" />
+                <span>Admin portal</span>
+              </button>
+            )}
+            <button type="button" className="practice-portal-nav-item" onClick={() => void handleSignOut()} style={{ width: '100%' }}>
+              <LogOut size={15} aria-hidden="true" />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Right: topbar + content */}
+        <div className="practice-portal-right">
+          <div className="practice-portal-topbar">
+            <div className="practice-portal-topbar__left">
+              <span className="practice-portal-topbar__crumb">{selectedPractice.name}</span>
+              <span className="practice-portal-topbar__sep">/</span>
+              <span className="practice-portal-topbar__title">
+                {activeDomain === 'overview' ? 'Overview' : (DASHBOARD_DOMAINS.find((d) => d.id === activeDomain)?.label ?? 'Dashboard')}
+              </span>
             </div>
+            <div className="practice-portal-topbar__right">
+              <div className="practice-portal-topbar__avatar" aria-hidden="true">
+                {currentUserEmail ? currentUserEmail.slice(0, 2).toUpperCase() : 'P'}
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{currentUserEmail}</span>
+            </div>
+          </div>
+
+          <div className="practice-portal-content">
+          {!selectedPractice.is_active && (
+            <div className="dashboard-banner dashboard-banner--info" style={{ marginBottom: '1rem' }}>
+              This practice is currently inactive. You can still review and prepare medication cards, but patient links will not validate until the practice is activated by an administrator.
+            </div>
+          )}
+
+          {error && (
+            <div className="dashboard-banner dashboard-banner--error" style={{ marginBottom: '1rem' }}>
+              {error}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="dashboard-banner dashboard-banner--success" style={{ marginBottom: '1rem' }}>
+              <CheckCircle size={18} /> {successMessage}
+            </div>
+          )}
+
+      {activeServiceSummaries.length === 0 && (
+        <div className="dashboard-banner dashboard-banner--info" style={{ marginBottom: '1rem' }}>
+          No services are active for this practice yet. Ask a global administrator to activate the required services before accepting or personalising cards.
+        </div>
+      )}
+
+      {activeTemplateDomain && domainFeatureEnabled(selectedPractice, activeTemplateDomain) && (
+        <div className="dashboard-panel dashboard-section">
+          <div className="dashboard-panel-header">
+            <div>
+              <h2 className="dashboard-panel-title">{NON_MEDICATION_DOMAIN_LABELS[activeTemplateDomain]} Templates</h2>
+              <p className="dashboard-panel-subtitle">
+                Create practice-specific versions of shared templates. Patients will see your practice version when one exists.
+              </p>
+            </div>
+            {selectedPractice[DOMAIN_FEATURE_KEY[activeTemplateDomain]] !== true && (
+              <span className="admin-ods-badge" style={{ background: '#fff7ed', color: '#b45309', flexShrink: 0 }}>Not enabled for patients yet</span>
+            )}
+          </div>
+
+          {selectedDomainTemplates.length === 0 ? (
+            <p style={{ color: '#4c6272', fontSize: '0.9rem', marginTop: '0.5rem' }}>
+              No shared templates were found for this domain yet. Add a global template in the admin card builder first.
+            </p>
           ) : (
-            <div className="dashboard-banner dashboard-banner--info" style={{ marginTop: '1rem' }}>
-              No services are active for this practice yet. Ask a global administrator to activate the required services before accepting or personalising cards.
+            <div className="admin-data-table-wrap">
+              <table className="admin-data-table" style={{ minWidth: 580 }}>
+                <thead>
+                  <tr>
+                    <th>Template</th>
+                    <th>Code</th>
+                    <th>Version</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedDomainTemplates.map((template) => {
+                    const customRow = practiceTemplateMap[`${template.builderType}:${template.templateId}`];
+                    const state = customRow ? 'custom' : 'global';
+
+                    return (
+                      <tr key={`${template.builderType}-${template.templateId}`}>
+                        <td style={{ fontWeight: 600, color: '#0f172a' }}>{customRow?.label || template.label}</td>
+                        <td>
+                          <span className="admin-ods-badge">
+                            {getTemplateDisplayCode(template.builderType, template.templateId, customRow?.payload || template.payload)}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <span
+                              className="admin-status-dot"
+                              style={{ background: state === 'custom' ? '#007f3b' : '#005eb8' }}
+                            />
+                            <span className="admin-table-muted">
+                              {state === 'custom' ? 'Practice version' : 'Global template'}
+                            </span>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="admin-table-actions">
+                            <button
+                              type="button"
+                              className="admin-action-btn admin-action-btn--edit"
+                              onClick={() => openTemplateEditor(template.builderType, template.templateId, template.label, template.payload, template.isJsonMode)}
+                            >
+                              <Edit2 size={13} /> {state === 'custom' ? 'Edit version' : 'Create version'}
+                            </button>
+                            {customRow && (
+                              <button
+                                type="button"
+                                className="admin-action-btn admin-action-btn--icon"
+                                title="Clear practice version"
+                                onClick={() => clearTemplateCustomisation(template.builderType, template.templateId, customRow.label || template.label)}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
         </div>
-      </section>
-
-      {activeTemplateDomain && domainFeatureEnabled(selectedPractice, activeTemplateDomain) && (
-        <section className="dashboard-section">
-          <div className="dashboard-panel">
-            <div className="dashboard-toolbar">
-              <div>
-                <h2 className="dashboard-panel-title">{NON_MEDICATION_DOMAIN_LABELS[activeTemplateDomain]} Templates</h2>
-                <p className="dashboard-panel-subtitle">
-                  Create practice-specific versions of shared templates. Patients will see your practice version when one exists.
-                </p>
-              </div>
-              {selectedPractice[DOMAIN_FEATURE_KEY[activeTemplateDomain]] !== true && (
-                <span className="dashboard-badge dashboard-badge--amber">Not enabled for patients yet</span>
-              )}
-            </div>
-
-            {selectedDomainTemplates.length === 0 ? (
-              <p style={{ color: '#4c6272' }}>
-                No shared templates were found for this domain yet. Add a global template in the admin card builder first.
-              </p>
-            ) : (
-              <div className="dashboard-list">
-                {selectedDomainTemplates.map((template) => {
-                  const customRow = practiceTemplateMap[`${template.builderType}:${template.templateId}`];
-                  const state = customRow ? 'custom' : 'global';
-
-                  return (
-                    <div key={`${template.builderType}-${template.templateId}`} className="dashboard-list-card">
-                      <div className="dashboard-list-main">
-                        <div className="dashboard-list-title">{customRow?.label || template.label}</div>
-                        <div className="dashboard-meta">
-                          <span className="dashboard-badge dashboard-badge--blue">
-                            {getTemplateDisplayCode(template.builderType, template.templateId, customRow?.payload || template.payload)}
-                          </span>
-                          <span className={`dashboard-badge ${state === 'custom' ? 'dashboard-badge--green' : 'dashboard-badge--muted'}`}>
-                            {state === 'custom' ? 'USING PRACTICE VERSION' : 'USING GLOBAL TEMPLATE'}
-                          </span>
-                        </div>
-                        <p className="dashboard-list-copy" style={{ marginTop: '0.5rem' }}>
-                          {state === 'custom'
-                            ? 'Patients will see this practice-specific version.'
-                            : 'Patients will see the shared global template until you create a practice version.'}
-                        </p>
-                      </div>
-                      <div className="dashboard-list-actions">
-                        <button
-                          onClick={() => openTemplateEditor(template.builderType, template.templateId, template.label, template.payload, template.isJsonMode)}
-                          className="dashboard-pill-button dashboard-pill-button--success"
-                        >
-                          {state === 'custom' ? <><Edit2 size={14} /> Edit Practice Version</> : <><Plus size={14} /> Create Practice Version</>}
-                        </button>
-                        {customRow && (
-                          <button
-                            onClick={() => clearTemplateCustomisation(template.builderType, template.templateId, customRow.label || template.label)}
-                            className="dashboard-pill-button dashboard-pill-button--danger"
-                          >
-                            <Trash2 size={14} /> Clear Practice Version
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </section>
       )}
 
       {templateDraft && activeTemplateDomain && domainFeatureEnabled(selectedPractice, activeTemplateDomain) && (
@@ -1294,67 +1422,112 @@ const PracticeDashboard: React.FC = () => {
         </Modal>
       )}
 
-      {activeDomain === 'medication' && domainFeatureEnabled(selectedPractice, 'medication') && (
+      {activeDomain === 'overview' && (
         <>
-      <section className="dashboard-section">
-        <div className="dashboard-stat-grid">
-          <div className="dashboard-stat-card">
-            <div className="dashboard-stat-label">Using Global Templates</div>
-            <div className="dashboard-stat-value">{globalCount}</div>
-            <p className="dashboard-stat-copy">Cards currently following the latest shared template.</p>
-          </div>
-          <div className="dashboard-stat-card">
-            <div className="dashboard-stat-label">Practice Versions</div>
-            <div className="dashboard-stat-value">{customCount}</div>
-            <p className="dashboard-stat-copy">Cards currently maintained by your practice.</p>
-          </div>
-          <div className="dashboard-stat-card">
-            <div className="dashboard-stat-label">Unconfigured Codes</div>
-            <div className="dashboard-stat-value">{unconfiguredCount}</div>
-            <p className="dashboard-stat-copy">Patients will see a placeholder for these medication codes.</p>
-          </div>
-          <div className="dashboard-stat-card">
-            <div className="dashboard-stat-label">Patient Link Uses</div>
-            <div className="dashboard-stat-value">{selectedPractice.link_visit_count ?? 0}</div>
-            <p className="dashboard-stat-copy">Successful patient link opens for this practice.</p>
-          </div>
-          <div className="dashboard-stat-card">
-            <div className="dashboard-stat-label">Last Patient Access</div>
-            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#212b32' }}>{lastAccessedLabel}</div>
-            <p className="dashboard-stat-copy">Updated when patients open a valid link.</p>
-          </div>
-          <div className="dashboard-stat-card">
-            <div className="dashboard-stat-label">Patient Rating</div>
-            <div className="dashboard-stat-value" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              {satisfactionLabel}
-              {satisfactionLabel !== 'No ratings' && <Star size={22} fill="#fbc02d" color="#fbc02d" style={{ marginTop: '-2px' }} />}
+          <div className="admin-stat-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+            <div className="admin-stat-card">
+              <div className="admin-stat-card__value">{globalCount}</div>
+              <div className="admin-stat-card__label">Using Global Templates</div>
             </div>
-            <p className="dashboard-stat-copy">Average patient feedback score for this practice.</p>
+            <div className="admin-stat-card">
+              <div className="admin-stat-card__value">{customCount}</div>
+              <div className="admin-stat-card__label">Practice Versions</div>
+            </div>
+            <div className="admin-stat-card">
+              <div className="admin-stat-card__value">{unconfiguredCount}</div>
+              <div className="admin-stat-card__label">Unconfigured Codes</div>
+            </div>
+            <div className="admin-stat-card">
+              <div className="admin-stat-card__value">{selectedPractice.link_visit_count ?? 0}</div>
+              <div className="admin-stat-card__label">Patient Link Uses</div>
+            </div>
+            <div className="admin-stat-card">
+              <div className="admin-stat-card__value" style={{ fontSize: '1.2rem' }}>{lastAccessedLabel}</div>
+              <div className="admin-stat-card__label">Last Patient Access</div>
+            </div>
+            <div className="admin-stat-card">
+              <div className="admin-stat-card__value" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                {satisfactionLabel}
+                {satisfactionLabel !== 'No ratings' && <Star size={20} fill="#fbc02d" color="#fbc02d" />}
+              </div>
+              <div className="admin-stat-card__label">Patient Rating</div>
+            </div>
           </div>
-        </div>
-      </section>
 
-      {legacyReviewCodes.length > 0 && (
-        <section className="dashboard-section">
-          <div className="dashboard-panel" style={{ borderLeft: '4px solid #fa8c16' }}>
+          <div className="dashboard-panel dashboard-section">
             <div className="dashboard-panel-header">
               <div>
-                <h2 className="dashboard-panel-title">Previously Live Cards To Review</h2>
-                <p className="dashboard-panel-subtitle">
-                  These codes were previously selected in the legacy workflow. They are not active until your practice explicitly accepts the global template or saves a custom version.
-                </p>
+                <h2 className="dashboard-panel-title">Services</h2>
+                <p className="dashboard-panel-subtitle">Active services enabled for this practice.</p>
               </div>
             </div>
-            <div className="dashboard-chip-row">
-              {legacyReviewCodes.map((code) => (
-                <span key={code} className="dashboard-chip dashboard-chip--active">
-                  {code}
-                </span>
-              ))}
+            <div className="admin-data-table-wrap">
+              <table className="admin-data-table" style={{ minWidth: 500 }}>
+                <thead>
+                  <tr>
+                    <th>Service</th>
+                    <th>Status</th>
+                    <th>Templates</th>
+                    <th>Practice Versions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {serviceSummaries.map((service) => (
+                    <tr key={service.id}>
+                      <td style={{ fontWeight: 600, color: '#0f172a' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          {DOMAIN_ICONS[service.id]}
+                          {service.label}
+                        </div>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span className={`admin-status-dot admin-status-dot--${service.isActive ? 'active' : 'inactive'}`} />
+                          <span className="admin-table-muted">{service.isActive ? 'Active' : 'Not enabled'}</span>
+                          {!service.isActive && (
+                            <button
+                              type="button"
+                              className="admin-action-btn admin-action-btn--edit"
+                              disabled={pendingRequests.has(service.id)}
+                              onClick={() => void requestServiceActivation(service.id, selectedPractice.name)}
+                              style={{ marginLeft: '0.25rem', opacity: pendingRequests.has(service.id) ? 0.6 : 1 }}
+                            >
+                              {pendingRequests.has(service.id) ? 'Requested' : 'Request activation'}
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                      <td className="admin-table-muted">{service.totalTemplateCount}</td>
+                      <td className="admin-table-muted">{service.practiceVersionCount}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
-        </section>
+
+          {legacyReviewCodes.length > 0 && (
+            <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #fa8c16' }}>
+              <div className="dashboard-panel-header">
+                <div>
+                  <h2 className="dashboard-panel-title">Previously Live Cards To Review</h2>
+                  <p className="dashboard-panel-subtitle">
+                    These codes were previously selected in the legacy workflow. They are not active until your practice explicitly accepts the global template or saves a custom version.
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem' }}>
+                {legacyReviewCodes.map((code) => (
+                  <span key={code} className="admin-ods-badge">{code}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
       )}
+
+      {activeDomain === 'medication' && domainFeatureEnabled(selectedPractice, 'medication') && (
+        <>
 
       {draft && (
         <Modal
@@ -1530,115 +1703,136 @@ const PracticeDashboard: React.FC = () => {
         </Modal>
       )}
 
-      <section className="dashboard-section">
-        <div className="dashboard-panel">
-          <div className="dashboard-toolbar">
-            <div>
-              <h2 className="dashboard-panel-title">Medication Library</h2>
-              <p className="dashboard-panel-subtitle">
-                Each code can be left unconfigured, linked to the shared global template, or maintained as a practice-owned version.
-              </p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', width: 'min(100%, 520px)' }}>
-              <div className="dashboard-search">
-                <input
-                  type="text"
-                  value={librarySearch}
-                  onChange={(event) => setLibrarySearch(event.target.value)}
-                  placeholder="Search by code, title, category, or description"
-                  style={{ width: '100%', padding: '0.75rem 0.9rem', border: '2px solid #d8dde0', borderRadius: '8px', fontSize: '0.95rem' }}
-                />
-              </div>
-              <button
-                onClick={acceptAllGlobalCards}
-                className="action-button"
-                style={{ backgroundColor: '#005eb8', justifyContent: 'center' }}
-                disabled={globalLibraryMedications.length === 0}
-              >
-                <CheckCircle size={16} /> Accept All Global Templates
-              </button>
-              {fallbackOnlyMedicationCount > 0 && (
-                <p style={{ margin: 0, color: '#8a5f00', fontSize: '0.86rem', lineHeight: 1.4 }}>
-                  {fallbackOnlyMedicationCount} medication code{fallbackOnlyMedicationCount === 1 ? '' : 's'} are local fallbacks and need seeding into Supabase before they can be accepted as global templates.
-                </p>
-              )}
-            </div>
+      <div className="dashboard-panel dashboard-section">
+        <div className="dashboard-panel-header">
+          <div>
+            <h2 className="dashboard-panel-title">Medication Library</h2>
+            <p className="dashboard-panel-subtitle">
+              Each code can be left unconfigured, linked to the shared global template, or maintained as a practice-owned version.
+            </p>
           </div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexShrink: 0 }}>
+            <input
+              type="text"
+              value={librarySearch}
+              onChange={(event) => setLibrarySearch(event.target.value)}
+              placeholder="Search medications…"
+              style={{ padding: '0.5rem 0.75rem', border: '1.5px solid #d1d5db', borderRadius: '6px', fontSize: '0.84rem', width: '220px' }}
+            />
+            <button
+              type="button"
+              onClick={acceptAllGlobalCards}
+              className="admin-action-btn admin-action-btn--edit"
+              disabled={globalLibraryMedications.length === 0}
+            >
+              <CheckCircle size={13} /> Accept All Global
+            </button>
+          </div>
+        </div>
+        {fallbackOnlyMedicationCount > 0 && (
+          <p style={{ margin: '0 0 0.75rem', color: '#8a5f00', fontSize: '0.83rem' }}>
+            {fallbackOnlyMedicationCount} medication code{fallbackOnlyMedicationCount === 1 ? '' : 's'} need seeding into Supabase before they can be accepted as global templates.
+          </p>
+        )}
+        {loadingCards ? (
+          <p style={{ color: '#4c6272', fontSize: '0.9rem' }}>Loading medication configuration…</p>
+        ) : (
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table admin-data-table--medications">
+              <thead>
+                <tr>
+                  <th>Medication</th>
+                  <th>Code</th>
+                  <th>Type</th>
+                  <th>Category</th>
+                  <th>Version</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredMedications.map((medication) => {
+                  const practiceCard = practiceCards[medication.code];
+                  const state: 'global' | 'custom' | 'unconfigured' = practiceCard?.source_type ?? 'unconfigured';
+                  const canAcceptGlobalTemplate = medication.source !== 'built-in';
 
-          {loadingCards ? (
-            <p style={{ color: '#4c6272' }}>Loading medication configuration...</p>
-          ) : (
-            <div className="dashboard-list">
-              {filteredMedications.map((medication) => {
-                const practiceCard = practiceCards[medication.code];
-                const state: 'global' | 'custom' | 'unconfigured' = practiceCard?.source_type ?? 'unconfigured';
-                const canAcceptGlobalTemplate = medication.source !== 'built-in';
-
-                return (
-                  <div key={medication.code} className="dashboard-list-card dashboard-list-card--medication">
-                    <div className="dashboard-list-main dashboard-list-main--medication">
-                      <div className="dashboard-list-title">{medication.title}</div>
-                      <div className="dashboard-meta">
-                        <span className="dashboard-badge dashboard-badge--blue">{medication.code}</span>
-                        <span className={`dashboard-badge ${medication.badge === 'NEW' ? 'dashboard-badge--blue' : medication.badge === 'REAUTH' ? 'dashboard-badge--green' : 'dashboard-badge--muted'}`}>
+                  return (
+                    <tr key={medication.code}>
+                      <td style={{ fontWeight: 600, color: '#0f172a' }}>{medication.title}</td>
+                      <td><span className="admin-ods-badge">{medication.code}</span></td>
+                      <td>
+                        <span className="admin-ods-badge" style={{
+                          background: medication.badge === 'NEW' ? '#e8f1ff' : medication.badge === 'REAUTH' ? '#e6f4ea' : '#f1f5f9',
+                          color: medication.badge === 'NEW' ? '#005eb8' : medication.badge === 'REAUTH' ? '#007f3b' : '#475569',
+                        }}>
                           {medication.badge}
                         </span>
-                        <span className="dashboard-badge dashboard-badge--amber">{medication.category}</span>
-                        <span className={`dashboard-badge ${
-                          state === 'custom'
-                            ? 'dashboard-badge--green'
-                            : state === 'global'
-                              ? 'dashboard-badge--blue'
-                              : 'dashboard-badge--muted'
-                        }`}>
-                          {state === 'custom' ? 'USING PRACTICE VERSION' : state === 'global' ? 'USING GLOBAL TEMPLATE' : 'NOT CONFIGURED'}
-                        </span>
-                      </div>
-                      <p className="dashboard-list-copy" style={{ marginTop: '0.5rem' }}>
-                        {state === 'custom'
-                          ? 'Patients will see your practice-specific version for this medication.'
-                          : state === 'global'
-                            ? 'Patients will see the current global template for this medication.'
-                            : 'Patients will see a placeholder until your practice accepts the global template or saves a practice version.'}
-                      </p>
-                    </div>
-                    <div className="dashboard-list-actions dashboard-list-actions--medication">
-                      <button onClick={() => setPreviewMed(buildMedicationPreview(medication, practiceCard))} className="dashboard-pill-button">
-                        <Eye size={14} /> {state === 'custom' ? 'Preview Practice' : 'Preview Global'}
-                      </button>
-
-                      {state !== 'custom' && (
-                        <button
-                          onClick={() => state === 'global' || !canAcceptGlobalTemplate ? undefined : acceptGlobalCard(medication, 'Accept Global Template')}
-                          className="dashboard-pill-button dashboard-pill-button--primary"
-                          disabled={state === 'global' || !canAcceptGlobalTemplate}
-                          title={!canAcceptGlobalTemplate ? 'Seed this medication into Supabase before accepting it as a global template.' : undefined}
-                          style={state === 'global' || !canAcceptGlobalTemplate ? { opacity: 0.75, cursor: 'default' } : undefined}
-                        >
-                          <CheckCircle size={14} /> {state === 'global' ? 'Using Global Template' : canAcceptGlobalTemplate ? 'Accept Global Template' : 'Needs Global Seed'}
-                        </button>
-                      )}
-
-                      <button onClick={() => openCustomEditor(medication)} className="dashboard-pill-button dashboard-pill-button--success">
-                        {state === 'custom' ? <><Edit2 size={14} /> Edit Practice Version</> : <><Plus size={14} /> Create Practice Version</>}
-                      </button>
-
-                      {practiceCard && (
-                        <button onClick={() => clearConfiguredCard(medication)} className="dashboard-pill-button dashboard-pill-button--danger">
-                          <Trash2 size={14} /> Clear Configuration
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </section>
+                      </td>
+                      <td><span className="admin-ods-badge" style={{ background: '#fff7ed', color: '#b45309' }}>{medication.category}</span></td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span
+                            className="admin-status-dot"
+                            style={{ background: state === 'custom' ? '#007f3b' : state === 'global' ? '#005eb8' : '#94a3b8' }}
+                          />
+                          <span className="admin-table-muted">
+                            {state === 'custom' ? 'Practice version' : state === 'global' ? 'Global template' : 'Not configured'}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button
+                            type="button"
+                            className="admin-action-btn admin-action-btn--icon"
+                            title={state === 'custom' ? 'Preview practice version' : 'Preview global template'}
+                            onClick={() => setPreviewMed(buildMedicationPreview(medication, practiceCard))}
+                          >
+                            <Eye size={14} />
+                          </button>
+                          {state !== 'custom' && (
+                            <button
+                              type="button"
+                              className="admin-action-btn admin-action-btn--edit"
+                              disabled={state === 'global' || !canAcceptGlobalTemplate}
+                              title={!canAcceptGlobalTemplate ? 'Seed this medication into Supabase first' : undefined}
+                              onClick={() => state !== 'global' && canAcceptGlobalTemplate && acceptGlobalCard(medication, 'Accept Global Template')}
+                            >
+                              <CheckCircle size={13} /> Accept global
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="admin-action-btn admin-action-btn--edit"
+                            onClick={() => openCustomEditor(medication)}
+                          >
+                            <Edit2 size={13} /> {state === 'custom' ? 'Edit version' : 'Create version'}
+                          </button>
+                          {practiceCard && (
+                            <button
+                              type="button"
+                              className="admin-action-btn admin-action-btn--icon"
+                              title="Clear configuration"
+                              onClick={() => clearConfiguredCard(medication)}
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
         </>
       )}
-    </div>
+          </div>
+        </div>
+      </div>
+      </>
     );
   }
 
