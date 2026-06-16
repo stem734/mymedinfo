@@ -2366,6 +2366,11 @@ p {
   margin: 0 auto;
 }
 
+.admin-portal-shell .dashboard-shell--embedded-builder {
+  max-width: none;
+  width: 100%;
+}
+
 .admin-portal-shell .dashboard-panel {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);

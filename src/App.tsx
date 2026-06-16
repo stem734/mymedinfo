@@ -13,7 +13,6 @@ const AdminDashboard = React.lazy(() => import('./pages/AdminDashboard'));
 const PracticeSignup = React.lazy(() => import('./pages/PracticeSignup'));
 const PracticeLogin = React.lazy(() => import('./pages/PracticeLogin'));
 const PracticeDashboard = React.lazy(() => import('./pages/PracticeDashboard'));
-const CardBuilder = React.lazy(() => import('./pages/CardBuilder'));
 const Landing = React.lazy(() => import('./pages/Landing'));
 const Demo = React.lazy(() => import('./pages/Demo'));
 const ResetPassword = React.lazy(() => import('./pages/ResetPassword'));
@@ -40,8 +39,8 @@ const SubdomainRoutes: React.FC = () => {
       <Routes>
         <Route path="/" element={<AdminLogin />} />
         <Route path="/dashboard" element={<AdminDashboard />} />
-        <Route path="/drug-builder" element={<CardBuilder />} />
-        <Route path="/card-builder" element={<CardBuilder />} />
+        <Route path="/drug-builder" element={<AdminDashboard />} />
+        <Route path="/card-builder" element={<AdminDashboard />} />
         <Route path="/patient" element={<PatientRouter />} />
         <Route path="/reset-password" element={<ResetPassword />} />
       </Routes>
@@ -70,8 +69,8 @@ const SubdomainRoutes: React.FC = () => {
       <Route path="/admin" element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route path="/signup" element={<PracticeSignup />} />
-      <Route path="/admin/drug-builder" element={<CardBuilder />} />
-      <Route path="/admin/card-builder" element={<CardBuilder />} />
+      <Route path="/admin/drug-builder" element={<AdminDashboard />} />
+      <Route path="/admin/card-builder" element={<AdminDashboard />} />
       <Route path="/practice" element={<PracticeLogin />} />
       <Route path="/practice/signup" element={<PracticeSignup />} />
       <Route path="/practice/dashboard" element={<PracticeDashboard />} />
@@ -89,7 +88,8 @@ const AppContent: React.FC = () => {
   const isLandingRoute = location.pathname === '/';
   const isAdminDashboardRoute =
     (subdomain === 'admin' && location.pathname === '/dashboard') ||
-    location.pathname === '/admin/dashboard';
+    (subdomain === 'admin' && ['/card-builder', '/drug-builder'].includes(location.pathname)) ||
+    ['/admin/dashboard', '/admin/card-builder', '/admin/drug-builder'].includes(location.pathname);
   const isPracticeDashboardRoute =
     (subdomain === 'practice' && location.pathname === '/dashboard') ||
     location.pathname === '/practice/dashboard';

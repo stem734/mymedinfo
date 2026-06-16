@@ -42,6 +42,7 @@ import {
   type LocalResourceLink,
 } from '../localResourceLibrary';
 import { buildDemoPatientUrlForType } from '../demoHelpers';
+import CardBuilder from './CardBuilder';
 
 interface Practice {
   id: string;
@@ -135,7 +136,7 @@ const PRACTICE_FUNCTIONS: Array<{
   { key: 'ltc_enabled', label: 'Long term conditions', isEnabled: (practice) => practice.ltc_enabled === true },
 ];
 
-type AdminTab = 'overview' | 'practices' | 'practiceUsers' | 'admins' | 'library' | 'setup' | 'audit' | 'demo';
+type AdminTab = 'overview' | 'practices' | 'practiceUsers' | 'admins' | 'builder' | 'library' | 'setup' | 'audit' | 'demo';
 
 type AdminTabMeta = {
   id: AdminTab;
@@ -143,16 +144,22 @@ type AdminTabMeta = {
   icon: React.ReactNode;
 };
 
+const isAdminBuilderPath = (pathname: string) => ['/admin/card-builder', '/admin/drug-builder', '/card-builder', '/drug-builder'].includes(pathname);
+
 const parseAdminTabFromSearch = (search: string): AdminTab | null => {
   const value = new URLSearchParams(search).get('tab');
-  return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'admins' || value === 'library' || value === 'setup' || value === 'audit' || value === 'demo'
+  return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'admins' || value === 'builder' || value === 'library' || value === 'setup' || value === 'audit' || value === 'demo'
     ? value
     : null;
 };
 
+const parseAdminTabFromLocation = (pathname: string, search: string): AdminTab | null => (
+  isAdminBuilderPath(pathname) ? 'builder' : parseAdminTabFromSearch(search)
+);
+
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
-  const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromSearch(window.location.search) || 'overview');
+  const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromLocation(window.location.pathname, window.location.search) || 'overview');
   const [practices, setPractices] = useState<Practice[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [loginAudit, setLoginAudit] = useState<LoginAuditEntry[]>([]);
@@ -214,6 +221,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'practices', label: 'Practices', icon: <Building2 size={16} aria-hidden="true" /> },
     { id: 'practiceUsers', label: 'Users', icon: <Users size={16} aria-hidden="true" /> },
     { id: 'admins', label: 'Administrators', icon: <ShieldCheck size={16} aria-hidden="true" /> },
+    { id: 'builder', label: 'Card Builder', icon: <Edit2 size={16} aria-hidden="true" /> },
     { id: 'library', label: 'Pathway Library', icon: <BookOpen size={16} aria-hidden="true" /> },
     { id: 'setup', label: 'Setup', icon: <Settings size={16} aria-hidden="true" /> },
     { id: 'audit', label: 'User Audit', icon: <Activity size={16} aria-hidden="true" /> },
@@ -222,6 +230,13 @@ const AdminDashboard: React.FC = () => {
 
   const setAdminTab = (tab: AdminTab) => {
     setActiveTab(tab);
+    if (tab === 'builder') {
+      navigate(resolvePath('/admin/card-builder'));
+      return;
+    }
+    if (isAdminBuilderPath(location.pathname)) {
+      navigate(resolvePath('/admin/dashboard'));
+    }
   };
 
   const handleSignOut = async () => {
@@ -230,10 +245,10 @@ const AdminDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    const requestedTab = parseAdminTabFromSearch(location.search);
+    const requestedTab = parseAdminTabFromLocation(location.pathname, location.search);
     if (!requestedTab) return;
     setActiveTab(requestedTab);
-  }, [location.search]);
+  }, [location.pathname, location.search]);
 
   useEffect(() => {
     if (!authenticated || activeTab !== 'library') return;
@@ -853,15 +868,7 @@ const AdminDashboard: React.FC = () => {
           })}
 
           <span className="admin-portal-nav__section-label">Content</span>
-          <button
-            type="button"
-            className="admin-portal-nav__item"
-            onClick={() => navigate(resolvePath('/admin/card-builder'))}
-          >
-            <Edit2 size={16} aria-hidden="true" />
-            <span>Card Builder</span>
-          </button>
-          {(['library'] as AdminTab[]).map((id) => {
+          {(['builder', 'library'] as AdminTab[]).map((id) => {
             const tab = adminTabs.find((t) => t.id === id)!;
             return (
               <button key={tab.id} type="button"
@@ -1691,6 +1698,10 @@ const AdminDashboard: React.FC = () => {
       </div>
       )}
 
+      {activeTab === 'builder' && (
+        <CardBuilder embedded onBack={() => setAdminTab('overview')} />
+      )}
+
       {activeTab === 'library' && (
       <div className="dashboard-panel dashboard-section">
         <div className="dashboard-panel-header">
@@ -1699,7 +1710,7 @@ const AdminDashboard: React.FC = () => {
             <p className="dashboard-panel-subtitle">Maintain reusable local support links that can be applied to cards across every service.</p>
           </div>
           <div className="dashboard-inline-actions">
-            <button onClick={() => navigate(resolvePath('/admin/card-builder'))} className="action-button admin-action-button--secondary">
+            <button onClick={() => setAdminTab('builder')} className="action-button admin-action-button--secondary">
               <Edit2 size={16} /> Open Card Builder
             </button>
             <button onClick={() => openLocalResourceForm()} className="action-button admin-action-button--primary">

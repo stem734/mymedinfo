@@ -412,7 +412,12 @@ const linkExpiryFieldStyles = {
 
 type ResourcePickerTarget = OutputBuilderType | null;
 
-const CardBuilder: React.FC = () => {
+type CardBuilderProps = {
+  embedded?: boolean;
+  onBack?: () => void;
+};
+
+const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) => {
   const toast = useToast();
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
@@ -501,6 +506,18 @@ const CardBuilder: React.FC = () => {
   const [selectedLocalResourceIds, setSelectedLocalResourceIds] = useState<string[]>([]);
 
   useEffect(() => {
+    const hydrate = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setAuthenticated(true);
+        return;
+      }
+
+      navigate(resolvePath('/admin'));
+    };
+
+    void hydrate();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
         setAuthenticated(true);
@@ -1675,7 +1692,7 @@ const CardBuilder: React.FC = () => {
           onCancel={() => setConfirmDialog(null)}
         />
       )}
-      <div className="dashboard-shell">
+      <div className={embedded ? 'dashboard-shell dashboard-shell--embedded-builder' : 'dashboard-shell'}>
       {patientPreviewUrl && (
         <Modal
           isOpen
@@ -1698,12 +1715,14 @@ const CardBuilder: React.FC = () => {
 
       <div className="dashboard-header">
         <div className="dashboard-header-copy" style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-        <button
-          onClick={() => navigate(resolvePath('/admin/dashboard'))}
-          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#005eb8', display: 'flex' }}
-        >
-          <ArrowLeft size={24} />
-        </button>
+        {!embedded && (
+          <button
+            onClick={() => (onBack ? onBack() : navigate(resolvePath('/admin/dashboard')))}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#005eb8', display: 'flex' }}
+          >
+            <ArrowLeft size={24} />
+          </button>
+        )}
         <div>
           <h1 style={{ fontSize: '1.75rem', margin: 0 }}>Card Builder</h1>
           <p style={{ margin: '0.25rem 0 0' }}>
