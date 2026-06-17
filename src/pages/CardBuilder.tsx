@@ -459,7 +459,6 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
 
   // Search / generate
   const [medName, setMedName] = useState('');
-  const [medType, setMedType] = useState<'NEW' | 'REAUTH'>('NEW');
 
   // Editable fields
   const [title, setTitle] = useState('');
@@ -704,7 +703,6 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     },
   ) => {
     setMedName(getFriendlyMedicationName(medication));
-    setMedType(medication.badge === 'REAUTH' ? 'REAUTH' : 'NEW');
     setTitle(medication.title);
     setDescription(medication.description);
     setBadge(medication.badge === 'REAUTH' ? 'REAUTH' : 'NEW');
@@ -1327,7 +1325,6 @@ const createNewScreeningTemplate = () => {
     setDescription('');
     setBadge('NEW');
     setMedName('');
-    setMedType('NEW');
     setDoKeyInfo(['']);
     setDontKeyInfo(['']);
     setGeneralKeyInfo(['']);
@@ -1493,7 +1490,6 @@ const createNewScreeningTemplate = () => {
 
   const resetForm = () => {
     setMedName('');
-    setMedType('NEW');
     setTitle('');
     setDescription('');
     setBadge('NEW');
