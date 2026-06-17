@@ -1161,6 +1161,25 @@ const PracticeDashboard: React.FC = () => {
             <div className="practice-portal-sidebar__practice-box">
               <div className="practice-portal-sidebar__practice-label">Current Practice</div>
               <div className="practice-portal-sidebar__practice-name">{selectedPractice.name}</div>
+              {memberships.length > 1 && (
+                <div className="practice-portal-sidebar__practice-switch">
+                  <label className="practice-portal-sidebar__practice-switch-label" htmlFor="practice-switcher">
+                    Switch practice
+                  </label>
+                  <select
+                    id="practice-switcher"
+                    className="practice-portal-sidebar__practice-select"
+                    value={selectedPracticeId}
+                    onChange={(e) => setSelectedPracticeId(e.target.value)}
+                  >
+                    {memberships.map((m) => (
+                      <option key={m.practice_id} value={m.practice_id}>
+                        {m.practice.name}{m.practice.is_active ? '' : ' (Inactive)'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <button
@@ -1243,22 +1262,6 @@ const PracticeDashboard: React.FC = () => {
           </div>
 
           <div className="practice-portal-sidebar__bottom">
-            {memberships.length > 1 && (
-              <div style={{ padding: '6px 10px 8px', marginBottom: '4px' }}>
-                <div style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', color: 'rgba(255,255,255,0.3)', marginBottom: 4, letterSpacing: '0.06em' }}>Switch practice</div>
-                <select
-                  value={selectedPracticeId}
-                  onChange={(e) => setSelectedPracticeId(e.target.value)}
-                  style={{ width: '100%', fontSize: 12, background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 5, color: '#cbd5e1', padding: '4px 6px', fontFamily: 'inherit' }}
-                >
-                  {memberships.map((m) => (
-                    <option key={m.practice_id} value={m.practice_id}>
-                      {m.practice.name}{m.practice.is_active ? '' : ' (Inactive)'}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
             {isAdmin && (
               <button
                 type="button"
