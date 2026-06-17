@@ -15,7 +15,7 @@ const Landing: React.FC = () => {
     <div className="portal-landing">
       <div className="portal-landing__brand">
         <div className="portal-landing__logo">MyMed<span>Info</span></div>
-        <p className="portal-landing__tagline">NHS Clinical Decision Support Platform</p>
+        <p className="portal-landing__tagline">NHS Patient Information Portal</p>
         <p className="portal-landing__org">Nottingham West Primary Care Network</p>
       </div>
 

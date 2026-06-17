@@ -118,7 +118,7 @@ const Demo: React.FC = () => {
       </div>
 
       <div className="patient-demo-banner" style={{ marginBottom: '1.5rem' }}>
-        This is dummy information only and should not be used for clinical decisions.
+        This is dummy information for demonstration purposes only.
       </div>
 
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>

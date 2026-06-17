@@ -138,7 +138,7 @@ const TermsOfUse: React.FC = () => (
       <P>MyMedInfo is not:</P>
       <Ul items={[
         'A method of contacting your GP practice',
-        'A diagnostic or clinical decision-making tool',
+        'A medical or clinical advice tool',
         'A record of your medical history',
         'A substitute for your prescription or any official clinical document',
       ]} />
@@ -157,7 +157,7 @@ const TermsOfUse: React.FC = () => (
     </Section>
 
     <Section title="6. Limitation of liability">
-      <P>MyMedInfo and Nottingham West PCN accept no liability for clinical decisions made without consulting your clinical team, losses from temporary unavailability, or inaccuracies arising from changes in clinical guidance after publication. Nothing in these terms limits liability for death or personal injury caused by negligence.</P>
+      <P>MyMedInfo and Nottingham West PCN accept no liability for loss arising from misuse of information provided through this service, losses from temporary unavailability, or inaccuracies arising from changes in clinical guidance after publication. Nothing in these terms limits liability for death or personal injury caused by negligence.</P>
     </Section>
 
     <Section title="7. Governing law">

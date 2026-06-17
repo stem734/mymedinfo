@@ -1,4 +1,5 @@
 import React, { useMemo, useReducer, useState, useEffect } from 'react';
+import { useTableSort } from '../hooks/useTableSort';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -289,14 +290,11 @@ const formatRevisionPreview = (builderType: CardTemplateBuilderType, payload: un
   return variants || JSON.stringify(payload, null, 2);
 };
 
-const createDefaultScreeningState = (): Record<string, ScreeningTemplate> =>
-  Object.fromEntries(Object.entries(SCREENING_TEMPLATES).map(([key, template]) => [key, cloneScreeningTemplate(template)]));
+const createDefaultScreeningState = (): Record<string, ScreeningTemplate> => ({});
 
-const createDefaultImmunisationState = (): Record<string, ImmunisationTemplate> =>
-  Object.fromEntries(Object.entries(IMMUNISATION_TEMPLATES).map(([key, template]) => [key, cloneImmunisationTemplate(template)]));
+const createDefaultImmunisationState = (): Record<string, ImmunisationTemplate> => ({});
 
-const createDefaultLongTermConditionState = (): Record<string, LongTermConditionTemplate> =>
-  Object.fromEntries(Object.entries(LONG_TERM_CONDITION_TEMPLATES).map(([key, template]) => [key, cloneLongTermConditionTemplate(template)]));
+const createDefaultLongTermConditionState = (): Record<string, LongTermConditionTemplate> => ({});
 
 const getDuplicateTemplateId = (baseId: string, existingIds: string[]) => {
   const normalizedBase = `${baseId}_copy`.toLowerCase().replace(/[^a-z0-9_]+/g, '_');
@@ -481,6 +479,11 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   const [editingCode, setEditingCode] = useState('');
   const [requestedCode, setRequestedCode] = useState('');
 
+  const medTable = useTableSort('code');
+  const screeningTable = useTableSort('label');
+  const immunisationTable = useTableSort('label');
+  const ltcTable = useTableSort('label');
+
   // Save state
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -489,13 +492,16 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   const [deletingCode, setDeletingCode] = useState('');
   const [healthCheckBuilderConfigs, setHealthCheckBuilderConfigs] = useState<Record<ClinicalDomainId, Record<string, HealthCheckBuilderVariant>>>(() => createDefaultHealthCheckBuilderState());
   const [screeningTemplates, setScreeningTemplates] = useState<Record<string, ScreeningTemplate>>(() => createDefaultScreeningState());
-  const [screeningType, setScreeningType] = useState('cervical');
+  const [savedScreeningIds, setSavedScreeningIds] = useState<Set<string>>(new Set());
+  const [screeningType, setScreeningType] = useState('');
   const [patientPreviewUrl, setPatientPreviewUrl] = useState<string | null>(null);
   const [patientPreviewFooter, setPatientPreviewFooter] = useState<string>('This is a preview of what patients will see.');
   const [immunisationTemplates, setImmunisationTemplates] = useState<Record<string, ImmunisationTemplate>>(() => createDefaultImmunisationState());
+  const [savedImmunisationIds, setSavedImmunisationIds] = useState<Set<string>>(new Set());
   const [immunisationSelections, setImmunisationSelections] = useState<string[]>(['flu']);
   const [longTermConditionTemplates, setLongTermConditionTemplates] = useState<Record<string, LongTermConditionTemplate>>(() => createDefaultLongTermConditionState());
-  const [selectedLongTermCondition, setSelectedLongTermCondition] = useState('asthma');
+  const [savedLtcIds, setSavedLtcIds] = useState<Set<string>>(new Set());
+  const [selectedLongTermCondition, setSelectedLongTermCondition] = useState('');
   const [templateSaveCompleted, setTemplateSaveCompleted] = useState<Record<Exclude<OutputBuilderType, 'medication'>, boolean>>({
     healthcheck: false,
     screening: false,
@@ -584,34 +590,27 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
           setHealthCheckReviewMeta(reviewNext);
         }
 
+        setSavedScreeningIds(new Set(screeningRows.map((r) => r.template_id)));
         if (screeningRows.length > 0) {
-          setScreeningTemplates((current) => {
-            const next = { ...current };
-            screeningRows.forEach((row) => {
-              next[row.template_id] = cloneScreeningTemplate(hydrateScreeningTemplate(row.payload as ScreeningTemplate));
-            });
-            return next;
-          });
+          setScreeningTemplates(Object.fromEntries(
+            screeningRows.map((row) => [row.template_id, cloneScreeningTemplate(hydrateScreeningTemplate(row.payload as ScreeningTemplate))])
+          ));
+          setScreeningType((prev) => prev || screeningRows[0].template_id);
         }
 
+        setSavedImmunisationIds(new Set(immunisationRows.map((r) => r.template_id)));
         if (immunisationRows.length > 0) {
-          setImmunisationTemplates((current) => {
-            const next = { ...current };
-            immunisationRows.forEach((row) => {
-              next[row.template_id] = cloneImmunisationTemplate(row.payload as ImmunisationTemplate);
-            });
-            return next;
-          });
+          setImmunisationTemplates(Object.fromEntries(
+            immunisationRows.map((row) => [row.template_id, cloneImmunisationTemplate(row.payload as ImmunisationTemplate)])
+          ));
         }
 
+        setSavedLtcIds(new Set(ltcRows.map((r) => r.template_id)));
         if (ltcRows.length > 0) {
-          setLongTermConditionTemplates((current) => {
-            const next = { ...current };
-            ltcRows.forEach((row) => {
-              next[row.template_id] = cloneLongTermConditionTemplate(row.payload as LongTermConditionTemplate);
-            });
-            return next;
-          });
+          setLongTermConditionTemplates(Object.fromEntries(
+            ltcRows.map((row) => [row.template_id, cloneLongTermConditionTemplate(row.payload as LongTermConditionTemplate)])
+          ));
+          setSelectedLongTermCondition((prev) => prev || ltcRows[0].template_id);
         }
       } catch (error) {
         console.error('Failed to load card templates', error);
@@ -745,6 +744,39 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
       requestedCode: '',
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+const createNewScreeningTemplate = () => {
+    const newId = `new_${Date.now()}`;
+    const blank: ScreeningTemplate = cloneScreeningTemplate({
+      id: newId, code: '', label: '', headline: '', explanation: '', guidance: [], nhsLinks: [],
+    });
+    setScreeningTemplates((current) => ({ ...current, [newId]: blank }));
+    setScreeningType(newId);
+    setTemplateSaveCompleted((current) => ({ ...current, screening: false }));
+    setScreeningEditorOpen(true);
+  };
+
+  const createNewImmunisationTemplate = () => {
+    const newId = `new_${Date.now()}`;
+    const blank: ImmunisationTemplate = cloneImmunisationTemplate({
+      id: newId, code: '', label: '', headline: '', explanation: '', guidance: [], nhsLinks: [],
+    });
+    setImmunisationTemplates((current) => ({ ...current, [newId]: blank }));
+    setImmunisationSelections([newId]);
+    setTemplateSaveCompleted((current) => ({ ...current, immunisation: false }));
+    setImmunisationEditorOpen(true);
+  };
+
+  const createNewLongTermConditionTemplate = () => {
+    const newId = `new_${Date.now()}`;
+    const blank = cloneLongTermConditionTemplate({
+      id: newId, code: '', label: '', headline: '', explanation: '', guidance: [], nhsLinks: [],
+    });
+    setLongTermConditionTemplates((current) => ({ ...current, [newId]: blank }));
+    setSelectedLongTermCondition(newId);
+    setTemplateSaveCompleted((current) => ({ ...current, ltc: false }));
+    setLtcEditorOpen(true);
   };
 
   const duplicateScreeningTemplate = (template: ScreeningTemplate) => {
@@ -1291,10 +1323,11 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   };
 
   const startBlankMedicationCard = () => {
-    const trimmedName = medName.trim();
-    setTitle(trimmedName);
+    setTitle('');
     setDescription('');
-    setBadge(medType);
+    setBadge('NEW');
+    setMedName('');
+    setMedType('NEW');
     setDoKeyInfo(['']);
     setDontKeyInfo(['']);
     setGeneralKeyInfo(['']);
@@ -1304,6 +1337,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     setContentReviewDate('');
     setMedLinkExpiryValue(undefined);
     setMedLinkExpiryUnit('months');
+    setEditingCode('');
     setHasContent(true);
     setMedicationEditorOpen(true);
     setRequestedCode('');
@@ -1362,7 +1396,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   ) => {
     setConfirmDialog({
       title: 'Delete Card?',
-      message: `Delete "${label}"? This will remove the saved version. Built-in cards will revert to their defaults; custom cards will be removed entirely. Audit history is retained.`,
+      message: `Delete "${label}"? This will permanently remove the card. Audit history is retained.`,
       confirmLabel: 'Delete',
       isDangerous: true,
       onConfirm: async () => {
@@ -1373,40 +1407,19 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
           if (delError) throw delError;
 
           if (builderType === 'screening') {
-            setScreeningTemplates((current) => {
-              const builtIn = SCREENING_TEMPLATES[templateId as keyof typeof SCREENING_TEMPLATES];
-              if (builtIn) {
-                return { ...current, [templateId]: cloneScreeningTemplate(builtIn) };
-              }
-              const next = { ...current };
-              delete next[templateId];
-              return next;
-            });
+            setSavedScreeningIds((prev) => { const next = new Set(prev); next.delete(templateId); return next; });
+            setScreeningTemplates((current) => { const next = { ...current }; delete next[templateId]; return next; });
             if (screeningType === templateId) {
-              setScreeningType(Object.keys(SCREENING_TEMPLATES)[0] || 'cervical');
+              setScreeningType('');
             }
           } else if (builderType === 'immunisation') {
-            setImmunisationTemplates((current) => {
-              const builtIn = IMMUNISATION_TEMPLATES[templateId as keyof typeof IMMUNISATION_TEMPLATES];
-              if (builtIn) {
-                return { ...current, [templateId]: cloneImmunisationTemplate(builtIn) };
-              }
-              const next = { ...current };
-              delete next[templateId];
-              return next;
-            });
+            setSavedImmunisationIds((prev) => { const next = new Set(prev); next.delete(templateId); return next; });
+            setImmunisationTemplates((current) => { const next = { ...current }; delete next[templateId]; return next; });
           } else if (builderType === 'ltc') {
-            setLongTermConditionTemplates((current) => {
-              const builtIn = LONG_TERM_CONDITION_TEMPLATES[templateId as keyof typeof LONG_TERM_CONDITION_TEMPLATES];
-              if (builtIn) {
-                return { ...current, [templateId]: cloneLongTermConditionTemplate(builtIn) };
-              }
-              const next = { ...current };
-              delete next[templateId];
-              return next;
-            });
+            setSavedLtcIds((prev) => { const next = new Set(prev); next.delete(templateId); return next; });
+            setLongTermConditionTemplates((current) => { const next = { ...current }; delete next[templateId]; return next; });
             if (selectedLongTermCondition === templateId) {
-              setSelectedLongTermCondition(Object.keys(LONG_TERM_CONDITION_TEMPLATES)[0] || 'asthma');
+              setSelectedLongTermCondition('');
             }
           }
           toast.success(`"${label}" deleted.`);
@@ -1601,6 +1614,9 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
       });
       if (error) throw error;
       if (!data?.success) throw new Error('Template save did not complete');
+      if (builderType === 'screening') setSavedScreeningIds((prev) => new Set([...prev, templateId]));
+      else if (builderType === 'immunisation') setSavedImmunisationIds((prev) => new Set([...prev, templateId]));
+      else if (builderType === 'ltc') setSavedLtcIds((prev) => new Set([...prev, templateId]));
       showBuilderNotice(builderType as OutputBuilderType, successMessage);
       toast.success('Saved');
       return true;
@@ -1840,45 +1856,6 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
           {builderNotice.message}
         </div>
       )}
-      <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid #005eb8' }}>
-        <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>
-          1. {editingCode ? `Editing Medication Card ${editingCode}` : 'Medication Card'}
-        </h2>
-        <p style={{ margin: '0 0 1rem', color: '#4c6272', fontSize: '0.95rem' }}>
-          Create or update medication outputs here. Health checks and other patient pathways use the same platform, but their content is currently configured through dedicated route parameters and views.
-        </p>
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-          <input
-            type="text"
-            value={medName}
-            onChange={e => setMedName(e.target.value)}
-                placeholder="Enter medication name (e.g. Metformin, Atorvastatin)"
-            style={{
-              flex: '1 1 200px', padding: '0.75rem', border: '2px solid #d8dde0',
-              borderRadius: '8px', fontSize: '1rem', boxSizing: 'border-box',
-            }}
-            onKeyDown={e => e.key === 'Enter' && startBlankMedicationCard()}
-          />
-          <select
-            value={medType}
-            onChange={e => setMedType(e.target.value as 'NEW' | 'REAUTH')}
-            style={{
-              flex: '1 1 120px', padding: '0.75rem', border: '2px solid #d8dde0', borderRadius: '8px',
-              fontSize: '0.95rem', background: 'white',
-            }}
-          >
-            <option value="NEW">New Prescription</option>
-            <option value="REAUTH">Reauthorisation</option>
-          </select>
-          <button
-            onClick={startBlankMedicationCard}
-            className="action-button"
-            style={{ flex: '1 1 auto', backgroundColor: '#005eb8', justifyContent: 'center' }}
-          >
-            <Plus size={16} /> Start blank card
-          </button>
-        </div>
-      </div>
 
       {/* Step 2: Editor */}
       {hasContent && (
@@ -2111,26 +2088,27 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
             <h2 className="dashboard-panel-title">Medication Catalogue</h2>
             <p className="dashboard-panel-subtitle">{existingMeds.length} card{existingMeds.length !== 1 ? 's' : ''}</p>
           </div>
+          <button onClick={startBlankMedicationCard} className="action-button" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
+            <Plus size={14} /> Create new card
+          </button>
         </div>
         {loadingMeds ? (
           <p style={{ color: '#4c6272' }}>Loading...</p>
         ) : existingMeds.length === 0 ? (
-          <p style={{ color: '#4c6272' }}>No medications yet. Use the search above to create your first one.</p>
+          <p style={{ color: '#4c6272' }}>No medications yet. Create your first one above.</p>
         ) : (
           <div className="admin-data-table-wrap">
             <table className="admin-data-table admin-data-table--medications">
               <thead>
                 <tr>
-                  <th scope="col">Code</th>
-                  <th scope="col">Name</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Review</th>
-                  <th scope="col">Link Expiry</th>
+                  {[['code','Code'],['title','Name'],['badge','Status'],['contentReviewDate','Review'],['linkExpiryValue','Link Expiry']].map(([col, label]) => (
+                    <th key={col} scope="col" {...medTable.thProps(col)}>{label}{medTable.indicator(col)}</th>
+                  ))}
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {existingMeds.map(med => (
+                {medTable.sortRows(existingMeds as unknown as Record<string, unknown>[]).map(med => (med as unknown as MedicationRecord)).map(med => (
                   <tr key={med.code}>
                     <td>
                       <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{med.code}</span>
@@ -2547,7 +2525,12 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
 
       {selectedOutputType === 'screening' && (
         <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid #005eb8' }}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>1. Screening Card Builder</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', margin: 0 }}>1. Screening Card Builder</h2>
+            <button onClick={createNewScreeningTemplate} className="action-button" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
+              <Plus size={14} /> Create new card
+            </button>
+          </div>
           <p style={{ margin: '0 0 1rem', color: '#4c6272', fontSize: '0.95rem' }}>Use rows below to preview, edit, and copy each screening card template.</p>
           {builderNotice?.type === 'screening' && (
             <div style={{ padding: '0.5rem 0.75rem', background: '#eef7ff', color: '#005eb8', borderRadius: '6px', marginBottom: '0.9rem', fontSize: '0.88rem', fontWeight: 600 }}>
@@ -2559,14 +2542,18 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
             <table className="admin-data-table" style={{ tableLayout: 'auto' }}>
               <thead>
                 <tr>
-                  <th scope="col">Code</th>
-                  <th scope="col">Template</th>
+                  {[['code','Code'],['label','Template']].map(([col, label]) => (
+                    <th key={col} scope="col" {...screeningTable.thProps(col)}>{label}{screeningTable.indicator(col)}</th>
+                  ))}
                   <th scope="col">Review</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.values(screeningTemplates).map((template) => {
+                {screeningTable.sortRows(
+                  Object.values(screeningTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
+                ).map((row) => {
+                  const template = row as unknown as ScreeningTemplate;
                   const previewUrl = buildScreeningPreviewUrl(template);
                   return (
                     <tr key={template.id}>
@@ -2584,7 +2571,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                           <button onClick={() => { setScreeningType(template.id); setTemplateSaveCompleted((current) => ({ ...current, screening: false })); setScreeningEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
                           <button onClick={() => duplicateScreeningTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
-                          <button onClick={() => handleDeleteTemplate('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>
+                          {savedScreeningIds.has(template.id) && <button onClick={() => handleDeleteTemplate('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>}
                         </div>
                       </td>
                     </tr>
@@ -2598,7 +2585,12 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
 
       {selectedOutputType === 'immunisation' && (
         <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid #005eb8' }}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>1. Immunisation Card Builder</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', margin: 0 }}>1. Immunisation Card Builder</h2>
+            <button onClick={createNewImmunisationTemplate} className="action-button" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
+              <Plus size={14} /> Create new card
+            </button>
+          </div>
           <p style={{ margin: '0 0 1rem', color: '#4c6272', fontSize: '0.95rem' }}>Use rows below to preview, edit, and copy each immunisation card template.</p>
           {builderNotice?.type === 'immunisation' && (
             <div style={{ padding: '0.5rem 0.75rem', background: '#eef7ff', color: '#005eb8', borderRadius: '6px', marginBottom: '0.9rem', fontSize: '0.88rem', fontWeight: 600 }}>
@@ -2610,14 +2602,18 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
             <table className="admin-data-table" style={{ tableLayout: 'auto' }}>
               <thead>
                 <tr>
-                  <th scope="col">Code</th>
-                  <th scope="col">Template</th>
+                  {[['code','Code'],['label','Template']].map(([col, label]) => (
+                    <th key={col} scope="col" {...immunisationTable.thProps(col)}>{label}{immunisationTable.indicator(col)}</th>
+                  ))}
                   <th scope="col">Review</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.values(immunisationTemplates).map((template) => {
+                {immunisationTable.sortRows(
+                  Object.values(immunisationTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
+                ).map((row) => {
+                  const template = row as unknown as ImmunisationTemplate;
                   const previewUrl = buildImmunisationPreviewUrl(template);
                   return (
                     <tr key={template.id}>
@@ -2635,7 +2631,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                           <button onClick={() => { setImmunisationSelections([template.id]); setTemplateSaveCompleted((current) => ({ ...current, immunisation: false })); setImmunisationEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
                           <button onClick={() => duplicateImmunisationTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
-                          <button onClick={() => handleDeleteTemplate('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>
+                          {savedImmunisationIds.has(template.id) && <button onClick={() => handleDeleteTemplate('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>}
                         </div>
                       </td>
                     </tr>
@@ -2649,7 +2645,12 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
 
       {selectedOutputType === 'ltc' && (
         <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid #005eb8' }}>
-          <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>1. Long Term Conditions Card Builder</h2>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.1rem', margin: 0 }}>1. Long Term Conditions Card Builder</h2>
+            <button onClick={createNewLongTermConditionTemplate} className="action-button" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
+              <Plus size={14} /> Create new card
+            </button>
+          </div>
           <p style={{ margin: '0 0 1rem', color: '#4c6272', fontSize: '0.95rem' }}>Use rows below to preview, edit, and copy each long term condition card template.</p>
 
           {builderNotice?.type === 'ltc' && (
@@ -2661,14 +2662,18 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
             <table className="admin-data-table" style={{ tableLayout: 'auto' }}>
               <thead>
                 <tr>
-                  <th scope="col">Code</th>
-                  <th scope="col">Template</th>
+                  {[['code','Code'],['label','Template']].map(([col, label]) => (
+                    <th key={col} scope="col" {...ltcTable.thProps(col)}>{label}{ltcTable.indicator(col)}</th>
+                  ))}
                   <th scope="col">Review</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {Object.values(longTermConditionTemplates).map((template) => {
+                {ltcTable.sortRows(
+                  Object.values(longTermConditionTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
+                ).map((row) => {
+                  const template = row as unknown as LongTermConditionTemplate;
                   const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'ltc', ltc: template.code || template.id }));
                   return (
                     <tr key={template.id}>
@@ -2686,7 +2691,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                           <button onClick={() => { setSelectedLongTermCondition(template.id); setTemplateSaveCompleted((current) => ({ ...current, ltc: false })); setLtcEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
                           <button onClick={() => duplicateLongTermConditionTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
-                          <button onClick={() => handleDeleteTemplate('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>
+                          {savedLtcIds.has(template.id) && <button onClick={() => handleDeleteTemplate('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>}
                         </div>
                       </td>
                     </tr>

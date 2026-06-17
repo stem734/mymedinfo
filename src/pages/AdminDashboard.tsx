@@ -4,6 +4,7 @@ import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   Activity,
+  Bell,
   BookOpen,
   Building2,
   CheckCircle,
@@ -51,7 +52,7 @@ interface ServiceActivationRequest {
   requested_by_email: string;
   service: string;
   status: 'pending' | 'approved' | 'dismissed';
-  created_at: string;
+  updated_at: string;
 }
 
 interface Practice {
@@ -138,7 +139,7 @@ const PRACTICE_FUNCTIONS: Array<{
   { key: 'ltc_enabled', label: 'Long term conditions', isEnabled: (practice) => practice.ltc_enabled === true },
 ];
 
-type AdminTab = 'overview' | 'practices' | 'practiceUsers' | 'services' | 'library' | 'setup' | 'audit' | 'demo';
+type AdminTab = 'overview' | 'practices' | 'practiceUsers' | 'services' | 'library' | 'setup' | 'activationRequests' | 'audit' | 'demo';
 
 type PlatformConfig = {
   service_medication_enabled: boolean;
@@ -180,7 +181,7 @@ const isAdminBuilderPath = (pathname: string) => ['/admin/card-builder', '/admin
 
 const parseAdminTabFromSearch = (search: string): AdminTab | null => {
   const value = new URLSearchParams(search).get('tab');
-  return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'services' || value === 'library' || value === 'setup' || value === 'audit' || value === 'demo'
+  return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'services' || value === 'library' || value === 'setup' || value === 'activationRequests' || value === 'audit' || value === 'demo'
     ? value
     : null;
 };
@@ -240,6 +241,8 @@ const AdminDashboard: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
+  const pendingRequestCount = serviceRequests.filter(r => r.status === 'pending').length;
+
   const adminTabs: AdminTabMeta[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" /> },
     { id: 'practices', label: 'Practices', icon: <Building2 size={16} aria-hidden="true" /> },
@@ -247,6 +250,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'services', label: 'Services Manager', icon: <LayoutGrid size={16} aria-hidden="true" /> },
     { id: 'library', label: 'Pathway Library', icon: <BookOpen size={16} aria-hidden="true" /> },
     { id: 'setup', label: 'Setup', icon: <Settings size={16} aria-hidden="true" /> },
+    { id: 'activationRequests', label: 'Activation Requests', icon: <Bell size={16} aria-hidden="true" /> },
     { id: 'audit', label: 'User Audit', icon: <Activity size={16} aria-hidden="true" /> },
     { id: 'demo', label: 'Demo Access', icon: <FlaskConical size={16} aria-hidden="true" /> },
   ];
@@ -278,6 +282,11 @@ const AdminDashboard: React.FC = () => {
   useEffect(() => {
     if (!authenticated || activeTab !== 'library') return;
     void loadLocalResources();
+  }, [activeTab, authenticated]);
+
+  useEffect(() => {
+    if (!authenticated || activeTab !== 'activationRequests') return;
+    void loadServiceRequests();
   }, [activeTab, authenticated]);
 
   useEffect(() => {
@@ -392,6 +401,69 @@ const AdminDashboard: React.FC = () => {
       setLocalResources([]);
     } finally {
       setLoadingLocalResources(false);
+    }
+  };
+
+  const loadServiceRequests = async () => {
+    setLoadingServiceRequests(true);
+    try {
+      const { data, error } = await supabase
+        .from('service_activation_requests')
+        .select('*')
+        .order('updated_at', { ascending: false });
+      if (error) throw error;
+      setServiceRequests((data as ServiceActivationRequest[]) || []);
+    } catch (error) {
+      console.error('Error loading service requests:', error);
+      setServiceRequests([]);
+    } finally {
+      setLoadingServiceRequests(false);
+    }
+  };
+
+  const updateServiceRequest = async (requestId: string, newStatus: 'approved' | 'dismissed') => {
+    try {
+      const request = serviceRequests.find(r => r.id === requestId);
+      if (!request) throw new Error('Request not found');
+
+      // Do the meaningful action first: enable the service on the practice.
+      // If this fails we leave the request pending so it can be retried.
+      if (newStatus === 'approved') {
+        const serviceKey = `${request.service}_enabled` as keyof Practice;
+        const updateData = { [serviceKey]: true } as Record<string, boolean>;
+        const { error: practiceError, data: updateResult } = await supabase
+          .from('practices')
+          .update(updateData)
+          .eq('id', request.practice_id)
+          .select();
+        if (practiceError) throw practiceError;
+        if (!updateResult || updateResult.length === 0) {
+          throw new Error('Service flag was not updated — check practices RLS policy for admins.');
+        }
+      }
+
+      // Then record the request outcome. A duplicate-key (23505) means an
+      // identical outcome row already exists, which is fine — treat as success.
+      const { error: statusError } = await supabase
+        .from('service_activation_requests')
+        .update({ status: newStatus })
+        .eq('id', requestId);
+      if (statusError && (statusError as { code?: string }).code !== '23505') {
+        throw statusError;
+      }
+
+      await loadServiceRequests();
+      await loadDashboardData();
+      toast.success(`Request ${newStatus}${newStatus === 'approved' ? ' and service enabled' : ''}`);
+    } catch (error) {
+      const err = error as { message?: string; code?: string; details?: string; hint?: string };
+      console.error('Error updating request:', {
+        message: err?.message,
+        code: err?.code,
+        details: err?.details,
+        hint: err?.hint,
+      });
+      toast.error(err?.message || 'Failed to update request');
     }
   };
 
@@ -807,13 +879,34 @@ const AdminDashboard: React.FC = () => {
           })}
 
           <span className="admin-portal-nav__section-label">System</span>
-          {(['setup', 'audit', 'demo'] as AdminTab[]).map((id) => {
+          {(['setup', 'activationRequests', 'audit', 'demo'] as AdminTab[]).map((id) => {
             const tab = adminTabs.find((t) => t.id === id)!;
+            const badgeCount = id === 'activationRequests' ? pendingRequestCount : 0;
             return (
               <button key={tab.id} type="button"
                 className={`admin-portal-nav__item${activeTab === tab.id ? ' admin-portal-nav__item--active' : ''}`}
-                onClick={() => setAdminTab(tab.id)}>
+                onClick={() => setAdminTab(tab.id)}
+                style={{ position: 'relative' }}>
                 {tab.icon}<span>{tab.label}</span>
+                {badgeCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '8px',
+                    background: '#ef4444',
+                    color: 'white',
+                    borderRadius: '50%',
+                    width: '20px',
+                    height: '20px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '0.75rem',
+                    fontWeight: 700,
+                  }}>
+                    {badgeCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1395,6 +1488,100 @@ const AdminDashboard: React.FC = () => {
         <div className="dashboard-banner dashboard-banner--info" style={{ marginTop: '1rem' }}>
           Use the Users tab to create accounts, assign users to multiple practices, and send reset links after accounts are created.
         </div>
+      </div>
+      )}
+
+      {activeTab === 'activationRequests' && (
+      <div className="dashboard-panel dashboard-section">
+        <div className="dashboard-panel-header">
+          <div>
+            <h2 className="dashboard-panel-title">Service Activation Requests</h2>
+            <p className="dashboard-panel-subtitle">Review and action requests from practices to enable services.</p>
+          </div>
+        </div>
+        {loadingServiceRequests ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>Loading requests...</div>
+        ) : serviceRequests.length === 0 ? (
+          <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>No service requests yet</div>
+        ) : (
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table" style={{ minWidth: 640, tableLayout: 'auto' }}>
+              <thead>
+                <tr>
+                  <th scope="col">Practice</th>
+                  <th scope="col">Service</th>
+                  <th scope="col">Requested By</th>
+                  <th scope="col">Date</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {serviceRequests.map((request) => (
+                  <tr key={request.id}>
+                    <td style={{ fontWeight: 500 }}>{request.practice_name}</td>
+                    <td>{request.service}</td>
+                    <td style={{ fontSize: '0.9em', color: 'rgba(255,255,255,0.7)' }}>{request.requested_by_email}</td>
+                    <td style={{ fontSize: '0.9em', color: 'rgba(255,255,255,0.6)' }}>{new Date(request.updated_at).toLocaleDateString('en-GB')}</td>
+                    <td>
+                      <span style={{
+                        display: 'inline-block',
+                        paddingLeft: 6,
+                        paddingRight: 6,
+                        paddingTop: 3,
+                        paddingBottom: 3,
+                        borderRadius: 4,
+                        fontSize: '0.85em',
+                        fontWeight: 600,
+                        backgroundColor: request.status === 'pending' ? 'rgba(251, 191, 36, 0.15)' : request.status === 'approved' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(100, 116, 139, 0.15)',
+                        color: request.status === 'pending' ? '#fbbf24' : request.status === 'approved' ? '#22c55e' : '#94a3b8',
+                        textTransform: 'capitalize',
+                      }}>
+                        {request.status}
+                      </span>
+                    </td>
+                    <td>
+                      {request.status === 'pending' && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => updateServiceRequest(request.id, 'approved')}
+                            style={{
+                              background: 'rgba(34, 197, 94, 0.2)',
+                              border: '1px solid rgba(34, 197, 94, 0.4)',
+                              color: '#22c55e',
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              fontSize: '0.85em',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => updateServiceRequest(request.id, 'dismissed')}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.2)',
+                              border: '1px solid rgba(239, 68, 68, 0.4)',
+                              color: '#ef4444',
+                              padding: '4px 10px',
+                              borderRadius: 4,
+                              fontSize: '0.85em',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
       )}
 

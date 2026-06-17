@@ -195,4 +195,4 @@ export const buildDemoPatientUrlForType = (type: DemoType) =>
   buildDemoPatientUrl(getRandomDemoSampleForType(type));
 
 export const getDemoNoticeText = () =>
-  'This is dummy information only and should not be used for clinical decisions.';
+  'This is dummy information for demonstration purposes only.';

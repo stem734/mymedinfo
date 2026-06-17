@@ -1209,16 +1209,17 @@ const PracticeDashboard: React.FC = () => {
                     onClick={(e) => { e.stopPropagation(); void requestServiceActivation(service.id, selectedPractice.name); }}
                     title={pendingRequests.has(service.id) ? 'Request already sent' : 'Request activation from admin'}
                     style={{
-                      background: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.12)',
-                      border: '1px solid rgba(255,255,255,0.15)',
+                      background: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.12)',
+                      border: `1px solid ${pendingRequests.has(service.id) ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)'}`,
                       borderRadius: 4,
-                      color: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)',
+                      color: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)',
                       fontSize: 10,
                       fontWeight: 700,
                       padding: '2px 6px',
-                      cursor: pendingRequests.has(service.id) ? 'default' : 'pointer',
+                      cursor: pendingRequests.has(service.id) ? 'not-allowed' : 'pointer',
                       lineHeight: 1.4,
                       flexShrink: 0,
+                      opacity: pendingRequests.has(service.id) ? 0.5 : 1,
                     }}
                     disabled={pendingRequests.has(service.id)}
                   >

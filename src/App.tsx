@@ -99,7 +99,11 @@ const AppContent: React.FC = () => {
   const isAdminLoginRoute =
     (subdomain === 'admin' && location.pathname === '/') ||
     location.pathname === '/admin';
-  const useEmbeddedPortalShell = isAdminDashboardRoute || isPracticeDashboardRoute || isPracticeLoginRoute || isAdminLoginRoute || isLandingRoute;
+  const isPracticeSignupRoute =
+    (subdomain === 'practice' && location.pathname === '/signup') ||
+    location.pathname === '/practice/signup' ||
+    location.pathname === '/signup';
+  const useEmbeddedPortalShell = isAdminDashboardRoute || isPracticeDashboardRoute || isPracticeLoginRoute || isAdminLoginRoute || isLandingRoute || isPracticeSignupRoute;
   const mainClassName = [
     'app-main',
     isLandingRoute ? 'app-main--landing' : '',
