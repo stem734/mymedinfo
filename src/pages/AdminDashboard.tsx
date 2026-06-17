@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   Edit2,
+  ExternalLink,
   Eye,
   FlaskConical,
   LayoutDashboard,
@@ -1717,7 +1718,7 @@ const AdminDashboard: React.FC = () => {
           <p style={{ color: '#4c6272' }}>No local resources found yet.</p>
         ) : (
           <div className="admin-data-table-wrap">
-            <table className="admin-data-table admin-data-table--resources">
+            <table className="admin-data-table admin-data-table--resources" style={{ tableLayout: 'auto', fontSize: '0.9rem' }}>
               <thead>
                 <tr>
                   <th scope="col">Resource</th>
@@ -1748,7 +1749,7 @@ const AdminDashboard: React.FC = () => {
                         ? <span className="admin-ods-badge">{resource.category}</span>
                         : <span className="admin-table-muted">—</span>}
                     </td>
-                    <td>
+                    <td style={{ maxWidth: '140px', wordBreak: 'break-word' }}>
                       <div className="admin-table-identity">
                         {resource.phone && <span>{resource.phone}</span>}
                         {resource.email && <span className="admin-table-identity__email">{resource.email}</span>}
@@ -1762,7 +1763,9 @@ const AdminDashboard: React.FC = () => {
                     </td>
                     <td>
                       {resource.website
-                        ? <a href={resource.website} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#005eb8' }}>{resource.website}</a>
+                        ? <a href={resource.website} target="_blank" rel="noopener noreferrer" title={resource.website} style={{ color: '#005eb8' }}>
+                            <ExternalLink size={16} />
+                          </a>
                         : <span className="admin-table-muted">—</span>}
                     </td>
                     <td>
