@@ -93,7 +93,9 @@ const PatientRouter: React.FC = () => {
     }>
       <div className="patient-page-shell">
         <div className="patient-page-shell__brand no-print">
-          <img className="patient-page-shell__brand-logo" src="/MyMedInfo-logo.png" alt="MyMedInfo" />
+          <div className="mymedinfo-wordmark patient-page-shell__brand-wordmark">
+            MyMed<span>Info</span>
+          </div>
           {practiceLookup.orgName && (
             <div className="patient-page-shell__brand-partner-block">
               <img className="patient-page-shell__brand-partner-logo" src="/nhs-wordmark-blue.jpg" alt="NHS" />

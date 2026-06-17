@@ -140,18 +140,24 @@ body {
 .site-header__logo-link {
   display: inline-flex;
   align-items: center;
-  gap: 0.9rem;
   text-decoration: none;
-  color: #003d78;
   min-width: 0;
 }
 
-.site-header__logo {
-  width: 170px;
-  max-width: 100%;
-  height: auto;
-  display: block;
-  flex: 0 0 auto;
+.mymedinfo-wordmark {
+  display: inline-block;
+  color: var(--pcn-blue-deep);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.mymedinfo-wordmark span {
+  color: var(--pcn-green-mid);
+}
+
+.site-header__wordmark {
+  font-size: clamp(1.45rem, 3vw, 1.8rem);
 }
 
 .header-nav {
@@ -1290,11 +1296,14 @@ p {
   margin: 0 0 0.9rem;
 }
 
-.patient-page-shell__brand-logo {
-  width: min(180px, 52vw);
-  height: auto;
-  display: block;
+.patient-page-shell__brand-wordmark {
   flex-shrink: 0;
+  font-size: clamp(1.55rem, 5vw, 2rem);
+}
+
+.patient-state-card__wordmark {
+  margin: 0 0 1rem;
+  font-size: clamp(2rem, 8vw, 2.75rem);
 }
 
 .patient-page-shell__brand-partner-block {
@@ -2494,6 +2503,10 @@ p {
   color: #ffffff;
   font-size: 1.05rem;
   font-weight: 800;
+}
+
+.admin-portal-header__title span:not(.admin-portal-header__admin-pill) {
+  color: var(--pcn-green);
 }
 
 .admin-portal-header__badge {
@@ -5349,7 +5362,7 @@ p {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background: #b45309;
+  background: linear-gradient(135deg, var(--pcn-blue-dark), var(--nhs-green));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -5394,24 +5407,13 @@ p {
 }
 
 /* Admin brand updates */
-.admin-portal-header__brand-mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
-  background: #b45309;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 .admin-portal-header__admin-pill {
   font-size: 10px;
   font-weight: 700;
   padding: 1px 7px;
   border-radius: 3px;
-  background: #b45309;
-  color: #fff;
+  background: var(--pcn-green);
+  color: #08320f;
   text-transform: uppercase;
 }
 
@@ -5456,22 +5458,16 @@ p {
   flex-shrink: 0;
 }
 
-.practice-portal-sidebar__mark {
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
-  background: #005eb8;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
 .practice-portal-sidebar__brand-name {
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: #f1f5f9;
   line-height: 1.2;
+  letter-spacing: 0;
+}
+
+.practice-portal-sidebar__brand-name span {
+  color: var(--pcn-green);
 }
 
 .practice-portal-sidebar__brand-badge {

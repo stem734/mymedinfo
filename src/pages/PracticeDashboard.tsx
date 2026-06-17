@@ -1151,11 +1151,8 @@ const PracticeDashboard: React.FC = () => {
         {/* Sidebar */}
         <div className="practice-portal-sidebar">
           <div className="practice-portal-sidebar__brand">
-            <div className="practice-portal-sidebar__mark" aria-hidden="true">
-              <img src="/mymedinfo-mark.svg" alt="" style={{ width: 20, height: 20, filter: 'brightness(0) invert(1)' }} />
-            </div>
             <div>
-              <div className="practice-portal-sidebar__brand-name">MyMedInfo</div>
+              <div className="practice-portal-sidebar__brand-name">MyMed<span>Info</span></div>
               <span className="practice-portal-sidebar__brand-badge">Practice Portal</span>
             </div>
           </div>

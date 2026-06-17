@@ -841,12 +841,9 @@ const AdminDashboard: React.FC = () => {
         {/* Brand */}
         <div className="admin-portal-header__top">
           <div className="admin-portal-header__brand">
-            <div className="admin-portal-header__brand-mark" aria-hidden="true">
-              <img src="/mymedinfo-mark.svg" alt="" style={{ width: 20, height: 20, filter: 'brightness(0) invert(1)' }} />
-            </div>
             <span className="admin-portal-header__brand-text">
               <span className="admin-portal-header__title">
-                MyMedInfo <span className="admin-portal-header__admin-pill">Admin</span>
+                MyMed<span>Info</span> <span className="admin-portal-header__admin-pill">Admin</span>
               </span>
               <span className="admin-portal-header__badge-small">Management Portal</span>
             </span>

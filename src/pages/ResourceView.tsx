@@ -657,8 +657,9 @@ const ResourceView: React.FC = () => {
   if (contents.length === 0) {
     return (
       <div className="card patient-state-card" style={{ textAlign: 'center' }}>
-        <FlaskConical size={64} color="#005eb8" style={{ marginBottom: '1rem' }} />
-        <h1>MyMedInfo</h1>
+        <h1 className="mymedinfo-wordmark patient-state-card__wordmark">
+          MyMed<span>Info</span>
+        </h1>
         <p style={{ fontSize: '1.1rem', fontWeight: '500', marginBottom: '1rem' }}>Clear, trusted medication information</p>
         <p>Please use the link provided by your GP or scan the QR code to find information about your specific medication.</p>
         {!hasPracticeIdentifier && (
