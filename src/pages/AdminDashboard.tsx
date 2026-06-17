@@ -44,6 +44,11 @@ import {
   type LocalResourceLink,
 } from '../localResourceLibrary';
 import { buildDemoPatientUrlForType } from '../demoHelpers';
+import { fetchCardTemplates } from '../cardTemplateStore';
+import type { CardTemplateBuilderType, HealthCheckTemplatePayload } from '../cardTemplateTypes';
+import { loadMedicationCatalog } from '../medicationCatalog';
+import type { MedicationRecord } from '../medicationCatalog';
+import type { ImmunisationTemplate, LongTermConditionTemplate, ScreeningTemplate } from '../patientTemplateCatalog';
 import CardBuilder from './CardBuilder';
 
 interface ServiceActivationRequest {
@@ -55,6 +60,17 @@ interface ServiceActivationRequest {
   status: 'pending' | 'approved' | 'dismissed';
   updated_at: string;
 }
+
+type ServiceWorkStatus = 'overdue' | 'missing' | 'dueSoon';
+
+type ServiceWorkItem = {
+  id: string;
+  service: 'medication' | CardTemplateBuilderType;
+  serviceLabel: string;
+  label: string;
+  status: ServiceWorkStatus;
+  reviewDate?: string;
+};
 
 interface Practice {
   id: string;
@@ -172,6 +188,46 @@ const GLOBAL_SERVICES: Array<{
   { configKey: 'service_ltc_enabled', practiceKey: 'ltc_enabled', label: 'Long Term Conditions', description: 'Chronic disease management and care pathway cards.', builderSection: 'ltc' },
 ];
 
+const SERVICE_LABEL_BY_BUILDER: Record<ServiceWorkItem['service'], string> = {
+  medication: 'Medication Cards',
+  healthcheck: 'NHS Health Checks',
+  screening: 'Screening',
+  immunisation: 'Immunisations',
+  ltc: 'Long Term Conditions',
+};
+
+const classifyReviewDate = (reviewDate?: string): ServiceWorkStatus | null => {
+  if (!reviewDate) return 'missing';
+  const value = new Date(`${reviewDate}T00:00:00`).getTime();
+  if (Number.isNaN(value)) return 'missing';
+  if (value < Date.now()) return 'overdue';
+  if (value < Date.now() + 30 * 24 * 60 * 60 * 1000) return 'dueSoon';
+  return null;
+};
+
+const createReviewWorkItem = (
+  service: ServiceWorkItem['service'],
+  id: string,
+  label: string,
+  reviewDate?: string,
+): ServiceWorkItem | null => {
+  const status = classifyReviewDate(reviewDate);
+  if (!status) return null;
+  return {
+    id: `${service}:${id}`,
+    service,
+    serviceLabel: SERVICE_LABEL_BY_BUILDER[service],
+    label,
+    status,
+    reviewDate,
+  };
+};
+
+const getPayloadReviewDate = (payload: unknown): string | undefined => {
+  const row = payload as { contentReviewDate?: unknown } | null;
+  return typeof row?.contentReviewDate === 'string' ? row.contentReviewDate : undefined;
+};
+
 type AdminTabMeta = {
   id: AdminTab;
   label: string;
@@ -239,10 +295,14 @@ const AdminDashboard: React.FC = () => {
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [serviceRequests, setServiceRequests] = useState<ServiceActivationRequest[]>([]);
   const [loadingServiceRequests, setLoadingServiceRequests] = useState(false);
+  const [serviceWorkItems, setServiceWorkItems] = useState<ServiceWorkItem[]>([]);
+  const [loadingServiceWork, setLoadingServiceWork] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
 
   const pendingRequestCount = serviceRequests.filter(r => r.status === 'pending').length;
+  const serviceWorkCount = serviceWorkItems.filter((item) => item.status === 'overdue' || item.status === 'missing').length;
+  const serviceDueSoonCount = serviceWorkItems.filter((item) => item.status === 'dueSoon').length;
 
   const adminTabs: AdminTabMeta[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" /> },
@@ -291,6 +351,11 @@ const AdminDashboard: React.FC = () => {
   }, [activeTab, authenticated]);
 
   useEffect(() => {
+    if (!authenticated || activeTab !== 'services' || showCardBuilder) return;
+    void loadServiceWork();
+  }, [activeTab, authenticated, showCardBuilder]);
+
+  useEffect(() => {
     const hydrate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
@@ -299,6 +364,7 @@ const AdminDashboard: React.FC = () => {
         loadDashboardData();
         void loadPlatformConfig();
         void loadServiceRequests();
+        void loadServiceWork();
         return;
       }
 
@@ -312,6 +378,7 @@ const AdminDashboard: React.FC = () => {
         setAuthenticated(true);
         loadDashboardData();
         void loadServiceRequests();
+        void loadServiceWork();
       } else {
         navigate(resolvePath('/admin'));
       }
@@ -421,6 +488,42 @@ const AdminDashboard: React.FC = () => {
       setServiceRequests([]);
     } finally {
       setLoadingServiceRequests(false);
+    }
+  };
+
+  const loadServiceWork = async () => {
+    setLoadingServiceWork(true);
+    try {
+      const [medications, healthcheckRows, screeningRows, immunisationRows, ltcRows] = await Promise.all([
+        loadMedicationCatalog(),
+        fetchCardTemplates<HealthCheckTemplatePayload>('healthcheck'),
+        fetchCardTemplates<ScreeningTemplate>('screening'),
+        fetchCardTemplates<ImmunisationTemplate>('immunisation'),
+        fetchCardTemplates<LongTermConditionTemplate>('ltc'),
+      ]);
+
+      const medicationItems = (medications as MedicationRecord[])
+        .map((medication) => createReviewWorkItem('medication', medication.code, medication.title, medication.contentReviewDate))
+        .filter((item): item is ServiceWorkItem => Boolean(item));
+
+      const templateItems = [
+        ...healthcheckRows.map((row) => createReviewWorkItem('healthcheck', row.template_id, row.label, getPayloadReviewDate(row.payload))),
+        ...screeningRows.map((row) => createReviewWorkItem('screening', row.template_id, row.label, getPayloadReviewDate(row.payload))),
+        ...immunisationRows.map((row) => createReviewWorkItem('immunisation', row.template_id, row.label, getPayloadReviewDate(row.payload))),
+        ...ltcRows.map((row) => createReviewWorkItem('ltc', row.template_id, row.label, getPayloadReviewDate(row.payload))),
+      ].filter((item): item is ServiceWorkItem => Boolean(item));
+
+      const statusRank: Record<ServiceWorkStatus, number> = { overdue: 0, missing: 1, dueSoon: 2 };
+      setServiceWorkItems([...medicationItems, ...templateItems].sort((left, right) => (
+        statusRank[left.status] - statusRank[right.status] ||
+        left.serviceLabel.localeCompare(right.serviceLabel) ||
+        left.label.localeCompare(right.label)
+      )));
+    } catch (error) {
+      console.error('Error loading service work alerts:', error);
+      setServiceWorkItems([]);
+    } finally {
+      setLoadingServiceWork(false);
     }
   };
 
@@ -598,6 +701,28 @@ const AdminDashboard: React.FC = () => {
       }))
       .sort((left, right) => right.latestCreatedAtMs - left.latestCreatedAtMs);
   }, [loginAudit]);
+
+  const serviceWorkByService = useMemo(() => (
+    GLOBAL_SERVICES.reduce<Record<ServiceWorkItem['service'], { overdue: number; missing: number; dueSoon: number; totalWork: number }>>((acc, service) => {
+      const items = serviceWorkItems.filter((item) => item.service === service.builderSection);
+      const overdue = items.filter((item) => item.status === 'overdue').length;
+      const missing = items.filter((item) => item.status === 'missing').length;
+      const dueSoon = items.filter((item) => item.status === 'dueSoon').length;
+      acc[service.builderSection] = { overdue, missing, dueSoon, totalWork: overdue + missing };
+      return acc;
+    }, {
+      medication: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
+      healthcheck: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
+      screening: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
+      immunisation: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
+      ltc: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
+    })
+  ), [serviceWorkItems]);
+
+  const urgentServiceWorkItems = useMemo(
+    () => serviceWorkItems.filter((item) => item.status === 'overdue' || item.status === 'missing').slice(0, 8),
+    [serviceWorkItems],
+  );
 
   const practiceSignupLink = useMemo(
     () => new URL(practiceUrl('/signup'), window.location.origin).toString(),
@@ -869,11 +994,21 @@ const AdminDashboard: React.FC = () => {
           <span className="admin-portal-nav__section-label">Content</span>
           {(['services', 'library'] as AdminTab[]).map((id) => {
             const tab = adminTabs.find((t) => t.id === id)!;
+            const badgeCount = id === 'services' ? serviceWorkCount : 0;
             return (
               <button key={tab.id} type="button"
-                className={`admin-portal-nav__item${activeTab === tab.id ? ' admin-portal-nav__item--active' : ''}`}
+                className={[
+                  'admin-portal-nav__item',
+                  activeTab === tab.id ? 'admin-portal-nav__item--active' : '',
+                  badgeCount > 0 ? 'admin-portal-nav__item--attention' : '',
+                ].filter(Boolean).join(' ')}
                 onClick={() => setAdminTab(tab.id)}>
                 {tab.icon}<span>{tab.label}</span>
+                {badgeCount > 0 && (
+                  <span className="admin-portal-nav__alert-count" aria-label={`${badgeCount} service review ${badgeCount === 1 ? 'task' : 'tasks'}`}>
+                    {badgeCount}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -1587,6 +1722,48 @@ const AdminDashboard: React.FC = () => {
               <Edit2 size={16} /> Card Builder
             </button>
           </div>
+          <div className="admin-service-work-panel">
+            <div className="admin-service-work-panel__summary">
+              <div>
+                <span className="admin-service-work-panel__eyebrow">Work alerts</span>
+                <strong>
+                  {loadingServiceWork
+                    ? 'Checking service reviews...'
+                    : serviceWorkCount > 0
+                      ? `${serviceWorkCount} review ${serviceWorkCount === 1 ? 'task' : 'tasks'} need attention`
+                      : 'No overdue review work'}
+                </strong>
+                <span>
+                  {serviceDueSoonCount > 0
+                    ? `${serviceDueSoonCount} review ${serviceDueSoonCount === 1 ? 'is' : 'are'} due in the next 30 days.`
+                    : 'Services with current review dates will stay quiet here.'}
+                </span>
+              </div>
+              {serviceWorkCount > 0 && (
+                <span className="admin-service-work-panel__badge">{serviceWorkCount}</span>
+              )}
+            </div>
+            {!loadingServiceWork && urgentServiceWorkItems.length > 0 && (
+              <div className="admin-service-work-list">
+                {urgentServiceWorkItems.map((item) => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className="admin-service-work-item"
+                    onClick={() => { setCardBuilderSection(item.service); setShowCardBuilder(true); }}
+                  >
+                    <span className={`admin-service-work-item__status admin-service-work-item__status--${item.status}`}>
+                      {item.status === 'overdue' ? 'Overdue' : 'No review'}
+                    </span>
+                    <span className="admin-service-work-item__text">
+                      <strong>{item.label}</strong>
+                      <span>{item.serviceLabel}{item.reviewDate ? ` · Review date ${item.reviewDate}` : ''}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="admin-data-table-wrap">
             <table className="admin-data-table" style={{ minWidth: 640, tableLayout: 'auto' }}>
               <thead>
@@ -1594,6 +1771,7 @@ const AdminDashboard: React.FC = () => {
                   <th scope="col">Service</th>
                   <th scope="col">Platform Status</th>
                   <th scope="col">Practices Enabled</th>
+                  <th scope="col">Content Work</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
@@ -1602,6 +1780,7 @@ const AdminDashboard: React.FC = () => {
                   const isEnabled = platformConfig[service.configKey];
                   const practiceFn = PRACTICE_FUNCTIONS.find((f) => f.key === service.practiceKey);
                   const enabledCount = practiceFn ? practices.filter((p) => practiceFn.isEnabled(p)).length : 0;
+                  const work = serviceWorkByService[service.builderSection];
                   return (
                     <tr key={service.configKey}>
                       <td>
@@ -1619,6 +1798,25 @@ const AdminDashboard: React.FC = () => {
                       <td>
                         <span style={{ fontWeight: 600, fontSize: 14 }}>{enabledCount}</span>
                         <span style={{ color: '#9ca3af', fontSize: 13 }}> / {practices.length}</span>
+                      </td>
+                      <td>
+                        {work.totalWork > 0 ? (
+                          <button
+                            type="button"
+                            className="admin-service-work-chip admin-service-work-chip--alert"
+                            onClick={() => { setCardBuilderSection(service.builderSection); setShowCardBuilder(true); }}
+                          >
+                            {work.totalWork} to review
+                          </button>
+                        ) : work.dueSoon > 0 ? (
+                          <span className="admin-service-work-chip admin-service-work-chip--soon">
+                            {work.dueSoon} due soon
+                          </span>
+                        ) : (
+                          <span className="admin-service-work-chip admin-service-work-chip--clear">
+                            Clear
+                          </span>
+                        )}
                       </td>
                       <td>
                         <div className="admin-table-actions">
