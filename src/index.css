@@ -6807,11 +6807,6 @@ p {
   color: #991b1b;
 }
 
-.admin-service-work-item__status--missing {
-  background: #ffedd5;
-  color: #9a3412;
-}
-
 .admin-service-work-item__text {
   display: grid;
   gap: 0.15rem;

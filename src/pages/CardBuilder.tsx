@@ -1716,6 +1716,7 @@ const createNewScreeningTemplate = () => {
       });
       if (error) throw error;
       if (!data?.success) throw new Error('Template save did not complete');
+      applyTemplatePayloadToState(builderType, templateId, payload);
       if (builderType === 'screening') setSavedScreeningIds((prev) => new Set([...prev, templateId]));
       else if (builderType === 'immunisation') setSavedImmunisationIds((prev) => new Set([...prev, templateId]));
       else if (builderType === 'ltc') setSavedLtcIds((prev) => new Set([...prev, templateId]));

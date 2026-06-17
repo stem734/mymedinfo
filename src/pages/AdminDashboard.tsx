@@ -61,7 +61,7 @@ interface ServiceActivationRequest {
   updated_at: string;
 }
 
-type ServiceWorkStatus = 'overdue' | 'missing' | 'dueSoon';
+type ServiceWorkStatus = 'overdue' | 'dueSoon';
 
 type ServiceWorkItem = {
   id: string;
@@ -197,9 +197,9 @@ const SERVICE_LABEL_BY_BUILDER: Record<ServiceWorkItem['service'], string> = {
 };
 
 const classifyReviewDate = (reviewDate?: string): ServiceWorkStatus | null => {
-  if (!reviewDate) return 'missing';
+  if (!reviewDate) return null;
   const value = new Date(`${reviewDate}T00:00:00`).getTime();
-  if (Number.isNaN(value)) return 'missing';
+  if (Number.isNaN(value)) return null;
   if (value < Date.now()) return 'overdue';
   if (value < Date.now() + 30 * 24 * 60 * 60 * 1000) return 'dueSoon';
   return null;
@@ -301,7 +301,7 @@ const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
 
   const pendingRequestCount = serviceRequests.filter(r => r.status === 'pending').length;
-  const serviceWorkCount = serviceWorkItems.filter((item) => item.status === 'overdue' || item.status === 'missing').length;
+  const serviceWorkCount = serviceWorkItems.filter((item) => item.status === 'overdue').length;
   const serviceDueSoonCount = serviceWorkItems.filter((item) => item.status === 'dueSoon').length;
 
   const adminTabs: AdminTabMeta[] = [
@@ -513,7 +513,7 @@ const AdminDashboard: React.FC = () => {
         ...ltcRows.map((row) => createReviewWorkItem('ltc', row.template_id, row.label, getPayloadReviewDate(row.payload))),
       ].filter((item): item is ServiceWorkItem => Boolean(item));
 
-      const statusRank: Record<ServiceWorkStatus, number> = { overdue: 0, missing: 1, dueSoon: 2 };
+      const statusRank: Record<ServiceWorkStatus, number> = { overdue: 0, dueSoon: 1 };
       setServiceWorkItems([...medicationItems, ...templateItems].sort((left, right) => (
         statusRank[left.status] - statusRank[right.status] ||
         left.serviceLabel.localeCompare(right.serviceLabel) ||
@@ -703,24 +703,23 @@ const AdminDashboard: React.FC = () => {
   }, [loginAudit]);
 
   const serviceWorkByService = useMemo(() => (
-    GLOBAL_SERVICES.reduce<Record<ServiceWorkItem['service'], { overdue: number; missing: number; dueSoon: number; totalWork: number }>>((acc, service) => {
+    GLOBAL_SERVICES.reduce<Record<ServiceWorkItem['service'], { overdue: number; dueSoon: number; totalWork: number }>>((acc, service) => {
       const items = serviceWorkItems.filter((item) => item.service === service.builderSection);
       const overdue = items.filter((item) => item.status === 'overdue').length;
-      const missing = items.filter((item) => item.status === 'missing').length;
       const dueSoon = items.filter((item) => item.status === 'dueSoon').length;
-      acc[service.builderSection] = { overdue, missing, dueSoon, totalWork: overdue + missing };
+      acc[service.builderSection] = { overdue, dueSoon, totalWork: overdue };
       return acc;
     }, {
-      medication: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
-      healthcheck: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
-      screening: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
-      immunisation: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
-      ltc: { overdue: 0, missing: 0, dueSoon: 0, totalWork: 0 },
+      medication: { overdue: 0, dueSoon: 0, totalWork: 0 },
+      healthcheck: { overdue: 0, dueSoon: 0, totalWork: 0 },
+      screening: { overdue: 0, dueSoon: 0, totalWork: 0 },
+      immunisation: { overdue: 0, dueSoon: 0, totalWork: 0 },
+      ltc: { overdue: 0, dueSoon: 0, totalWork: 0 },
     })
   ), [serviceWorkItems]);
 
   const urgentServiceWorkItems = useMemo(
-    () => serviceWorkItems.filter((item) => item.status === 'overdue' || item.status === 'missing').slice(0, 8),
+    () => serviceWorkItems.filter((item) => item.status === 'overdue').slice(0, 8),
     [serviceWorkItems],
   );
 
@@ -1753,7 +1752,7 @@ const AdminDashboard: React.FC = () => {
                     onClick={() => { setCardBuilderSection(item.service); setShowCardBuilder(true); }}
                   >
                     <span className={`admin-service-work-item__status admin-service-work-item__status--${item.status}`}>
-                      {item.status === 'overdue' ? 'Overdue' : 'No review'}
+                      Overdue
                     </span>
                     <span className="admin-service-work-item__text">
                       <strong>{item.label}</strong>
