@@ -40,6 +40,30 @@ const PracticeLogin: React.FC = () => {
     });
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrate = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!cancelled && session?.user) {
+        navigate(resolvePath('/practice/dashboard'), { replace: true });
+      }
+    };
+
+    void hydrate();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        navigate(resolvePath('/practice/dashboard'), { replace: true });
+      }
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [navigate]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
