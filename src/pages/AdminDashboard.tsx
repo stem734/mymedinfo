@@ -298,6 +298,7 @@ const AdminDashboard: React.FC = () => {
         setCurrentUserEmail(session.user.email ?? '');
         loadDashboardData();
         void loadPlatformConfig();
+        void loadServiceRequests();
         return;
       }
 
@@ -310,6 +311,7 @@ const AdminDashboard: React.FC = () => {
       if (session?.user) {
         setAuthenticated(true);
         loadDashboardData();
+        void loadServiceRequests();
       } else {
         navigate(resolvePath('/admin'));
       }
@@ -882,26 +884,15 @@ const AdminDashboard: React.FC = () => {
             const badgeCount = id === 'activationRequests' ? pendingRequestCount : 0;
             return (
               <button key={tab.id} type="button"
-                className={`admin-portal-nav__item${activeTab === tab.id ? ' admin-portal-nav__item--active' : ''}`}
-                onClick={() => setAdminTab(tab.id)}
-                style={{ position: 'relative' }}>
+                className={[
+                  'admin-portal-nav__item',
+                  activeTab === tab.id ? 'admin-portal-nav__item--active' : '',
+                  badgeCount > 0 ? 'admin-portal-nav__item--attention' : '',
+                ].filter(Boolean).join(' ')}
+                onClick={() => setAdminTab(tab.id)}>
                 {tab.icon}<span>{tab.label}</span>
                 {badgeCount > 0 && (
-                  <span style={{
-                    position: 'absolute',
-                    top: '4px',
-                    right: '8px',
-                    background: '#ef4444',
-                    color: 'white',
-                    borderRadius: '50%',
-                    width: '20px',
-                    height: '20px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                  }}>
+                  <span className="admin-portal-nav__alert-count" aria-label={`${badgeCount} pending activation ${badgeCount === 1 ? 'request' : 'requests'}`}>
                     {badgeCount}
                   </span>
                 )}

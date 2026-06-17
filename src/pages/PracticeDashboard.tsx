@@ -1192,73 +1192,62 @@ const PracticeDashboard: React.FC = () => {
             </button>
 
             <span className="practice-portal-sidebar__section-label">Services</span>
-            {serviceSummaries.map((service) => (
-              <button
-                key={service.id}
-                type="button"
-                className={[
-                  'practice-portal-nav-item',
-                  activeDomain === service.id && service.isActive ? 'practice-portal-nav-item--active' : '',
-                  !service.isActive ? 'practice-portal-nav-item--disabled' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={() => {
-                  if (service.isActive) {
-                    setActiveDomain(service.id);
-                    setDraft(null);
-                    setTemplateDraft(null);
-                  }
-                }}
-                disabled={!service.isActive}
-                title={
-                  !service.isActive
-                    ? service.isGloballyEnabled
-                      ? `${service.label} not enabled for this practice`
-                      : `${service.label} is not currently available on this platform`
-                    : undefined
-                }
-              >
-                {DOMAIN_ICONS[service.id]}
-                <span style={{ flex: 1 }}>{service.label}</span>
-                {!service.isActive && service.isGloballyEnabled && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); void requestServiceActivation(service.id, selectedPractice.name); }}
-                    title={pendingRequests.has(service.id) ? 'Request already sent' : 'Request activation from admin'}
-                    style={{
-                      background: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.12)',
-                      border: `1px solid ${pendingRequests.has(service.id) ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.15)'}`,
-                      borderRadius: 4,
-                      color: pendingRequests.has(service.id) ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.6)',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      padding: '2px 6px',
-                      cursor: pendingRequests.has(service.id) ? 'not-allowed' : 'pointer',
-                      lineHeight: 1.4,
-                      flexShrink: 0,
-                      opacity: pendingRequests.has(service.id) ? 0.5 : 1,
-                    }}
-                    disabled={pendingRequests.has(service.id)}
-                  >
-                    {pendingRequests.has(service.id) ? 'Requested' : 'Request'}
-                  </button>
-                )}
-                {!service.isGloballyEnabled && (
-                  <span style={{
-                    background: 'rgba(255,255,255,0.05)',
-                    border: '1px solid rgba(255,255,255,0.1)',
-                    borderRadius: 4,
-                    color: 'rgba(255,255,255,0.2)',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    padding: '2px 6px',
-                    lineHeight: 1.4,
-                    flexShrink: 0,
-                  }}>
-                    Unavailable
-                  </span>
-                )}
-              </button>
-            ))}
+            {serviceSummaries.map((service) => {
+              const requestSent = pendingRequests.has(service.id);
+              const serviceClassName = [
+                'practice-portal-nav-item',
+                activeDomain === service.id && service.isActive ? 'practice-portal-nav-item--active' : '',
+                !service.isActive ? 'practice-portal-nav-item--disabled' : '',
+              ].filter(Boolean).join(' ');
+              const title = !service.isActive
+                ? service.isGloballyEnabled
+                  ? `${service.label} not enabled for this practice`
+                  : `${service.label} is not currently available on this platform`
+                : undefined;
+
+              if (!service.isActive && service.isGloballyEnabled) {
+                return (
+                  <div key={service.id} className={serviceClassName} title={title}>
+                    {DOMAIN_ICONS[service.id]}
+                    <span className="practice-portal-nav-item__label">{service.label}</span>
+                    <button
+                      type="button"
+                      className="practice-portal-service-request"
+                      onClick={() => void requestServiceActivation(service.id, selectedPractice.name)}
+                      title={requestSent ? 'Request already sent' : 'Request activation from admin'}
+                      disabled={requestSent}
+                    >
+                      {requestSent ? 'Requested' : 'Request'}
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <button
+                  key={service.id}
+                  type="button"
+                  className={serviceClassName}
+                  onClick={() => {
+                    if (service.isActive) {
+                      setActiveDomain(service.id);
+                      setDraft(null);
+                      setTemplateDraft(null);
+                    }
+                  }}
+                  disabled={!service.isGloballyEnabled}
+                  title={title}
+                >
+                  {DOMAIN_ICONS[service.id]}
+                  <span className="practice-portal-nav-item__label">{service.label}</span>
+                  {!service.isGloballyEnabled && (
+                    <span className="practice-portal-service-unavailable">
+                      Unavailable
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           <div className="practice-portal-sidebar__bottom">
