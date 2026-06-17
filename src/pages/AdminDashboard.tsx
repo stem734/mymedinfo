@@ -1501,9 +1501,9 @@ const AdminDashboard: React.FC = () => {
           </div>
         </div>
         {loadingServiceRequests ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>Loading requests...</div>
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#4c6272' }}>Loading requests...</div>
         ) : serviceRequests.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'rgba(255,255,255,0.5)' }}>No service requests yet</div>
+          <div style={{ padding: '2rem', textAlign: 'center', color: '#4c6272' }}>No service requests yet</div>
         ) : (
           <div className="admin-data-table-wrap">
             <table className="admin-data-table" style={{ minWidth: 640, tableLayout: 'auto' }}>
@@ -1522,8 +1522,8 @@ const AdminDashboard: React.FC = () => {
                   <tr key={request.id}>
                     <td style={{ fontWeight: 500 }}>{request.practice_name}</td>
                     <td>{request.service}</td>
-                    <td style={{ fontSize: '0.9em', color: 'rgba(255,255,255,0.7)' }}>{request.requested_by_email}</td>
-                    <td style={{ fontSize: '0.9em', color: 'rgba(255,255,255,0.6)' }}>{new Date(request.updated_at).toLocaleDateString('en-GB')}</td>
+                    <td style={{ fontSize: '0.9em', color: '#4c6272' }}>{request.requested_by_email}</td>
+                    <td style={{ fontSize: '0.9em', color: '#6b7280' }}>{new Date(request.updated_at).toLocaleDateString('en-GB')}</td>
                     <td>
                       <span style={{
                         display: 'inline-block',
@@ -1905,7 +1905,7 @@ const AdminDashboard: React.FC = () => {
             </div>
           </div>
           <div className="admin-data-table-wrap">
-            <table className="admin-data-table" style={{ minWidth: 480, tableLayout: 'auto' }}>
+            <table className="admin-data-table admin-data-table--demo">
               <thead>
                 <tr>
                   <th scope="col">Content Type</th>

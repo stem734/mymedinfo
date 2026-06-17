@@ -29,10 +29,12 @@ const LongTermConditionView: React.FC = () => {
   const practiceIdentifier = practiceLookup.lookupValue;
   const codesParam = (searchParams.get('codes') || '').trim();
   const isDemoMode = searchParams.get('demo') === '1';
+  const previewOnly = searchParams.get('previewOnly') === '1';
+  const previewToken = (searchParams.get('previewToken') || '').trim();
   const conditionType = (searchParams.get('ltc') || searchParams.get('condition') || codesParam).trim().toLowerCase();
   const issuedAt = useMemo(() => parseSystmOneTimestamp(searchParams.get('codes')), [searchParams]);
   const [loadedTemplate, setLoadedTemplate] = useState<LongTermConditionTemplate | null>(null);
-  const access = usePracticeContentAccess(practiceIdentifier, 'ltc_enabled', { skip: isDemoMode });
+  const access = usePracticeContentAccess(practiceIdentifier, 'ltc_enabled', { skip: isDemoMode || previewOnly });
   const selectedTemplate = loadedTemplate;
   const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
   const isExpired = useMemo(
@@ -47,6 +49,18 @@ const LongTermConditionView: React.FC = () => {
 
   useEffect(() => {
     const loadTemplate = async () => {
+      if (previewOnly && previewToken && typeof window !== 'undefined') {
+        try {
+          const raw = window.sessionStorage.getItem(previewToken);
+          if (raw) {
+            setLoadedTemplate(withLongTermConditionTemplateDefaults(JSON.parse(raw) as LongTermConditionTemplate));
+            return;
+          }
+        } catch {
+          // Ignore malformed preview payloads and fall back to stored templates.
+        }
+      }
+
       try {
         const identifier = conditionType || 'asthma';
         const builtInIds = Object.keys(LONG_TERM_CONDITION_TEMPLATES);
@@ -66,7 +80,7 @@ const LongTermConditionView: React.FC = () => {
       }
     };
     void loadTemplate();
-  }, [conditionType, practiceIdentifier]);
+  }, [conditionType, practiceIdentifier, previewOnly, previewToken]);
 
   if (access.loading) {
     return (

@@ -167,6 +167,14 @@ const AUDIT_BUTTON_STYLE = {
   border: '1px solid #b27a00',
 } as const;
 
+const stableHash = (value: string) => {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = Math.imul(31, hash) + value.charCodeAt(index);
+  }
+  return Math.abs(hash).toString(36);
+};
+
 const createDefaultHealthCheckBuilderState = (): Record<ClinicalDomainId, Record<string, HealthCheckBuilderVariant>> =>
   CLINICAL_DOMAIN_IDS.reduce((domainAcc, domainId) => {
     const domainConfig = PREVIEW_DOMAIN_CONFIGS[domainId];
@@ -831,6 +839,50 @@ const createNewScreeningTemplate = () => {
   const buildPatientUrl = (params: URLSearchParams) =>
     `${window.location.origin}${resolvePath('/patient')}?${params.toString()}`;
 
+  const medicationPreviewPayload = useMemo(() => {
+    if (!previewDraft) return '';
+    return JSON.stringify({
+      cards: [
+        {
+          ...previewDraft,
+          state: 'custom',
+          code: previewDraft.code,
+        },
+      ],
+    });
+  }, [previewDraft]);
+  const medicationPreviewToken = useMemo(
+    () => (previewDraft && medicationPreviewPayload ? `medication-preview:${previewDraft.code}:${stableHash(medicationPreviewPayload)}` : ''),
+    [medicationPreviewPayload, previewDraft],
+  );
+  const [medicationPreviewReadyToken, setMedicationPreviewReadyToken] = useState('');
+
+  useEffect(() => {
+    if (!previewDraft || !medicationPreviewPayload || !medicationPreviewToken) {
+      setMedicationPreviewReadyToken('');
+      return;
+    }
+
+    try {
+      window.sessionStorage.setItem(medicationPreviewToken, medicationPreviewPayload);
+      setMedicationPreviewReadyToken(medicationPreviewToken);
+    } catch {
+      setMedicationPreviewReadyToken('');
+    }
+  }, [medicationPreviewPayload, medicationPreviewToken, previewDraft]);
+
+  const medicationLivePreviewUrl = useMemo(() => {
+    if (!previewDraft || medicationPreviewReadyToken !== medicationPreviewToken) return '';
+    const params = new URLSearchParams({
+      type: 'meds',
+      previewOnly: '1',
+      previewToken: medicationPreviewToken,
+      codes: previewDraft.code,
+    });
+
+    return buildPatientUrl(params);
+  }, [medicationPreviewReadyToken, medicationPreviewToken, previewDraft]);
+
   const copyText = async (value: string) => {
     try {
       if (navigator.clipboard?.writeText && window.isSecureContext) {
@@ -869,9 +921,10 @@ const createNewScreeningTemplate = () => {
         healthCheckBuilderConfigs[domainId] || createDefaultHealthCheckBuilderState()[domainId],
       ),
     };
+    const previewPayloadText = JSON.stringify(previewPayload);
     try {
-      const previewToken = `healthcheck-preview:${domainId}:${Date.now()}`;
-      window.sessionStorage.setItem(previewToken, JSON.stringify(previewPayload));
+      const previewToken = `healthcheck-preview:${domainId}:${stableHash(previewPayloadText)}`;
+      window.sessionStorage.setItem(previewToken, previewPayloadText);
       params.set('previewToken', previewToken);
     } catch {
       // sessionStorage may be unavailable; fall back to saved templates only.
@@ -885,10 +938,11 @@ const createNewScreeningTemplate = () => {
       previewOnly: '1',
       screen: template.code || template.id,
     });
+    const previewPayloadText = JSON.stringify(template);
 
     try {
-      const previewToken = `screening-preview:${template.id}:${Date.now()}`;
-      window.sessionStorage.setItem(previewToken, JSON.stringify(template));
+      const previewToken = `screening-preview:${template.id}:${stableHash(previewPayloadText)}`;
+      window.sessionStorage.setItem(previewToken, previewPayloadText);
       params.set('previewToken', previewToken);
     } catch {
       // sessionStorage may be unavailable; fall back to saved templates only.
@@ -903,10 +957,30 @@ const createNewScreeningTemplate = () => {
       previewOnly: '1',
       vaccine: template.code || template.id,
     });
+    const previewPayloadText = JSON.stringify(template);
 
     try {
-      const previewToken = `immunisation-preview:${template.id}:${Date.now()}`;
-      window.sessionStorage.setItem(previewToken, JSON.stringify(template));
+      const previewToken = `immunisation-preview:${template.id}:${stableHash(previewPayloadText)}`;
+      window.sessionStorage.setItem(previewToken, previewPayloadText);
+      params.set('previewToken', previewToken);
+    } catch {
+      // sessionStorage may be unavailable; fall back to saved templates only.
+    }
+
+    return buildPatientUrl(params);
+  };
+
+  const buildLongTermConditionPreviewUrl = (template: LongTermConditionTemplate) => {
+    const params = new URLSearchParams({
+      type: 'ltc',
+      previewOnly: '1',
+      ltc: template.code || template.id,
+    });
+    const previewPayloadText = JSON.stringify(template);
+
+    try {
+      const previewToken = `ltc-preview:${template.id}:${stableHash(previewPayloadText)}`;
+      window.sessionStorage.setItem(previewToken, previewPayloadText);
       params.set('previewToken', previewToken);
     } catch {
       // sessionStorage may be unavailable; fall back to saved templates only.
@@ -925,6 +999,10 @@ const createNewScreeningTemplate = () => {
       selectedLongTermCondition,
       Object.values(longTermConditionTemplates),
     ) || withLongTermConditionTemplateDefaults(LONG_TERM_CONDITION_TEMPLATES.asthma);
+  const selectedHealthCheckPreviewUrl = buildHealthCheckFamilyPreviewUrl(selectedHealthCheckDomain);
+  const selectedScreeningPreviewUrl = buildScreeningPreviewUrl(selectedScreeningTemplate);
+  const selectedImmunisationPreviewUrl = buildImmunisationPreviewUrl(selectedImmunisationTemplate);
+  const selectedLongTermConditionPreviewUrl = buildLongTermConditionPreviewUrl(selectedLongTermConditionTemplate);
 
   const healthCheckCatalogueRows = CLINICAL_DOMAIN_IDS.map((domainId) => {
     const metricByCode = PREVIEW_DOMAIN_CONFIGS[domainId].metricByCode;
@@ -971,7 +1049,6 @@ const createNewScreeningTemplate = () => {
       }),
       ...selectedHealthCheckDomainWhatFields,
     };
-  const selectedHealthCheckPreviewUrl = buildHealthCheckFamilyPreviewUrl(selectedHealthCheckDomain);
   const resolveHealthCheckLibraryStatus = (resultCode: string): 'ok' | 'amber' | 'red' => {
     const code = resultCode.toUpperCase().trim();
     if (code === 'BPNORMAL' || code === 'BMINORMAL' || code === 'QRISKLOW' || code === 'HBA1CNORMAL' || code === 'GPPAQACTIVE' || code === 'ALCRISKOK' || code === 'ALCRISKTEETOTAL' || code === 'SMOKNONSMOK' || code === 'SMOKSTOPPED' || code === 'CHOLNORMAL') {
@@ -1526,6 +1603,35 @@ const createNewScreeningTemplate = () => {
     setPatientPreviewFooter(footerCopy);
   };
 
+  const renderLivePreviewPane = (
+    url: string,
+    title: string,
+    emptyMessage = 'Add the required card content to see the patient preview.',
+  ) => (
+    <aside className="builder-editor-preview-pane" aria-label="Live patient preview">
+      <div className="builder-editor-preview-pane__header">
+        <div>
+          <h3 className="builder-editor-preview-pane__title">Live Preview</h3>
+          <p className="builder-editor-preview-pane__subtitle">Patient-facing card updates as you edit.</p>
+        </div>
+      </div>
+      <div className="builder-editor-preview-frame">
+        {url ? (
+          <iframe
+            key={url}
+            title={title}
+            src={url}
+            className="builder-editor-preview-frame__iframe"
+          />
+        ) : (
+          <div className="builder-editor-preview-frame__empty">
+            {emptyMessage}
+          </div>
+        )}
+      </div>
+    </aside>
+  );
+
   const renderLinkExpiryField = (
     value: number | undefined,
     unit: 'weeks' | 'months',
@@ -1855,18 +1961,25 @@ const createNewScreeningTemplate = () => {
 
       {/* Step 2: Editor */}
       {hasContent && (
-        <Modal isOpen={medicationEditorOpen} onClose={() => setMedicationEditorOpen(false)} size="xl" closeOnOverlayClick={false}>
-          <div style={{ width: 'min(960px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(15, 32, 45, 0.24)', padding: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '1rem', marginBottom: '1rem' }}>
+        <Modal
+          isOpen={medicationEditorOpen}
+          onClose={() => setMedicationEditorOpen(false)}
+          size="xl"
+          closeOnOverlayClick={false}
+          panelClassName="builder-editor-modal"
+          bodyClassName="builder-editor-modal__body"
+        >
+          <div className="builder-editor-workspace">
+          <div className="builder-editor-workspace__header">
             <div>
-              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>
+              <h2 className="builder-editor-workspace__title">
                 2. {editingCode ? `Edit Medication Card ${editingCode}` : 'Edit Medication Card Content'}
               </h2>
-              <p style={{ margin: '0.35rem 0 0', color: '#4c6272', fontSize: '0.9rem' }}>
+              <p className="builder-editor-workspace__subtitle">
                 {title.trim() || medName.trim() || 'Medication card'}
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+            <div className="builder-editor-workspace__actions">
               {editingCode && (
                 <button
                   onClick={() => loadTemplateHistory('medication', editingCode, title.trim() || medName.trim() || editingCode)}
@@ -1898,7 +2011,9 @@ const createNewScreeningTemplate = () => {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div className="builder-editor-split">
+          <section className="builder-editor-design-pane">
+          <div className="builder-editor-design-pane__stack">
             <div>
               <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}>Title *</label>
               <input
@@ -2071,6 +2186,13 @@ const createNewScreeningTemplate = () => {
               {saveError}
             </div>
           )}
+          </section>
+          {renderLivePreviewPane(
+            medicationLivePreviewUrl,
+            'Medication patient live preview',
+            'Complete the medication description and key information to see the patient preview.',
+          )}
+          </div>
           </div>
         </Modal>
       )}
@@ -2248,21 +2370,23 @@ const createNewScreeningTemplate = () => {
           </div>
 
           {healthCheckEditorOpen && (
-            <Modal isOpen={healthCheckEditorOpen} onClose={() => setHealthCheckEditorOpen(false)} size="xl" closeOnOverlayClick={false}>
-              <div style={{
-                width: '100%',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', borderBottom: '1px solid #e0e0e0' }}>
+            <Modal
+              isOpen={healthCheckEditorOpen}
+              onClose={() => setHealthCheckEditorOpen(false)}
+              size="xl"
+              closeOnOverlayClick={false}
+              panelClassName="builder-editor-modal"
+              bodyClassName="builder-editor-modal__body"
+            >
+              <div className="builder-editor-workspace">
+                <div className="builder-editor-workspace__header">
                   <div>
-                    <h3 style={{ margin: 0, color: '#003087', fontSize: '1.25rem', fontWeight: 600 }}>Edit Health Check Card</h3>
-                    <p style={{ margin: '0.35rem 0 0', color: '#4c6272', fontSize: '0.9rem' }}>
+                    <h3 className="builder-editor-workspace__title">Edit Health Check Card</h3>
+                    <p className="builder-editor-workspace__subtitle">
                       {selectedHealthCheckMetric.label} - {resolvedSelectedHealthCheckVariantCode}
                     </p>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <div className="builder-editor-workspace__actions">
                     <button
                       onClick={() => loadTemplateHistory('healthcheck', selectedHealthCheckDomain, HEALTH_CHECK_CARD_LABELS[(selectedHealthCheckDomain === 'ldl' ? 'chol' : selectedHealthCheckDomain) as HealthCheckCodeFamily] || PREVIEW_DOMAIN_CONFIGS[selectedHealthCheckDomain].heading)}
                       className="action-button"
@@ -2291,9 +2415,9 @@ const createNewScreeningTemplate = () => {
                   </div>
                 </div>
 
-                <div style={{ padding: '1.5rem' }}>
-                  <div style={{ display: 'grid', gap: '1rem', gridTemplateColumns: 'minmax(0, 1.2fr) minmax(320px, 0.8fr)' }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="builder-editor-split">
+                  <section className="builder-editor-design-pane">
+                  <div className="builder-editor-design-pane__stack">
                     <div style={{ display: 'grid', gap: '0.75rem', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
                       <div>
                         <label style={{ display: 'block', fontWeight: 600, fontSize: '0.85rem', marginBottom: '0.25rem' }}>Section</label>
@@ -2500,18 +2624,8 @@ const createNewScreeningTemplate = () => {
                       </div>
                     )}
                   </div>
-
-                  <div style={{ position: 'sticky', top: 0, alignSelf: 'start' }}>
-                    <div style={{ border: '1px solid #d8dde0', borderRadius: '12px', overflow: 'hidden', background: '#ffffff', boxShadow: '0 6px 18px rgba(33, 43, 50, 0.08)' }}>
-                      <iframe
-                        key={selectedHealthCheckPreviewUrl}
-                        title="Health check patient preview"
-                        src={selectedHealthCheckPreviewUrl}
-                        style={{ width: '100%', minHeight: '960px', border: 'none', display: 'block', background: '#ffffff' }}
-                      />
-                    </div>
-                  </div>
-                  </div>
+                  </section>
+                  {renderLivePreviewPane(selectedHealthCheckPreviewUrl, 'Health check patient live preview')}
                 </div>
               </div>
             </Modal>
@@ -2700,14 +2814,21 @@ const createNewScreeningTemplate = () => {
       )}
 
       {screeningEditorOpen && (
-        <Modal isOpen={screeningEditorOpen} onClose={() => setScreeningEditorOpen(false)} size="xl" closeOnOverlayClick={false}>
-          <div style={{ width: 'min(960px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(15, 32, 45, 0.24)', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ margin: 0, color: '#003087' }}>Edit Screening Card</h3>
-                  <p style={{ margin: '0.35rem 0 0', color: '#4c6272' }}>{selectedScreeningTemplate.label}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <Modal
+          isOpen={screeningEditorOpen}
+          onClose={() => setScreeningEditorOpen(false)}
+          size="xl"
+          closeOnOverlayClick={false}
+          panelClassName="builder-editor-modal"
+          bodyClassName="builder-editor-modal__body"
+        >
+          <div className="builder-editor-workspace">
+            <div className="builder-editor-workspace__header">
+              <div>
+                <h3 className="builder-editor-workspace__title">Edit Screening Card</h3>
+                <p className="builder-editor-workspace__subtitle">{selectedScreeningTemplate.label}</p>
+              </div>
+              <div className="builder-editor-workspace__actions">
                   <button
                     onClick={() => loadTemplateHistory('screening', screeningType, selectedScreeningTemplate.label)}
                     className="action-button"
@@ -2718,12 +2839,14 @@ const createNewScreeningTemplate = () => {
                   <button onClick={() => saveScreeningTemplate(screeningType)} className="action-button" style={{ backgroundColor: '#007f3b' }}>
                     <Save size={16} /> Save
                   </button>
-                  <button onClick={() => setScreeningEditorOpen(false)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
-                    {templateSaveCompleted.screening ? 'Close' : 'Cancel'}
+                <button onClick={() => setScreeningEditorOpen(false)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+                  {templateSaveCompleted.screening ? 'Close' : 'Cancel'}
                 </button>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="builder-editor-split">
+              <section className="builder-editor-design-pane">
+                <div className="builder-editor-design-pane__stack">
               <div className="dashboard-field">
                 <label style={editorFieldLabelStyle}>Title *</label>
                 <input type="text" value={selectedScreeningTemplate.label} onChange={(e) => updateScreeningTemplate(screeningType, { label: e.target.value })} style={editorInputStyle} />
@@ -2851,20 +2974,30 @@ const createNewScreeningTemplate = () => {
                   </div>
                 ))}
               </div>
+                </div>
+              </section>
+              {renderLivePreviewPane(selectedScreeningPreviewUrl, 'Screening patient live preview')}
             </div>
           </div>
         </Modal>
       )}
 
       {immunisationEditorOpen && (
-        <Modal isOpen={immunisationEditorOpen} onClose={() => setImmunisationEditorOpen(false)} size="xl" closeOnOverlayClick={false}>
-          <div style={{ width: 'min(960px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(15, 32, 45, 0.24)', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ margin: 0, color: '#003087' }}>Edit Immunisation Card</h3>
-                  <p style={{ margin: '0.35rem 0 0', color: '#4c6272' }}>{selectedImmunisationTemplate.label}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <Modal
+          isOpen={immunisationEditorOpen}
+          onClose={() => setImmunisationEditorOpen(false)}
+          size="xl"
+          closeOnOverlayClick={false}
+          panelClassName="builder-editor-modal"
+          bodyClassName="builder-editor-modal__body"
+        >
+          <div className="builder-editor-workspace">
+            <div className="builder-editor-workspace__header">
+              <div>
+                <h3 className="builder-editor-workspace__title">Edit Immunisation Card</h3>
+                <p className="builder-editor-workspace__subtitle">{selectedImmunisationTemplate.label}</p>
+              </div>
+              <div className="builder-editor-workspace__actions">
                   <button
                     onClick={() => loadTemplateHistory('immunisation', selectedImmunisationTemplate.id, selectedImmunisationTemplate.label)}
                     className="action-button"
@@ -2875,12 +3008,14 @@ const createNewScreeningTemplate = () => {
                   <button onClick={() => saveImmunisationTemplate(immunisationSelections[0] || 'flu')} className="action-button" style={{ backgroundColor: '#007f3b' }}>
                     <Save size={16} /> Save
                   </button>
-                  <button onClick={() => setImmunisationEditorOpen(false)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
-                    {templateSaveCompleted.immunisation ? 'Close' : 'Cancel'}
+                <button onClick={() => setImmunisationEditorOpen(false)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+                  {templateSaveCompleted.immunisation ? 'Close' : 'Cancel'}
                 </button>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="builder-editor-split">
+              <section className="builder-editor-design-pane">
+                <div className="builder-editor-design-pane__stack">
               <div className="dashboard-field">
                 <label style={editorFieldLabelStyle}>Title *</label>
                 <input type="text" value={selectedImmunisationTemplate.label} onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, { label: e.target.value })} style={editorInputStyle} />
@@ -2987,20 +3122,30 @@ const createNewScreeningTemplate = () => {
                   </div>
                 ))}
               </div>
+                </div>
+              </section>
+              {renderLivePreviewPane(selectedImmunisationPreviewUrl, 'Immunisation patient live preview')}
             </div>
           </div>
         </Modal>
       )}
 
       {ltcEditorOpen && (
-        <Modal isOpen={ltcEditorOpen} onClose={() => setLtcEditorOpen(false)} size="xl" closeOnOverlayClick={false}>
-          <div style={{ width: 'min(1040px, 100%)', maxHeight: '90vh', overflowY: 'auto', background: '#ffffff', borderRadius: '16px', boxShadow: '0 24px 60px rgba(15, 32, 45, 0.24)', padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <h3 style={{ margin: 0, color: '#003087' }}>Edit Long Term Condition Card</h3>
-                  <p style={{ margin: '0.35rem 0 0', color: '#4c6272' }}>{selectedLongTermConditionTemplate.label}</p>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <Modal
+          isOpen={ltcEditorOpen}
+          onClose={() => setLtcEditorOpen(false)}
+          size="xl"
+          closeOnOverlayClick={false}
+          panelClassName="builder-editor-modal"
+          bodyClassName="builder-editor-modal__body"
+        >
+          <div className="builder-editor-workspace">
+            <div className="builder-editor-workspace__header">
+              <div>
+                <h3 className="builder-editor-workspace__title">Edit Long Term Condition Card</h3>
+                <p className="builder-editor-workspace__subtitle">{selectedLongTermConditionTemplate.label}</p>
+              </div>
+              <div className="builder-editor-workspace__actions">
                   <button
                     onClick={() => loadTemplateHistory('ltc', selectedLongTermCondition, selectedLongTermConditionTemplate.label)}
                     className="action-button"
@@ -3011,12 +3156,14 @@ const createNewScreeningTemplate = () => {
                   <button onClick={() => saveLtcTemplate(selectedLongTermCondition)} className="action-button" style={{ backgroundColor: '#007f3b' }}>
                     <Save size={16} /> Save
                   </button>
-                  <button onClick={() => setLtcEditorOpen(false)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
-                    {templateSaveCompleted.ltc ? 'Close' : 'Cancel'}
+                <button onClick={() => setLtcEditorOpen(false)} className="action-button" style={{ backgroundColor: '#4c6272' }}>
+                  {templateSaveCompleted.ltc ? 'Close' : 'Cancel'}
                 </button>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="builder-editor-split">
+              <section className="builder-editor-design-pane">
+                <div className="builder-editor-design-pane__stack">
               <div className="dashboard-field">
                 <label style={editorFieldLabelStyle}>Title *</label>
                 <input type="text" value={selectedLongTermConditionTemplate.label} onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, { label: e.target.value })} style={editorInputStyle} />
@@ -3126,6 +3273,9 @@ const createNewScreeningTemplate = () => {
                   </div>
                 ))}
               </div>
+                </div>
+              </section>
+              {renderLivePreviewPane(selectedLongTermConditionPreviewUrl, 'Long term condition patient live preview')}
             </div>
           </div>
         </Modal>

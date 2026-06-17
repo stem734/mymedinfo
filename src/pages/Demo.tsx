@@ -26,6 +26,8 @@ const CATEGORY_ICONS: Record<DemoSample['category'], React.ElementType> = {
   'Long term condition': ClipboardList,
 };
 
+const demoSectionId = (category: DemoSample['category']) => `demo-${category.toLowerCase().replace(/\s+/g, '-')}`;
+
 const Demo: React.FC = () => {
   const navigate = useNavigate();
   const { medications } = useMedicationCatalog();
@@ -89,88 +91,73 @@ const Demo: React.FC = () => {
   })).filter(({ samples }) => samples.length > 0);
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem' }}>
+    <div className="demo-page">
       <button
+        type="button"
         onClick={() => navigate('/')}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          padding: '0.5rem 1rem',
-          background: '#005eb8',
-          color: 'white',
-          border: 'none',
-          borderRadius: '6px',
-          cursor: 'pointer',
-          marginBottom: '2rem',
-          fontSize: '0.9rem',
-          fontWeight: '600'
-        }}
+        className="demo-page__back-button"
       >
         <ArrowLeft size={16} /> Back
       </button>
 
-      <div style={{ marginBottom: '1.5rem' }}>
-        <h1 style={{ fontSize: '2rem', color: '#212b32', marginBottom: '0.5rem' }}>MyMedInfo Demo</h1>
-        <p style={{ fontSize: '1rem', color: '#4c6272', margin: 0 }}>
+      <header className="demo-page__header">
+        <div>
+          <p className="demo-page__eyebrow">Demo Access</p>
+          <h1 className="demo-page__title">MyMedInfo Demo</h1>
+        </div>
+        <p className="demo-page__subtitle">
           Pick an example card view or load a random one. Demo links do not include patient names or NHS numbers.
         </p>
-      </div>
+      </header>
 
-      <div className="patient-demo-banner" style={{ marginBottom: '1.5rem' }}>
+      <div className="patient-demo-banner demo-page__notice">
         This is dummy information for demonstration purposes only.
       </div>
 
-      <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '2rem' }}>
+      <div className="demo-page__actions">
         <button
+          type="button"
           onClick={openRandomDemo}
-          className="action-button"
-          style={{ backgroundColor: '#212b32', color: 'white', justifyContent: 'center' }}
+          className="action-button demo-page__random-button"
         >
           <Shuffle size={18} /> Random demo
         </button>
       </div>
 
-      <div style={{ display: 'grid', gap: '2rem' }}>
+      <div className="demo-page__sections">
         {samplesByCategory.map(({ category, samples }) => {
           const CategoryIcon = CATEGORY_ICONS[category];
+          const sectionId = demoSectionId(category);
 
           return (
-            <section key={category} aria-labelledby={`demo-${category}`}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', marginBottom: '0.85rem' }}>
-                <CategoryIcon size={22} color="#005eb8" />
-                <h2 id={`demo-${category}`} style={{ margin: 0, fontSize: '1.25rem', color: '#212b32' }}>{category}</h2>
-                <span style={{ color: '#4c6272', fontSize: '0.9rem' }}>{samples.length} sample{samples.length === 1 ? '' : 's'}</span>
+            <section key={category} className="demo-page__section" aria-labelledby={sectionId}>
+              <div className="demo-page__section-header">
+                <span className="demo-page__section-icon" aria-hidden="true">
+                  <CategoryIcon size={20} />
+                </span>
+                <h2 id={sectionId} className="demo-page__section-title">{category}</h2>
+                <span className="demo-page__count">{samples.length} sample{samples.length === 1 ? '' : 's'}</span>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+              <div className="demo-page__sample-grid">
                 {samples.map((sample) => {
                   const sampleIndex = demoSamples.findIndex((item) => item.id === sample.id);
 
                   return (
                     <button
+                      type="button"
                       key={sample.id}
                       onClick={() => openDemo(sampleIndex)}
-                      className="resource-card"
-                      style={{
-                        textAlign: 'left',
-                        padding: '1.25rem',
-                        background: 'white',
-                        borderRadius: '8px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                        cursor: 'pointer',
-                        transition: 'all 0.3s ease',
-                        border: '1px solid #d8dde0',
-                      }}
+                      className="demo-page__sample-card"
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.75rem', color: '#005eb8' }}>
+                      <div className="demo-page__sample-meta">
                         <Monitor size={22} />
                         <strong>{sample.category}</strong>
                       </div>
-                      <div style={{ fontWeight: 700, color: '#212b32', marginBottom: '0.35rem' }}>
+                      <div className="demo-page__sample-title">
                         {sample.title}
                       </div>
-                      <div style={{ color: '#4c6272', fontSize: '0.92rem', lineHeight: 1.45 }}>
+                      <div className="demo-page__sample-description">
                         {sample.description}
                       </div>
                     </button>

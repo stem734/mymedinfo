@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import PracticeSignup from './PracticeSignup';
 
 const { invokeMock } = vi.hoisted(() => ({
@@ -24,7 +25,11 @@ describe('PracticeSignup', () => {
     const user = userEvent.setup();
     invokeMock.mockResolvedValue({ data: { success: true, status: 'submitted' }, error: null });
 
-    render(<PracticeSignup />);
+    render(
+      <MemoryRouter>
+        <PracticeSignup />
+      </MemoryRouter>,
+    );
 
     await user.type(screen.getByPlaceholderText('e.g. Riverside Medical Centre'), 'Riverside Medical Centre');
     await user.type(screen.getByPlaceholderText('e.g. C84001'), 'c84001');

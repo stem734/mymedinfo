@@ -1367,10 +1367,12 @@ const PracticeDashboard: React.FC = () => {
                         </td>
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                            <span
-                              className="admin-status-dot"
-                              style={{ background: state === 'custom' ? '#007f3b' : '#005eb8' }}
-                            />
+                            <span className="admin-status-dot" aria-hidden="true">
+                              <span
+                                className="admin-status-dot__circle"
+                                style={{ background: state === 'custom' ? '#007f3b' : '#005eb8' }}
+                              />
+                            </span>
                             <span className="admin-table-muted">
                               {state === 'custom' ? 'Practice version' : 'Global template'}
                             </span>
@@ -1526,7 +1528,9 @@ const PracticeDashboard: React.FC = () => {
                       </td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span className={`admin-status-dot admin-status-dot--${service.isActive ? 'active' : 'inactive'}`} />
+                          <span className={`admin-status-dot admin-status-dot--${service.isActive ? 'active' : 'inactive'}`} aria-hidden="true">
+                            <span className="admin-status-dot__circle" />
+                          </span>
                           <span className="admin-table-muted">{service.isActive ? 'Active' : 'Not enabled'}</span>
                           {!service.isActive && (
                             <button
@@ -1814,10 +1818,12 @@ const PracticeDashboard: React.FC = () => {
                       <td><span className="admin-ods-badge" style={{ background: '#fff7ed', color: '#b45309' }}>{medication.category}</span></td>
                       <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                          <span
-                            className="admin-status-dot"
-                            style={{ background: state === 'custom' ? '#007f3b' : state === 'global' ? '#005eb8' : '#94a3b8' }}
-                          />
+                          <span className="admin-status-dot" aria-hidden="true">
+                            <span
+                              className="admin-status-dot__circle"
+                              style={{ background: state === 'custom' ? '#007f3b' : state === 'global' ? '#005eb8' : '#94a3b8' }}
+                            />
+                          </span>
                           <span className="admin-table-muted">
                             {state === 'custom' ? 'Practice version' : state === 'global' ? 'Global template' : 'Not configured'}
                           </span>
