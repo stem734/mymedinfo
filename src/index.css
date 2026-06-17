@@ -1168,11 +1168,22 @@ p {
   margin: 0 0 0.9rem;
 }
 
-.patient-page-shell__brand-logo {
-  width: min(180px, 52vw);
-  height: auto;
-  display: block;
+.patient-page-shell__brand-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: clamp(2.15rem, 4.8vw, 3.6rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.05em;
   flex-shrink: 0;
+}
+
+.patient-page-shell__brand-wordmark-my {
+  color: #78be20;
+}
+
+.patient-page-shell__brand-wordmark-medinfo {
+  color: #005eb8;
 }
 
 .patient-page-shell__brand-partner-block {
