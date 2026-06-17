@@ -13,11 +13,11 @@ import {
   Eye,
   FlaskConical,
   LayoutDashboard,
+  LayoutGrid,
   LogOut,
   Plus,
   RefreshCw,
   Settings,
-  ShieldCheck,
   Star,
   Trash2,
   Users,
@@ -136,7 +136,36 @@ const PRACTICE_FUNCTIONS: Array<{
   { key: 'ltc_enabled', label: 'Long term conditions', isEnabled: (practice) => practice.ltc_enabled === true },
 ];
 
-type AdminTab = 'overview' | 'practices' | 'practiceUsers' | 'admins' | 'builder' | 'library' | 'setup' | 'audit' | 'demo';
+type AdminTab = 'overview' | 'practices' | 'practiceUsers' | 'services' | 'library' | 'setup' | 'audit' | 'demo';
+
+type PlatformConfig = {
+  service_medication_enabled: boolean;
+  service_healthcheck_enabled: boolean;
+  service_screening_enabled: boolean;
+  service_immunisation_enabled: boolean;
+  service_ltc_enabled: boolean;
+};
+
+const DEFAULT_PLATFORM_CONFIG: PlatformConfig = {
+  service_medication_enabled: true,
+  service_healthcheck_enabled: false,
+  service_screening_enabled: false,
+  service_immunisation_enabled: false,
+  service_ltc_enabled: false,
+};
+
+const GLOBAL_SERVICES: Array<{
+  configKey: keyof PlatformConfig;
+  practiceKey: keyof Pick<Practice, 'medication_enabled' | 'healthcheck_enabled' | 'screening_enabled' | 'immunisation_enabled' | 'ltc_enabled'>;
+  label: string;
+  description: string;
+}> = [
+  { configKey: 'service_medication_enabled', practiceKey: 'medication_enabled', label: 'Medication Cards', description: 'Structured medication review cards for patient consultations.' },
+  { configKey: 'service_healthcheck_enabled', practiceKey: 'healthcheck_enabled', label: 'NHS Health Checks', description: 'Health check assessment pathway and outcome tracking.' },
+  { configKey: 'service_screening_enabled', practiceKey: 'screening_enabled', label: 'Screening', description: 'Cancer and vascular screening recommendations.' },
+  { configKey: 'service_immunisation_enabled', practiceKey: 'immunisation_enabled', label: 'Immunisations', description: 'Vaccination schedule and immunisation programme cards.' },
+  { configKey: 'service_ltc_enabled', practiceKey: 'ltc_enabled', label: 'Long Term Conditions', description: 'Chronic disease management and care pathway cards.' },
+];
 
 type AdminTabMeta = {
   id: AdminTab;
@@ -148,13 +177,13 @@ const isAdminBuilderPath = (pathname: string) => ['/admin/card-builder', '/admin
 
 const parseAdminTabFromSearch = (search: string): AdminTab | null => {
   const value = new URLSearchParams(search).get('tab');
-  return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'admins' || value === 'builder' || value === 'library' || value === 'setup' || value === 'audit' || value === 'demo'
+  return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'services' || value === 'library' || value === 'setup' || value === 'audit' || value === 'demo'
     ? value
     : null;
 };
 
 const parseAdminTabFromLocation = (pathname: string, search: string): AdminTab | null => (
-  isAdminBuilderPath(pathname) ? 'builder' : parseAdminTabFromSearch(search)
+  isAdminBuilderPath(pathname) ? 'services' : parseAdminTabFromSearch(search)
 );
 
 const AdminDashboard: React.FC = () => {
@@ -162,6 +191,8 @@ const AdminDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromLocation(window.location.pathname, window.location.search) || 'overview');
   const [practices, setPractices] = useState<Practice[]>([]);
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);
+  const [showCardBuilder, setShowCardBuilder] = useState(() => isAdminBuilderPath(window.location.pathname));
   const [loginAudit, setLoginAudit] = useState<LoginAuditEntry[]>([]);
   const [practiceSearch, setPracticeSearch] = useState('');
   const [practiceStatusFilter, setPracticeStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -220,8 +251,7 @@ const AdminDashboard: React.FC = () => {
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" /> },
     { id: 'practices', label: 'Practices', icon: <Building2 size={16} aria-hidden="true" /> },
     { id: 'practiceUsers', label: 'Users', icon: <Users size={16} aria-hidden="true" /> },
-    { id: 'admins', label: 'Administrators', icon: <ShieldCheck size={16} aria-hidden="true" /> },
-    { id: 'builder', label: 'Card Builder', icon: <Edit2 size={16} aria-hidden="true" /> },
+    { id: 'services', label: 'Services Manager', icon: <LayoutGrid size={16} aria-hidden="true" /> },
     { id: 'library', label: 'Pathway Library', icon: <BookOpen size={16} aria-hidden="true" /> },
     { id: 'setup', label: 'Setup', icon: <Settings size={16} aria-hidden="true" /> },
     { id: 'audit', label: 'User Audit', icon: <Activity size={16} aria-hidden="true" /> },
@@ -230,9 +260,8 @@ const AdminDashboard: React.FC = () => {
 
   const setAdminTab = (tab: AdminTab) => {
     setActiveTab(tab);
-    if (tab === 'builder') {
-      navigate(resolvePath('/admin/card-builder'));
-      return;
+    if (tab === 'services') {
+      setShowCardBuilder(false);
     }
     if (isAdminBuilderPath(location.pathname)) {
       navigate(resolvePath('/admin/dashboard'));
@@ -248,6 +277,9 @@ const AdminDashboard: React.FC = () => {
     const requestedTab = parseAdminTabFromLocation(location.pathname, location.search);
     if (!requestedTab) return;
     setActiveTab(requestedTab);
+    if (requestedTab === 'services') {
+      setShowCardBuilder(isAdminBuilderPath(location.pathname));
+    }
   }, [location.pathname, location.search]);
 
   useEffect(() => {
@@ -262,6 +294,7 @@ const AdminDashboard: React.FC = () => {
         setAuthenticated(true);
         setCurrentUserEmail(session.user.email ?? '');
         loadDashboardData();
+        void loadPlatformConfig();
         return;
       }
 
@@ -342,6 +375,31 @@ const AdminDashboard: React.FC = () => {
 
   const loadAdmins = async () => {
     await loadDashboardData();
+  };
+
+  const loadPlatformConfig = async () => {
+    const { data } = await supabase.from('platform_config').select('*').eq('id', 1).maybeSingle();
+    if (data) {
+      setPlatformConfig({
+        service_medication_enabled: data.service_medication_enabled ?? true,
+        service_healthcheck_enabled: data.service_healthcheck_enabled ?? false,
+        service_screening_enabled: data.service_screening_enabled ?? false,
+        service_immunisation_enabled: data.service_immunisation_enabled ?? false,
+        service_ltc_enabled: data.service_ltc_enabled ?? false,
+      });
+    }
+  };
+
+  const toggleGlobalService = async (key: keyof PlatformConfig, value: boolean) => {
+    setPlatformConfig((prev) => ({ ...prev, [key]: value }));
+    const { error } = await supabase
+      .from('platform_config')
+      .update({ [key]: value, updated_at: new Date().toISOString() })
+      .eq('id', 1);
+    if (error) {
+      console.error('Failed to update platform config:', error);
+      setPlatformConfig((prev) => ({ ...prev, [key]: !value }));
+    }
   };
 
   const loadLoginAudit = async () => {
@@ -856,7 +914,7 @@ const AdminDashboard: React.FC = () => {
         {/* Sectioned nav */}
         <nav className="admin-portal-nav" aria-label="Admin management areas">
           <span className="admin-portal-nav__section-label">Management</span>
-          {(['overview', 'practices', 'practiceUsers', 'admins'] as AdminTab[]).map((id) => {
+          {(['overview', 'practices', 'practiceUsers'] as AdminTab[]).map((id) => {
             const tab = adminTabs.find((t) => t.id === id)!;
             return (
               <button key={tab.id} type="button"
@@ -868,7 +926,7 @@ const AdminDashboard: React.FC = () => {
           })}
 
           <span className="admin-portal-nav__section-label">Content</span>
-          {(['builder', 'library'] as AdminTab[]).map((id) => {
+          {(['services', 'library'] as AdminTab[]).map((id) => {
             const tab = adminTabs.find((t) => t.id === id)!;
             return (
               <button key={tab.id} type="button"
@@ -942,7 +1000,7 @@ const AdminDashboard: React.FC = () => {
             <div className="admin-stat-card">
               <div className="admin-stat-card__value">{adminUsers.length}</div>
               <div className="admin-stat-card__label">Administrators</div>
-              <button type="button" className="admin-stat-card__link" onClick={() => setAdminTab('admins')}>Manage →</button>
+              <button type="button" className="admin-stat-card__link" onClick={() => setAdminTab('practiceUsers')}>Manage →</button>
             </div>
             <div className="admin-stat-card">
               <div className="admin-stat-card__value">{enabledServiceCount}</div>
@@ -1040,7 +1098,7 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {showAddAdminForm && activeTab === 'admins' && (
+      {showAddAdminForm && activeTab === 'practiceUsers' && (
         <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
           <div className="dashboard-panel-header">
             <h2 className="dashboard-panel-title">Add Administrator</h2>
@@ -1361,89 +1419,81 @@ const AdminDashboard: React.FC = () => {
 
       {activeTab === 'practiceUsers' && (
       <>
-        <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
-          <h2 className="dashboard-panel-title">User Management</h2>
-          <p className="dashboard-panel-subtitle">
-            Users can be practice admins, global admins, or both. Practice-linked users can belong to multiple practices, and global medication changes go live immediately for practices using the global source.
-          </p>
-        </div>
         <PracticeUserManagement practices={practices} />
-      </>
-      )}
 
-      {activeTab === 'admins' && (
-      <div className="dashboard-panel dashboard-section">
-        <div className="dashboard-panel-header">
-          <div>
-            <h2 className="dashboard-panel-title">
-            Administrator Accounts ({adminUsers.length})
-            </h2>
-            <p className="dashboard-panel-subtitle">Manage global administrator access on top of the shared user account model.</p>
+        <div className="dashboard-panel dashboard-section">
+          <div className="dashboard-panel-header">
+            <div>
+              <h2 className="dashboard-panel-title">
+                Administrator Accounts ({adminUsers.length})
+              </h2>
+              <p className="dashboard-panel-subtitle">Users with global admin portal access. Admins who also have practice memberships appear in the table above.</p>
+            </div>
+            {!showAddAdminForm && (
+              <button onClick={() => setShowAddAdminForm(true)} className="action-button admin-action-button--primary">
+                <Plus size={16} /> Add Administrator
+              </button>
+            )}
           </div>
-          {!showAddAdminForm && (
-            <button onClick={() => setShowAddAdminForm(true)} className="action-button admin-action-button--primary">
-              <Plus size={16} /> Add Administrator
-            </button>
+
+          {loadingAdmins ? (
+            <p style={{ color: '#4c6272' }}>Loading administrators...</p>
+          ) : adminUsers.length === 0 ? (
+            <p style={{ color: '#4c6272' }}>No administrator accounts found yet.</p>
+          ) : (
+            <div className="admin-data-table-wrap">
+              <table className="admin-data-table admin-data-table--admins">
+                <thead>
+                  <tr>
+                    <th scope="col">Administrator</th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Role</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {adminUsers.map((adminUser) => (
+                    <tr key={adminUser.uid}>
+                      <td>
+                        <div className="admin-table-identity">
+                          <strong>{adminUser.name}</strong>
+                          <span className="admin-table-identity__email">{adminUser.email}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`admin-status-dot ${adminUser.is_active ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
+                          <span className="admin-status-dot__circle" aria-hidden="true" />
+                          {adminUser.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`admin-role-badge admin-role-badge--${adminUser.role}`}>
+                          {adminUser.role === 'owner' ? 'Owner' : 'Admin'}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button onClick={() => openAdminEditForm(adminUser)} className="admin-action-btn admin-action-btn--edit">
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button onClick={() => resetAdminPassword(adminUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
+                            <RefreshCw size={15} />
+                          </button>
+                          {adminUser.role !== 'owner' && (
+                            <button onClick={() => deleteAdmin(adminUser)} className="admin-action-btn admin-action-btn--icon" title="Remove administrator">
+                              <Trash2 size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
-
-        {loadingAdmins ? (
-          <p style={{ color: '#4c6272' }}>Loading administrators...</p>
-        ) : adminUsers.length === 0 ? (
-          <p style={{ color: '#4c6272' }}>No administrator accounts found yet.</p>
-        ) : (
-          <div className="admin-data-table-wrap">
-            <table className="admin-data-table admin-data-table--admins">
-              <thead>
-                <tr>
-                  <th scope="col">Administrator</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Role</th>
-                  <th scope="col">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {adminUsers.map((adminUser) => (
-                  <tr key={adminUser.uid}>
-                    <td>
-                      <div className="admin-table-identity">
-                        <strong>{adminUser.name}</strong>
-                        <span className="admin-table-identity__email">{adminUser.email}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`admin-status-dot ${adminUser.is_active ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
-                        <span className="admin-status-dot__circle" aria-hidden="true" />
-                        {adminUser.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <span className={`admin-role-badge admin-role-badge--${adminUser.role}`}>
-                        {adminUser.role === 'owner' ? 'Owner' : 'Admin'}
-                      </span>
-                    </td>
-                    <td>
-                      <div className="admin-table-actions">
-                        <button onClick={() => openAdminEditForm(adminUser)} className="admin-action-btn admin-action-btn--edit">
-                          <Edit2 size={14} /> Edit
-                        </button>
-                        <button onClick={() => resetAdminPassword(adminUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
-                          <RefreshCw size={15} />
-                        </button>
-                        {adminUser.role !== 'owner' && (
-                          <button onClick={() => deleteAdmin(adminUser)} className="admin-action-btn admin-action-btn--icon" title="Remove administrator">
-                            <Trash2 size={15} />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+      </>
       )}
 
       {activeTab === 'practices' && (
@@ -1698,8 +1748,81 @@ const AdminDashboard: React.FC = () => {
       </div>
       )}
 
-      {activeTab === 'builder' && (
-        <CardBuilder embedded onBack={() => setAdminTab('overview')} />
+      {activeTab === 'services' && !showCardBuilder && (
+        <div className="dashboard-panel dashboard-section">
+          <div className="dashboard-panel-header">
+            <div>
+              <h2 className="dashboard-panel-title">Services Manager</h2>
+              <p className="dashboard-panel-subtitle">
+                Control which services are available platform-wide. Disabled services are hidden from all practice portals regardless of per-practice settings.
+              </p>
+            </div>
+            <button onClick={() => setShowCardBuilder(true)} className="action-button admin-action-button--primary">
+              <Edit2 size={16} /> Card Builder
+            </button>
+          </div>
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table" style={{ minWidth: 640, tableLayout: 'auto' }}>
+              <thead>
+                <tr>
+                  <th scope="col">Service</th>
+                  <th scope="col">Platform Status</th>
+                  <th scope="col">Practices Enabled</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {GLOBAL_SERVICES.map((service) => {
+                  const isEnabled = platformConfig[service.configKey];
+                  const practiceFn = PRACTICE_FUNCTIONS.find((f) => f.key === service.practiceKey);
+                  const enabledCount = practiceFn ? practices.filter((p) => practiceFn.isEnabled(p)).length : 0;
+                  return (
+                    <tr key={service.configKey}>
+                      <td>
+                        <div className="admin-table-identity">
+                          <strong>{service.label}</strong>
+                          <span className="admin-table-identity__email">{service.description}</span>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`admin-status-dot ${isEnabled ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
+                          <span className="admin-status-dot__circle" aria-hidden="true" />
+                          {isEnabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>{enabledCount}</span>
+                        <span style={{ color: '#9ca3af', fontSize: 13 }}> / {practices.length}</span>
+                      </td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button
+                            onClick={() => void toggleGlobalService(service.configKey, !isEnabled)}
+                            className={`admin-action-btn ${isEnabled ? 'admin-action-btn--icon' : 'admin-action-btn--edit'}`}
+                          >
+                            {isEnabled ? <XCircle size={14} /> : <CheckCircle size={14} />}
+                            {isEnabled ? 'Disable' : 'Enable'}
+                          </button>
+                          <button
+                            onClick={() => setShowCardBuilder(true)}
+                            className="admin-action-btn admin-action-btn--icon"
+                            title="Open card builder"
+                          >
+                            <Edit2 size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'services' && showCardBuilder && (
+        <CardBuilder embedded onBack={() => setShowCardBuilder(false)} />
       )}
 
       {activeTab === 'library' && (
@@ -1710,7 +1833,7 @@ const AdminDashboard: React.FC = () => {
             <p className="dashboard-panel-subtitle">Maintain reusable local support links that can be applied to cards across every service.</p>
           </div>
           <div className="dashboard-inline-actions">
-            <button onClick={() => setAdminTab('builder')} className="action-button admin-action-button--secondary">
+            <button onClick={() => { setActiveTab('services'); setShowCardBuilder(true); }} className="action-button admin-action-button--secondary">
               <Edit2 size={16} /> Open Card Builder
             </button>
             <button onClick={() => openLocalResourceForm()} className="action-button admin-action-button--primary">

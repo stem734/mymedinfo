@@ -2,7 +2,7 @@ import React, { useMemo, useReducer, useState, useEffect } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, Save, Copy, ExternalLink, Link, Eye, Edit2, CopyPlus } from 'lucide-react';
+import { Activity, ArrowLeft, Plus, Trash2, Save, Copy, ExternalLink, Link, Eye, Edit2, CopyPlus } from 'lucide-react';
 import MedicationPreviewModal from '../components/MedicationPreviewModal';
 import { resolvePath } from '../subdomainUtils';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -2031,133 +2031,94 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
       {previewMed && <MedicationPreviewModal med={previewMed} onClose={() => setPreviewMed(null)} />}
 
       {/* Existing medications */}
-      <div className="card">
-        <h2 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>3. Medication Catalogue</h2>
+      <div className="dashboard-panel dashboard-section">
+        <div className="dashboard-panel-header">
+          <div>
+            <h2 className="dashboard-panel-title">Medication Catalogue</h2>
+            <p className="dashboard-panel-subtitle">{existingMeds.length} card{existingMeds.length !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
         {loadingMeds ? (
           <p style={{ color: '#4c6272' }}>Loading...</p>
         ) : existingMeds.length === 0 ? (
-          <p style={{ color: '#4c6272' }}>No medications available. Use the search above to create your first one.</p>
+          <p style={{ color: '#4c6272' }}>No medications yet. Use the search above to create your first one.</p>
         ) : (
-          <div className="dashboard-list">
-            {existingMeds.map(med => (
-              <div
-                key={med.code}
-                className="dashboard-list-card"
-              >
-                <div style={{
-                  padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.85rem',
-                  fontWeight: 800, fontFamily: 'monospace', background: '#005eb8', color: 'white',
-                  minWidth: '40px', textAlign: 'center',
-                }}>
-                  {med.code}
-                </div>
-                <div className="dashboard-list-main">
-                  <div className="dashboard-list-title">{med.title}</div>
-                  <div className="dashboard-meta" style={{ marginTop: '0.15rem' }}>
-                    <span style={{
-                      padding: '0 0.4rem', borderRadius: '3px', fontSize: '0.7rem', fontWeight: 700,
-                      background: med.badge === 'NEW' ? '#005eb8' : med.badge === 'REAUTH' ? '#007f3b' : '#4c6272',
-                      color: 'white',
-                    }}>
-                      {med.badge}
-                    </span>
-                    <span className={`dashboard-badge ${med.source === 'custom' ? 'dashboard-badge--amber' : med.source === 'override' ? 'dashboard-badge--purple' : 'dashboard-badge--muted'}`}>
-                      {sourceLabel(med)}
-                    </span>
-                    <span className={`dashboard-badge ${
-                      !med.contentReviewDate ? 'dashboard-badge--muted' :
-                      new Date(`${med.contentReviewDate}T00:00:00`).getTime() < Date.now() ? 'dashboard-badge--red' :
-                      new Date(`${med.contentReviewDate}T00:00:00`).getTime() < Date.now() + 30 * 24 * 60 * 60 * 1000 ? 'dashboard-badge--amber' :
-                      'dashboard-badge--green'
-                    }`}>
-                      {med.contentReviewDate ? `Content review: ${med.contentReviewDate}` : 'No review set'}
-                    </span>
-                    <span className={`dashboard-badge ${med.linkExpiryValue && med.linkExpiryUnit ? 'dashboard-badge--blue' : 'dashboard-badge--muted'}`}>
-                      {formatLinkExpiryLabel(med.linkExpiryValue, med.linkExpiryUnit)}
-                    </span>
-                  </div>
-                </div>
-                <div className="dashboard-list-actions">
-                  <button
-                    onClick={() => loadTemplateHistory('medication', med.code, med.title)}
-                    title="View medication audit history"
-                    className="action-button-sm"
-                    style={{
-                      background: '#fff8e6', border: '1px solid #b27a00', color: '#8a5f00',
-                      borderRadius: '6px', padding: '0.4rem 0.6rem', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    Audit
-                  </button>
-                  <button
-                    onClick={() => setPreviewMed(med)}
-                    title="Preview patient view"
-                    className="action-button-sm"
-                    style={{
-                      background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8',
-                      borderRadius: '6px', padding: '0.4rem 0.6rem', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Eye size={14} /> Preview
-                  </button>
-                  <button
-                    onClick={() => startEditingMedication(med)}
-                    title="Edit medication"
-                    className="action-button-sm"
-                    style={{
-                      background: '#eef7ff', border: '1px solid #4c6272', color: '#4c6272',
-                      borderRadius: '6px', padding: '0.4rem 0.6rem', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Edit2 size={14} /> Edit
-                  </button>
-                  <button
-                    onClick={() => duplicateMedication(med)}
-                    title="Duplicate medication"
-                    className="action-button-sm"
-                    style={{
-                      background: '#f3f8f1', border: '1px solid #007f3b', color: '#007f3b',
-                      borderRadius: '6px', padding: '0.4rem 0.6rem', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <CopyPlus size={14} /> Duplicate
-                  </button>
-                  <button
-                    onClick={() => copyCode(med.code)}
-                    title="Copy SystmOne code"
-                    className="action-button-sm"
-                    style={{
-                      background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8',
-                      borderRadius: '6px', padding: '0.4rem 0.6rem', cursor: 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.8rem',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Copy size={14} /> Copy
-                  </button>
-                  <button
-                    onClick={() => handleDelete(med)}
-                    disabled={deletingCode === med.code}
-                    className="action-button-sm"
-                    style={{
-                      background: '#fde8e8', border: 'none', color: '#d5281b',
-                      borderRadius: '6px', padding: '0.4rem', cursor: 'pointer', display: 'flex',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
+          <div className="admin-data-table-wrap">
+            <table className="admin-data-table admin-data-table--medications">
+              <thead>
+                <tr>
+                  <th scope="col">Code</th>
+                  <th scope="col">Name</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Review</th>
+                  <th scope="col">Link Expiry</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {existingMeds.map(med => (
+                  <tr key={med.code}>
+                    <td>
+                      <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{med.code}</span>
+                    </td>
+                    <td>
+                      <strong style={{ fontSize: 14 }}>{med.title}</strong>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <span style={{
+                          padding: '0 0.4rem', borderRadius: '3px', fontSize: '0.7rem', fontWeight: 700,
+                          background: med.badge === 'NEW' ? '#005eb8' : med.badge === 'REAUTH' ? '#007f3b' : '#4c6272',
+                          color: 'white',
+                        }}>
+                          {med.badge}
+                        </span>
+                        <span className={`dashboard-badge ${med.source === 'custom' ? 'dashboard-badge--amber' : med.source === 'override' ? 'dashboard-badge--purple' : 'dashboard-badge--muted'}`}>
+                          {sourceLabel(med)}
+                        </span>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`dashboard-badge ${
+                        !med.contentReviewDate ? 'dashboard-badge--muted' :
+                        new Date(`${med.contentReviewDate}T00:00:00`).getTime() < Date.now() ? 'dashboard-badge--red' :
+                        new Date(`${med.contentReviewDate}T00:00:00`).getTime() < Date.now() + 30 * 24 * 60 * 60 * 1000 ? 'dashboard-badge--amber' :
+                        'dashboard-badge--green'
+                      }`}>
+                        {med.contentReviewDate ? med.contentReviewDate : 'No review set'}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`dashboard-badge ${med.linkExpiryValue && med.linkExpiryUnit ? 'dashboard-badge--blue' : 'dashboard-badge--muted'}`}>
+                        {formatLinkExpiryLabel(med.linkExpiryValue, med.linkExpiryUnit)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="admin-table-actions">
+                        <button onClick={() => setPreviewMed(med)} className="admin-action-btn admin-action-btn--edit" title="Preview">
+                          <Eye size={14} /> Preview
+                        </button>
+                        <button onClick={() => startEditingMedication(med)} className="admin-action-btn admin-action-btn--edit" title="Edit">
+                          <Edit2 size={14} /> Edit
+                        </button>
+                        <button onClick={() => duplicateMedication(med)} className="admin-action-btn admin-action-btn--icon" title="Duplicate">
+                          <CopyPlus size={14} />
+                        </button>
+                        <button onClick={() => copyCode(med.code)} className="admin-action-btn admin-action-btn--icon" title="Copy code">
+                          <Copy size={14} />
+                        </button>
+                        <button onClick={() => loadTemplateHistory('medication', med.code, med.title)} className="admin-action-btn admin-action-btn--icon" title="Audit history">
+                          <Activity size={14} />
+                        </button>
+                        <button onClick={() => handleDelete(med)} disabled={deletingCode === med.code} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}>
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -2177,67 +2138,64 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
               </div>
             )}
 
-            <h3 style={{ marginBottom: '1rem' }}>3. Health Check Card Catalogue</h3>
-            <div className="dashboard-list">
-              {healthCheckCatalogueRows.map((row) => (
-                <div key={row.id} className="dashboard-list-card">
-                  <div style={{
-                    padding: '0.3rem 0.6rem',
-                    borderRadius: '6px',
-                    fontSize: '0.78rem',
-                    fontWeight: 800,
-                    fontFamily: 'monospace',
-                    background: '#005eb8',
-                    color: 'white',
-                    minWidth: '72px',
-                    textAlign: 'center',
-                  }}>
-                    {row.familyCode}
-                  </div>
-                    <div className="dashboard-list-main">
-                      <div className="dashboard-list-title">{row.label}</div>
-                      <div className="dashboard-meta" style={{ marginTop: '0.2rem' }}>
-                        <span style={{ fontSize: '0.82rem', color: '#4c6272' }}>{row.summary}</span>
-                        <span style={{ fontSize: '0.82rem', color: '#4c6272' }}>
-                          {row.resultCodes.join(', ')}
-                        </span>
+            <div className="admin-data-table-wrap" style={{ marginTop: '1rem' }}>
+              <table className="admin-data-table" style={{ tableLayout: 'auto' }}>
+                <thead>
+                  <tr>
+                    <th scope="col">Code</th>
+                    <th scope="col">Domain</th>
+                    <th scope="col">Review</th>
+                    <th scope="col">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {healthCheckCatalogueRows.map((row) => (
+                    <tr key={row.id}>
+                      <td>
+                        <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{row.familyCode}</span>
+                      </td>
+                      <td>
+                        <div className="admin-table-identity">
+                          <strong>{row.label}</strong>
+                          <span className="admin-table-identity__email">{row.summary}</span>
+                        </div>
+                      </td>
+                      <td>
                         {renderMetadataBadges({
                           reviewMonths: healthCheckReviewMeta[row.domainId]?.reviewMonths,
                           contentReviewDate: healthCheckReviewMeta[row.domainId]?.contentReviewDate,
                           linkExpiryValue: healthCheckLinkExpiry[row.domainId]?.value,
                           linkExpiryUnit: healthCheckLinkExpiry[row.domainId]?.unit,
                         })}
-                      </div>
-                    </div>
-                  <div className="dashboard-list-actions">
-                    <button onClick={() => openPreview(row.previewUrl)} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                      <Eye size={14} /> Preview
-                    </button>
-                    <button
-                      onClick={() => {
-                        setSelectedHealthCheckDomain(row.domainId);
-                        setSelectedHealthCheckVariantCode(row.resultCodes[0] || '');
-                        setTemplateSaveCompleted((current) => ({ ...current, healthcheck: false }));
-                        setHealthCheckEditorOpen(true);
-                      }}
-                      className="action-button-sm"
-                      style={{ background: '#eef7ff', border: '1px solid #4c6272', color: '#4c6272', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                    >
-                      <Edit2 size={14} /> Edit
-                    </button>
-                    <button
-                      onClick={() => loadTemplateHistory('healthcheck', row.domainId, row.label)}
-                      className="action-button-sm"
-                      style={{ background: '#fff8e6', border: '1px solid #b27a00', color: '#8a5f00', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                    >
-                      Audit
-                    </button>
-                    <button onClick={() => copyText(row.previewUrl)} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                      <Copy size={14} /> Copy
-                    </button>
-                  </div>
-                </div>
-              ))}
+                      </td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button onClick={() => openPreview(row.previewUrl)} className="admin-action-btn admin-action-btn--edit">
+                            <Eye size={14} /> Preview
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedHealthCheckDomain(row.domainId);
+                              setSelectedHealthCheckVariantCode(row.resultCodes[0] || '');
+                              setTemplateSaveCompleted((current) => ({ ...current, healthcheck: false }));
+                              setHealthCheckEditorOpen(true);
+                            }}
+                            className="admin-action-btn admin-action-btn--edit"
+                          >
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button onClick={() => copyText(row.previewUrl)} className="admin-action-btn admin-action-btn--icon" title="Copy link">
+                            <Copy size={14} />
+                          </button>
+                          <button onClick={() => loadTemplateHistory('healthcheck', row.domainId, row.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history">
+                            <Activity size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
 
@@ -2523,48 +2481,42 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
             </div>
           )}
 
-          <h3 style={{ marginBottom: '1rem' }}>2. Screening Card Catalogue</h3>
-          <div className="dashboard-list">
-              {Object.values(screeningTemplates).map((template) => {
-                const previewUrl = buildScreeningPreviewUrl(template);
-                return (
-                  <div key={template.id} className="dashboard-list-card">
-                    <div style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 800, fontFamily: 'monospace', background: '#005eb8', color: 'white', minWidth: '72px', textAlign: 'center' }}>
-                      {(template.code || template.id).toUpperCase()}
-                    </div>
-                    <div className="dashboard-list-main">
-                      <div className="dashboard-list-title">{template.label}</div>
-                      <div className="dashboard-meta" style={{ marginTop: '0.2rem' }}>
-                        <span style={{ fontSize: '0.82rem', color: '#4c6272' }}>{template.headline}</span>
-                        {renderMetadataBadges({
-                          reviewMonths: template.reviewMonths,
-                          contentReviewDate: template.contentReviewDate,
-                          linkExpiryValue: template.linkExpiryValue,
-                          linkExpiryUnit: template.linkExpiryUnit,
-                        })}
-                      </div>
-                    </div>
-                    <div className="dashboard-list-actions">
-                      <button onClick={() => openPreview(previewUrl, 'This is a preview of what patients will see when they access this screening card.')} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Eye size={14} /> Preview
-                      </button>
-                      <button onClick={() => { setScreeningType(template.id); setTemplateSaveCompleted((current) => ({ ...current, screening: false })); setScreeningEditorOpen(true); }} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #4c6272', color: '#4c6272', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Edit2 size={14} /> Edit
-                      </button>
-                      <button
-                        onClick={() => loadTemplateHistory('screening', template.id, template.label)}
-                        className="action-button-sm"
-                        style={{ background: '#fff8e6', border: '1px solid #b27a00', color: '#8a5f00', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                      >
-                        Audit
-                      </button>
-                      <button onClick={() => duplicateScreeningTemplate(template)} className="action-button-sm" style={{ background: '#f3f8f1', border: '1px solid #007f3b', color: '#007f3b', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <CopyPlus size={14} /> Duplicate
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="admin-data-table-wrap" style={{ marginTop: '1rem' }}>
+            <table className="admin-data-table" style={{ tableLayout: 'auto' }}>
+              <thead>
+                <tr>
+                  <th scope="col">Code</th>
+                  <th scope="col">Template</th>
+                  <th scope="col">Review</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.values(screeningTemplates).map((template) => {
+                  const previewUrl = buildScreeningPreviewUrl(template);
+                  return (
+                    <tr key={template.id}>
+                      <td><span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{(template.code || template.id).toUpperCase()}</span></td>
+                      <td>
+                        <div className="admin-table-identity">
+                          <strong>{template.label}</strong>
+                          {template.headline && <span className="admin-table-identity__email">{template.headline}</span>}
+                        </div>
+                      </td>
+                      <td>{renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}</td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button onClick={() => openPreview(previewUrl, 'This is a preview of what patients will see when they access this screening card.')} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
+                          <button onClick={() => { setScreeningType(template.id); setTemplateSaveCompleted((current) => ({ ...current, screening: false })); setScreeningEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
+                          <button onClick={() => duplicateScreeningTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
+                          <button onClick={() => loadTemplateHistory('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -2579,52 +2531,42 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
             </div>
           )}
 
-          <h3 style={{ marginBottom: '1rem' }}>2. Immunisation Card Catalogue</h3>
-          <div className="dashboard-list">
-              {Object.values(immunisationTemplates).map((template) => {
-                const previewUrl = buildImmunisationPreviewUrl(template);
-                return (
-                  <div key={template.id} className="dashboard-list-card">
-                    <div style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 800, fontFamily: 'monospace', background: '#005eb8', color: 'white', minWidth: '72px', textAlign: 'center' }}>
-                      {(template.code || template.id).toUpperCase()}
-                    </div>
-                    <div className="dashboard-list-main">
-                      <div className="dashboard-list-title">{template.label}</div>
-                      <div className="dashboard-meta" style={{ marginTop: '0.2rem' }}>
-                        <span style={{ fontSize: '0.82rem', color: '#4c6272' }}>{template.headline}</span>
-                        {renderMetadataBadges({
-                          reviewMonths: template.reviewMonths,
-                          contentReviewDate: template.contentReviewDate,
-                          linkExpiryValue: template.linkExpiryValue,
-                          linkExpiryUnit: template.linkExpiryUnit,
-                        })}
-                      </div>
-                    </div>
-                    <div className="dashboard-list-actions">
-                      <button onClick={() => openPreview(previewUrl)} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Eye size={14} /> Preview
-                      </button>
-                      <button
-                        onClick={() => { setImmunisationSelections([template.id]); setTemplateSaveCompleted((current) => ({ ...current, immunisation: false })); setImmunisationEditorOpen(true); }}
-                        className="action-button-sm"
-                        style={{ background: '#eef7ff', border: '1px solid #4c6272', color: '#4c6272', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
-                      <button
-                        onClick={() => loadTemplateHistory('immunisation', template.id, template.label)}
-                        className="action-button-sm"
-                        style={{ background: '#fff8e6', border: '1px solid #b27a00', color: '#8a5f00', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                      >
-                        Audit
-                      </button>
-                      <button onClick={() => duplicateImmunisationTemplate(template)} className="action-button-sm" style={{ background: '#f3f8f1', border: '1px solid #007f3b', color: '#007f3b', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <CopyPlus size={14} /> Duplicate
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="admin-data-table-wrap" style={{ marginTop: '1rem' }}>
+            <table className="admin-data-table" style={{ tableLayout: 'auto' }}>
+              <thead>
+                <tr>
+                  <th scope="col">Code</th>
+                  <th scope="col">Template</th>
+                  <th scope="col">Review</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.values(immunisationTemplates).map((template) => {
+                  const previewUrl = buildImmunisationPreviewUrl(template);
+                  return (
+                    <tr key={template.id}>
+                      <td><span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{(template.code || template.id).toUpperCase()}</span></td>
+                      <td>
+                        <div className="admin-table-identity">
+                          <strong>{template.label}</strong>
+                          {template.headline && <span className="admin-table-identity__email">{template.headline}</span>}
+                        </div>
+                      </td>
+                      <td>{renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}</td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button onClick={() => openPreview(previewUrl)} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
+                          <button onClick={() => { setImmunisationSelections([template.id]); setTemplateSaveCompleted((current) => ({ ...current, immunisation: false })); setImmunisationEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
+                          <button onClick={() => duplicateImmunisationTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
+                          <button onClick={() => loadTemplateHistory('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}
@@ -2639,48 +2581,42 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
               {builderNotice.message}
             </div>
           )}
-          <h3 style={{ marginBottom: '1rem' }}>2. Long Term Condition Card Catalogue</h3>
-          <div className="dashboard-list">
-              {Object.values(longTermConditionTemplates).map((template) => {
-                const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'ltc', ltc: template.code || template.id }));
-                return (
-                  <div key={template.id} className="dashboard-list-card">
-                    <div style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', fontSize: '0.78rem', fontWeight: 800, fontFamily: 'monospace', background: '#005eb8', color: 'white', minWidth: '72px', textAlign: 'center' }}>
-                      {(template.code || template.id).toUpperCase()}
-                    </div>
-                    <div className="dashboard-list-main">
-                      <div className="dashboard-list-title">{template.label}</div>
-                      <div className="dashboard-meta" style={{ marginTop: '0.2rem' }}>
-                        <span style={{ fontSize: '0.82rem', color: '#4c6272' }}>{template.headline}</span>
-                        {renderMetadataBadges({
-                          reviewMonths: template.reviewMonths,
-                          contentReviewDate: template.contentReviewDate,
-                          linkExpiryValue: template.linkExpiryValue,
-                          linkExpiryUnit: template.linkExpiryUnit,
-                        })}
-                      </div>
-                    </div>
-                    <div className="dashboard-list-actions">
-                      <button onClick={() => openPreview(previewUrl)} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #005eb8', color: '#005eb8', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Eye size={14} /> Preview
-                      </button>
-                      <button onClick={() => { setSelectedLongTermCondition(template.id); setTemplateSaveCompleted((current) => ({ ...current, ltc: false })); setLtcEditorOpen(true); }} className="action-button-sm" style={{ background: '#eef7ff', border: '1px solid #4c6272', color: '#4c6272', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <Edit2 size={14} /> Edit
-                      </button>
-                      <button
-                        onClick={() => loadTemplateHistory('ltc', template.id, template.label)}
-                        className="action-button-sm"
-                        style={{ background: '#fff8e6', border: '1px solid #b27a00', color: '#8a5f00', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}
-                      >
-                        Audit
-                      </button>
-                      <button onClick={() => duplicateLongTermConditionTemplate(template)} className="action-button-sm" style={{ background: '#f3f8f1', border: '1px solid #007f3b', color: '#007f3b', borderRadius: '6px', padding: '0.4rem 0.6rem', display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                        <CopyPlus size={14} /> Duplicate
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+          <div className="admin-data-table-wrap" style={{ marginTop: '1rem' }}>
+            <table className="admin-data-table" style={{ tableLayout: 'auto' }}>
+              <thead>
+                <tr>
+                  <th scope="col">Code</th>
+                  <th scope="col">Template</th>
+                  <th scope="col">Review</th>
+                  <th scope="col">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {Object.values(longTermConditionTemplates).map((template) => {
+                  const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'ltc', ltc: template.code || template.id }));
+                  return (
+                    <tr key={template.id}>
+                      <td><span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{(template.code || template.id).toUpperCase()}</span></td>
+                      <td>
+                        <div className="admin-table-identity">
+                          <strong>{template.label}</strong>
+                          {template.headline && <span className="admin-table-identity__email">{template.headline}</span>}
+                        </div>
+                      </td>
+                      <td>{renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}</td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button onClick={() => openPreview(previewUrl)} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
+                          <button onClick={() => { setSelectedLongTermCondition(template.id); setTemplateSaveCompleted((current) => ({ ...current, ltc: false })); setLtcEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
+                          <button onClick={() => duplicateLongTermConditionTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
+                          <button onClick={() => loadTemplateHistory('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

@@ -538,7 +538,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         <div className="dashboard-panel-header practice-user-management__header">
           <div>
             <h2 className="dashboard-panel-title">Users ({users.length})</h2>
-            <p className="dashboard-panel-subtitle">Manage practice access here. Global administrator access is shown clearly and should be managed from the Administrators tab.</p>
+            <p className="dashboard-panel-subtitle">Manage practice access for all users. Those with global admin portal access are shown with their role badge.</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => void loadUsers()} className="admin-action-btn admin-action-btn--icon" title="Refresh">

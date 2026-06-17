@@ -77,27 +77,27 @@ const PracticeLogin: React.FC = () => {
           MyMed<span>Info</span>
         </div>
         <h1 className="practice-login-brand__headline">
-          Clinical Decision Support for Primary Care
+          Your Practice Workspace
         </h1>
         <p className="practice-login-brand__sub">
-          Structured medication reviews, health checks, and disease management — designed for NHS GP practices.
+          Sign in to access your practice's clinical content and patient-facing materials.
         </p>
         <div className="practice-login-brand__features">
           <div className="practice-login-brand__feat">
             <span className="practice-login-brand__dot" />
-            Medication review templates &amp; risk stratification
+            Your practice medication card library
           </div>
           <div className="practice-login-brand__feat">
             <span className="practice-login-brand__dot" />
-            NHS Health Check protocol management
+            Patient health check &amp; screening content
           </div>
           <div className="practice-login-brand__feat">
             <span className="practice-login-brand__dot" />
-            Screening &amp; immunisation scheduling
+            Immunisation &amp; LTC care pathway resources
           </div>
           <div className="practice-login-brand__feat">
             <span className="practice-login-brand__dot" />
-            Long-term condition pathway tracking
+            Practice settings &amp; team management
           </div>
         </div>
         <p className="practice-login-brand__pcn">

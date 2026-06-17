@@ -1,83 +1,80 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Shield, Stethoscope, Zap } from 'lucide-react';
+import { Shield, Stethoscope, Zap, ArrowRight } from 'lucide-react';
 import { adminUrl, practiceUrl } from '../subdomainUtils';
-
-type LandingAction = {
-  title: string;
-  description: string;
-  label: string;
-  tone: 'admin' | 'practice' | 'demo';
-  icon: React.ReactNode;
-  onClick: () => void;
-};
 
 const Landing: React.FC = () => {
   const navigate = useNavigate();
-  const navigateToUrl = (url: string) => {
-    if (url.startsWith('http')) {
-      window.location.href = url;
-      return;
-    }
 
+  const navigateToUrl = (url: string) => {
+    if (url.startsWith('http')) { window.location.href = url; return; }
     navigate(url);
   };
 
-  const actions: LandingAction[] = [
-    {
-      title: 'Admin',
-      description: 'Manage medications, templates, and system settings',
-      label: 'Open admin',
-      tone: 'admin',
-      icon: <Shield size={28} aria-hidden="true" />,
-      onClick: () => navigateToUrl(adminUrl()),
-    },
-    {
-      title: 'Practice',
-      description: 'Manage practice medications and patient content',
-      label: 'Open practice',
-      tone: 'practice',
-      icon: <Stethoscope size={28} aria-hidden="true" />,
-      onClick: () => navigateToUrl(practiceUrl()),
-    },
-    {
-      title: 'Demo',
-      description: 'Try the patient information experience',
-      label: 'Launch demo',
-      tone: 'demo',
-      icon: <Zap size={28} aria-hidden="true" />,
-      onClick: () => navigate('/demo'),
-    },
-  ];
-
   return (
-    <div className="landing-screen">
-      <section className="landing-hero" aria-labelledby="landing-title">
-        <img className="landing-hero__logo" src="/MyMedInfo-logo.png" alt="MyMedInfo" />
-        <h1 id="landing-title" className="landing-hero__title">MyMedInfo</h1>
-        <p className="landing-hero__subtitle">Clear, trusted medication and patient information</p>
-      </section>
-
-      <div className="landing-actions" aria-label="Choose a MyMedInfo area">
-        {actions.map((action) => (
-          <button
-            key={action.title}
-            type="button"
-            className={`landing-action-card landing-action-card--${action.tone}`}
-            onClick={action.onClick}
-          >
-            <span className="landing-action-card__icon">{action.icon}</span>
-            <span className="landing-action-card__body">
-              <span className="landing-action-card__title">{action.title}</span>
-              <span className="landing-action-card__description">{action.description}</span>
-            </span>
-            <span className="landing-action-card__cta">
-              {action.label}
-              <ArrowRight size={17} aria-hidden="true" />
-            </span>
-          </button>
-        ))}
+    <div className="portal-landing">
+      <div className="portal-landing__brand">
+        <div className="portal-landing__logo">MyMed<span>Info</span></div>
+        <p className="portal-landing__tagline">NHS Clinical Decision Support Platform</p>
+        <p className="portal-landing__org">Nottingham West Primary Care Network</p>
       </div>
+
+      <div className="portal-landing__cards">
+        <button
+          type="button"
+          className="portal-landing__card portal-landing__card--practice"
+          onClick={() => navigateToUrl(practiceUrl())}
+        >
+          <div className="portal-landing__card-icon">
+            <Stethoscope size={28} aria-hidden="true" />
+          </div>
+          <div className="portal-landing__card-body">
+            <div className="portal-landing__card-title">Practice Portal</div>
+            <div className="portal-landing__card-desc">
+              Manage medication cards, health checks, and patient content for your GP practice
+            </div>
+          </div>
+          <ArrowRight size={18} className="portal-landing__card-arrow" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          className="portal-landing__card portal-landing__card--admin"
+          onClick={() => navigateToUrl(adminUrl())}
+        >
+          <div className="portal-landing__card-icon">
+            <Shield size={28} aria-hidden="true" />
+          </div>
+          <div className="portal-landing__card-body">
+            <div className="portal-landing__card-title">Admin Portal</div>
+            <div className="portal-landing__card-desc">
+              Configure practices, manage templates, and oversee the platform
+            </div>
+          </div>
+          <ArrowRight size={18} className="portal-landing__card-arrow" aria-hidden="true" />
+        </button>
+
+        <button
+          type="button"
+          className="portal-landing__card portal-landing__card--demo"
+          onClick={() => navigate('/demo')}
+        >
+          <div className="portal-landing__card-icon">
+            <Zap size={28} aria-hidden="true" />
+          </div>
+          <div className="portal-landing__card-body">
+            <div className="portal-landing__card-title">Demo Access</div>
+            <div className="portal-landing__card-desc">
+              Try the patient information experience without an account
+            </div>
+          </div>
+          <ArrowRight size={18} className="portal-landing__card-arrow" aria-hidden="true" />
+        </button>
+      </div>
+
+      <p className="portal-landing__footer">
+        NHS-hosted · Data processed in UK · SOC 2 compliant
+      </p>
     </div>
   );
 };
