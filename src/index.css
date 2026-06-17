@@ -896,17 +896,13 @@ main {
 }
 
 .admin-data-table--resources {
-  min-width: 700px;
-  table-layout: auto;
+  min-width: 880px;
+  table-layout: fixed;
 }
 
 .admin-data-table--practices {
   min-width: 860px;
   table-layout: auto;
-}
-
-.admin-data-table--resources {
-  min-width: 1180px;
 }
 
 .admin-data-table--audit {
@@ -1029,7 +1025,27 @@ main {
 }
 
 .admin-data-table__col-resource-title {
+  width: 22%;
+}
+
+.admin-data-table__col-resource-status {
+  width: 10%;
+}
+
+.admin-data-table__col-resource-category {
+  width: 14%;
+}
+
+.admin-data-table__col-resource-contact {
   width: 28%;
+}
+
+.admin-data-table__col-resource-link {
+  width: 8%;
+}
+
+.admin-data-table__col-resource-actions {
+  width: 18%;
 }
 
 .admin-data-table__col-category {
@@ -6379,4 +6395,43 @@ p {
 
 .admin-action-btn--activate:hover {
   background: #f0fdf4;
+}
+
+.admin-data-table--resources {
+  font-size: 0.9rem;
+  min-width: 880px;
+  table-layout: fixed;
+}
+
+.admin-data-table--resources .admin-table-identity,
+.admin-data-table--resources .admin-table-identity strong,
+.admin-data-table--resources .admin-table-identity__email,
+.admin-data-table--resources .admin-ods-badge {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
+}
+
+.admin-data-table--resources .admin-data-table__col-resource-title {
+  width: 22%;
+}
+
+.admin-data-table--resources .admin-data-table__col-resource-status {
+  width: 10%;
+}
+
+.admin-data-table--resources .admin-data-table__col-resource-category {
+  width: 14%;
+}
+
+.admin-data-table--resources .admin-data-table__col-resource-contact {
+  width: 28%;
+}
+
+.admin-data-table--resources .admin-data-table__col-resource-link {
+  width: 8%;
+}
+
+.admin-data-table--resources .admin-data-table__col-resource-actions {
+  width: 18%;
 }

@@ -1718,38 +1718,38 @@ const AdminDashboard: React.FC = () => {
           <p style={{ color: '#4c6272' }}>No local resources found yet.</p>
         ) : (
           <div className="admin-data-table-wrap">
-            <table className="admin-data-table admin-data-table--resources" style={{ tableLayout: 'auto', fontSize: '0.9rem' }}>
+            <table className="admin-data-table admin-data-table--resources">
               <thead>
                 <tr>
-                  <th scope="col">Resource</th>
-                  <th scope="col">Status</th>
-                  <th scope="col">Category</th>
-                  <th scope="col">Contact / Location</th>
-                  <th scope="col">Website</th>
-                  <th scope="col">Actions</th>
+                  <th scope="col" className="admin-data-table__col-resource-title">Resource</th>
+                  <th scope="col" className="admin-data-table__col-resource-status">Status</th>
+                  <th scope="col" className="admin-data-table__col-resource-category">Category</th>
+                  <th scope="col" className="admin-data-table__col-resource-contact">Contact / Location</th>
+                  <th scope="col" className="admin-data-table__col-resource-link">Website</th>
+                  <th scope="col" className="admin-data-table__col-resource-actions">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredLocalResources.map((resource) => (
                   <tr key={resource.id}>
-                    <td>
+                    <td className="admin-data-table__col-resource-title">
                       <div className="admin-table-identity">
                         <strong>{resource.title}</strong>
                         {resource.description && <span className="admin-table-identity__email">{resource.description}</span>}
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-data-table__col-resource-status">
                       <span className={`admin-status-dot ${resource.is_active ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
                         <span className="admin-status-dot__circle" aria-hidden="true" />
                         {resource.is_active ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td>
+                    <td className="admin-data-table__col-resource-category">
                       {resource.category
                         ? <span className="admin-ods-badge">{resource.category}</span>
                         : <span className="admin-table-muted">—</span>}
                     </td>
-                    <td style={{ maxWidth: '140px', wordBreak: 'break-word' }}>
+                    <td className="admin-data-table__col-resource-contact">
                       <div className="admin-table-identity">
                         {resource.phone && <span>{resource.phone}</span>}
                         {resource.email && <span className="admin-table-identity__email">{resource.email}</span>}
@@ -1761,14 +1761,14 @@ const AdminDashboard: React.FC = () => {
                         )}
                       </div>
                     </td>
-                    <td>
+                    <td className="admin-data-table__col-resource-link">
                       {resource.website
                         ? <a href={resource.website} target="_blank" rel="noopener noreferrer" title={resource.website} style={{ color: '#005eb8' }}>
                             <ExternalLink size={16} />
                           </a>
                         : <span className="admin-table-muted">—</span>}
                     </td>
-                    <td>
+                    <td className="admin-data-table__col-resource-actions">
                       <div className="admin-table-actions">
                         <button onClick={() => openLocalResourceForm(resource)} className="admin-action-btn admin-action-btn--edit">
                           <Edit2 size={14} /> Edit
