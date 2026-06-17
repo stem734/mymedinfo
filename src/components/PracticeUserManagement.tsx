@@ -59,6 +59,10 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
   const [users, setUsers] = useState<AppUserSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showAddAdminForm, setShowAddAdminForm] = useState(false);
+  const [adminFormName, setAdminFormName] = useState('');
+  const [adminFormEmail, setAdminFormEmail] = useState('');
+  const [adminFormError, setAdminFormError] = useState('');
   const [editingUser, setEditingUser] = useState<AppUserSummary | null>(null);
   const [form, setForm] = useState<UserFormState>(emptyForm());
   const [error, setError] = useState('');
@@ -299,7 +303,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       return;
     }
 
-    if (form.practiceIds.length === 0) {
+    if (form.practiceIds.length === 0 && !editingUser?.global_role) {
       setError('Select at least one practice');
       return;
     }
@@ -349,15 +353,19 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
   };
 
   const deleteUser = (appUser: AppUserSummary) => {
+    const isAdmin = Boolean(appUser.global_role);
     setConfirmDialog({
-      title: 'Delete User',
-      message: `Delete ${appUser.email}? This removes all practice memberships and deletes the underlying auth account, including any global administrator access.`,
-      confirmLabel: 'Delete User',
+      title: isAdmin ? 'Remove Administrator' : 'Delete User',
+      message: isAdmin
+        ? `Remove administrator access for "${appUser.email}"? If they have practice memberships their global admin role will be removed but the account will remain. Otherwise the account will be deleted.`
+        : `Delete ${appUser.email}? This removes all practice memberships and deletes the underlying auth account.`,
+      confirmLabel: isAdmin ? 'Remove' : 'Delete User',
       isDangerous: true,
       onConfirm: () => {
         void (async () => {
           try {
-            const { error: invokeError } = await supabase.functions.invoke('delete-practice-user', {
+            const fn = isAdmin ? 'delete-admin-user' : 'delete-practice-user';
+            const { data, error: invokeError } = await supabase.functions.invoke(fn, {
               body: { uid: appUser.uid },
             });
 
@@ -365,7 +373,11 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
               throw invokeError;
             }
 
-            setActionMessage(`User ${appUser.email} deleted.`);
+            setActionMessage(
+              isAdmin && data?.demotedOnly
+                ? `${appUser.email} still has practice access — global admin role removed.`
+                : `${appUser.email} deleted.`,
+            );
             setActionLink('');
             await loadUsers();
           } catch (err) {
@@ -377,6 +389,38 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         })();
       },
     });
+  };
+
+  const addAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAdminFormError('');
+
+    if (!adminFormEmail.trim()) {
+      setAdminFormError('Email is required');
+      return;
+    }
+
+    try {
+      const { data, error: invokeError } = await supabase.functions.invoke('create-admin-user', {
+        body: { email: adminFormEmail.trim(), name: adminFormName.trim() },
+      });
+      if (invokeError) throw invokeError;
+
+      const nextEmail = adminFormEmail.trim();
+      setAdminFormName('');
+      setAdminFormEmail('');
+      setShowAddAdminForm(false);
+      setActionMessage(
+        data?.created === false
+          ? `Global admin access added to existing account for ${nextEmail}.`
+          : `Administrator account created for ${nextEmail}. A setup link has been sent to their email.`,
+      );
+      setActionLink('');
+      await loadUsers();
+    } catch (err) {
+      console.error('Error adding admin:', err);
+      setAdminFormError(await getFunctionErrorMessage(err, 'Unable to create administrator.'));
+    }
   };
 
   const userForm = (
@@ -496,6 +540,40 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         </div>
       )}
 
+      {showAddAdminForm && (
+        <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #1262a8' }}>
+          <div className="dashboard-panel-header">
+            <h2 className="dashboard-panel-title">Add Administrator</h2>
+            <button onClick={() => { setShowAddAdminForm(false); setAdminFormName(''); setAdminFormEmail(''); setAdminFormError(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4c6272' }}>
+              Cancel
+            </button>
+          </div>
+          {adminFormError && (
+            <div className="dashboard-banner dashboard-banner--error" style={{ marginBottom: '1rem' }}>
+              {adminFormError}
+            </div>
+          )}
+          <form onSubmit={addAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div className="dashboard-form-grid">
+              <div className="dashboard-field">
+                <label htmlFor="admin-form-name">Name</label>
+                <input id="admin-form-name" type="text" value={adminFormName} onChange={(e) => setAdminFormName(e.target.value)} placeholder="e.g. Jane Smith" />
+              </div>
+              <div className="dashboard-field">
+                <label htmlFor="admin-form-email">Email *</label>
+                <input id="admin-form-email" type="email" value={adminFormEmail} onChange={(e) => setAdminFormEmail(e.target.value)} required placeholder="e.g. admin@nhs.net" />
+              </div>
+            </div>
+            <p style={{ margin: 0, color: '#4c6272', fontSize: '0.88rem' }}>
+              Admin portal access only — assign practice access separately if needed.
+            </p>
+            <button type="submit" className="action-button admin-action-button--primary" style={{ alignSelf: 'flex-start' }}>
+              <Plus size={16} /> Add Administrator
+            </button>
+          </form>
+        </div>
+      )}
+
       {showAddForm && (
         <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
           <div className="dashboard-panel-header">
@@ -538,13 +616,18 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         <div className="dashboard-panel-header practice-user-management__header">
           <div>
             <h2 className="dashboard-panel-title">Users ({users.length})</h2>
-            <p className="dashboard-panel-subtitle">Manage practice access for all users. Those with global admin portal access are shown with their role badge.</p>
+            <p className="dashboard-panel-subtitle">All platform users — practice staff and administrators in one place. Admin portal access is shown with a role badge.</p>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button onClick={() => void loadUsers()} className="admin-action-btn admin-action-btn--icon" title="Refresh">
               <RefreshCw size={15} />
             </button>
-            {!showAddForm && !editingUser && (
+            {!showAddForm && !showAddAdminForm && !editingUser && (
+              <button onClick={() => { setShowAddAdminForm(true); setShowAddForm(false); }} className="admin-action-btn admin-action-btn--icon" title="Add administrator">
+                <Plus size={14} /> Add Admin
+              </button>
+            )}
+            {!showAddForm && !showAddAdminForm && !editingUser && (
               <button onClick={openAddForm} className="admin-action-btn admin-action-btn--edit">
                 <Plus size={14} /> Add User
               </button>
@@ -617,11 +700,9 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                         <button onClick={() => void sendPasswordReset(appUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
                           <KeyRound size={15} />
                         </button>
-                        {!appUser.global_role && (
-                          <button onClick={() => deleteUser(appUser)} className="admin-action-btn admin-action-btn--icon" title="Delete user">
-                            <Trash2 size={15} />
-                          </button>
-                        )}
+                        <button onClick={() => deleteUser(appUser)} className="admin-action-btn admin-action-btn--icon" title={appUser.global_role ? 'Remove administrator' : 'Delete user'}>
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </td>
                   </tr>

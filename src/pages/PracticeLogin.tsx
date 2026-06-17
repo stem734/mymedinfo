@@ -1,7 +1,15 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { resolvePath } from '../subdomainUtils';
+
+type PlatformConfig = {
+  service_medication_enabled: boolean;
+  service_healthcheck_enabled: boolean;
+  service_screening_enabled: boolean;
+  service_immunisation_enabled: boolean;
+  service_ltc_enabled: boolean;
+};
 
 const normaliseAuthError = (error: unknown) => {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
@@ -23,7 +31,14 @@ const PracticeLogin: React.FC = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    supabase.from('platform_config').select('*').eq('id', 1).maybeSingle().then(({ data }) => {
+      if (data) setPlatformConfig(data as PlatformConfig);
+    });
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -83,18 +98,24 @@ const PracticeLogin: React.FC = () => {
           Sign in to access your practice's clinical content and patient-facing materials.
         </p>
         <div className="practice-login-brand__features">
-          <div className="practice-login-brand__feat">
-            <span className="practice-login-brand__dot" />
-            Your practice medication card library
-          </div>
-          <div className="practice-login-brand__feat">
-            <span className="practice-login-brand__dot" />
-            Patient health check &amp; screening content
-          </div>
-          <div className="practice-login-brand__feat">
-            <span className="practice-login-brand__dot" />
-            Immunisation &amp; LTC care pathway resources
-          </div>
+          {(!platformConfig || platformConfig.service_medication_enabled) && (
+            <div className="practice-login-brand__feat">
+              <span className="practice-login-brand__dot" />
+              Your practice medication card library
+            </div>
+          )}
+          {(!platformConfig || platformConfig.service_healthcheck_enabled || platformConfig.service_screening_enabled) && (
+            <div className="practice-login-brand__feat">
+              <span className="practice-login-brand__dot" />
+              Patient health check &amp; screening content
+            </div>
+          )}
+          {(!platformConfig || platformConfig.service_immunisation_enabled || platformConfig.service_ltc_enabled) && (
+            <div className="practice-login-brand__feat">
+              <span className="practice-login-brand__dot" />
+              Immunisation &amp; LTC care pathway resources
+            </div>
+          )}
           <div className="practice-login-brand__feat">
             <span className="practice-login-brand__dot" />
             Practice settings &amp; team management

@@ -44,6 +44,16 @@ import {
 import { buildDemoPatientUrlForType } from '../demoHelpers';
 import CardBuilder from './CardBuilder';
 
+interface ServiceActivationRequest {
+  id: string;
+  practice_id: string;
+  practice_name: string;
+  requested_by_email: string;
+  service: string;
+  status: 'pending' | 'approved' | 'dismissed';
+  created_at: string;
+}
+
 interface Practice {
   id: string;
   name: string;
@@ -60,14 +70,6 @@ interface Practice {
   link_visit_count?: number;
   patient_rating_count?: number;
   patient_rating_total?: number;
-}
-
-interface AdminUser {
-  uid: string;
-  email: string;
-  name: string;
-  is_active: boolean;
-  role: 'owner' | 'admin';
 }
 
 type AdminRow = {
@@ -191,7 +193,6 @@ const AdminDashboard: React.FC = () => {
   const location = useLocation();
   const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromLocation(window.location.pathname, window.location.search) || 'overview');
   const [practices, setPractices] = useState<Practice[]>([]);
-  const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);
   const [showCardBuilder, setShowCardBuilder] = useState(() => isAdminBuilderPath(window.location.pathname));
   const [cardBuilderSection, setCardBuilderSection] = useState<'medication' | 'healthcheck' | 'screening' | 'immunisation' | 'ltc'>('medication');
@@ -199,23 +200,17 @@ const AdminDashboard: React.FC = () => {
   const [practiceSearch, setPracticeSearch] = useState('');
   const [practiceStatusFilter, setPracticeStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [loading, setLoading] = useState(true);
-  const [loadingAdmins, setLoadingAdmins] = useState(true);
   const [loadingLoginAudit, setLoadingLoginAudit] = useState(true);
   const [expandedPracticeCards, setExpandedPracticeCards] = useState<Record<string, boolean>>({});
   const [expandedLoginAudit, setExpandedLoginAudit] = useState<Record<string, boolean>>({});
   const [authenticated, setAuthenticated] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showAddAdminForm, setShowAddAdminForm] = useState(false);
   const [newName, setNewName] = useState('');
   const [newOds, setNewOds] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [addError, setAddError] = useState('');
-  const [newAdminName, setNewAdminName] = useState('');
-  const [newAdminEmail, setNewAdminEmail] = useState('');
-  const [addAdminError, setAddAdminError] = useState('');
   const [editingPractice, setEditingPractice] = useState<Practice | null>(null);
-  const [editingAdmin, setEditingAdmin] = useState<AdminUser | null>(null);
   const [localResources, setLocalResources] = useState<LocalResourceLink[]>([]);
   const [loadingLocalResources, setLoadingLocalResources] = useState(false);
   const [localResourceSearch, setLocalResourceSearch] = useState('');
@@ -232,12 +227,6 @@ const AdminDashboard: React.FC = () => {
   const [editImmunisationEnabled, setEditImmunisationEnabled] = useState(false);
   const [editLtcEnabled, setEditLtcEnabled] = useState(false);
   const [editError, setEditError] = useState('');
-  const [editAdminName, setEditAdminName] = useState('');
-  const [editAdminEmail, setEditAdminEmail] = useState('');
-  const [editAdminActive, setEditAdminActive] = useState(true);
-  const [editAdminError, setEditAdminError] = useState('');
-  const [adminActionMessage, setAdminActionMessage] = useState('');
-  const [adminActionLink, setAdminActionLink] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
     message: string;
@@ -246,6 +235,8 @@ const AdminDashboard: React.FC = () => {
     onConfirm: () => void;
   } | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [serviceRequests, setServiceRequests] = useState<ServiceActivationRequest[]>([]);
+  const [loadingServiceRequests, setLoadingServiceRequests] = useState(false);
   const toast = useToast();
   const navigate = useNavigate();
 
@@ -318,7 +309,6 @@ const AdminDashboard: React.FC = () => {
 
   const loadDashboardData = async () => {
     setLoading(true);
-    setLoadingAdmins(true);
     setLoadingLoginAudit(true);
     setLoadError('');
 
@@ -328,17 +318,6 @@ const AdminDashboard: React.FC = () => {
 
       const payload = (data || {}) as AdminDashboardPayload;
       setPractices(payload.practices || []);
-      setAdminUsers(
-        (payload.admins || [])
-          .filter((row) => row.global_role === 'owner' || row.global_role === 'admin')
-          .map((row) => ({
-            uid: row.uid,
-            email: row.email,
-            name: row.name,
-            is_active: row.is_active,
-            role: row.global_role as 'owner' | 'admin',
-          })),
-      );
       setLoginAudit(
         (payload.loginAudit || []).map((row) => ({
           id: row.id,
@@ -359,11 +338,9 @@ const AdminDashboard: React.FC = () => {
       const message = await getFunctionErrorMessage(error, 'Unable to load admin dashboard data.');
       setLoadError(message);
       setPractices([]);
-      setAdminUsers([]);
       setLoginAudit([]);
     } finally {
       setLoading(false);
-      setLoadingAdmins(false);
       setLoadingLoginAudit(false);
     }
   };
@@ -373,10 +350,6 @@ const AdminDashboard: React.FC = () => {
       ...current,
       [practiceId]: !current[practiceId],
     }));
-  };
-
-  const loadAdmins = async () => {
-    await loadDashboardData();
   };
 
   const loadPlatformConfig = async () => {
@@ -763,112 +736,6 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const addAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAddAdminError('');
-
-    if (!newAdminEmail.trim()) {
-      setAddAdminError('Administrator email is required');
-      return;
-    }
-
-    try {
-      const { data, error: invokeError } = await supabase.functions.invoke('create-admin-user', {
-        body: { email: newAdminEmail.trim(), name: newAdminName.trim() },
-      });
-      if (invokeError) throw invokeError;
-      const nextEmail = newAdminEmail.trim();
-      setNewAdminName('');
-      setNewAdminEmail('');
-      setShowAddAdminForm(false);
-      setAdminActionMessage(
-        data?.created === false
-          ? `Global administrator access added for ${nextEmail}. Any existing practice memberships remain in place.`
-          : `Administrator created. Copy the setup link below and send it to ${nextEmail}.`,
-      );
-      setAdminActionLink(data?.resetLink || '');
-      toast.success(`Administrator ready for ${nextEmail}.`);
-      loadAdmins();
-    } catch (error) {
-      console.error('Error adding admin:', error);
-      setAddAdminError(await getFunctionErrorMessage(error, 'Failed to add administrator'));
-    }
-  };
-
-  const openAdminEditForm = (adminUser: AdminUser) => {
-    setEditingAdmin(adminUser);
-    setEditAdminName(adminUser.name);
-    setEditAdminEmail(adminUser.email);
-    setEditAdminActive(adminUser.is_active);
-    setEditAdminError('');
-  };
-
-  const saveAdminEdit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setEditAdminError('');
-
-    if (!editingAdmin) return;
-
-    try {
-      const { error: invokeError } = await supabase.functions.invoke('update-admin-user', {
-        body: {
-          uid: editingAdmin.uid,
-          email: editAdminEmail.trim(),
-          name: editAdminName.trim(),
-          isActive: editAdminActive,
-        },
-      });
-      if (invokeError) throw invokeError;
-      setEditingAdmin(null);
-      loadAdmins();
-    } catch (error) {
-      console.error('Error updating admin:', error);
-      setEditAdminError(await getFunctionErrorMessage(error, 'Failed to update administrator'));
-    }
-  };
-
-  const resetAdminPassword = async (adminUser: AdminUser) => {
-    try {
-      const { data, error: invokeError } = await supabase.functions.invoke('send-admin-password-reset', {
-        body: { uid: adminUser.uid },
-      });
-      if (invokeError) throw invokeError;
-      setAdminActionMessage(`Password reset link prepared for ${adminUser.email}. Copy and send it manually.`);
-      setAdminActionLink(data.resetLink || '');
-    } catch (error) {
-      console.error('Error sending reset:', error);
-      alert(await getFunctionErrorMessage(error, 'Failed to send password reset'));
-    }
-  };
-
-  const deleteAdmin = (adminUser: AdminUser) => {
-    setConfirmDialog({
-      title: 'Remove Administrator',
-      message: `Remove administrator "${adminUser.email}"? This action cannot be undone.`,
-      confirmLabel: 'Remove',
-      isDangerous: true,
-      onConfirm: async () => {
-        try {
-          const { data, error: invokeError } = await supabase.functions.invoke('delete-admin-user', {
-            body: { uid: adminUser.uid },
-          });
-          if (invokeError) throw invokeError;
-          setAdminActionMessage(
-            data?.demotedOnly
-              ? `${adminUser.email} still has practice access, so only their global administrator role was removed.`
-              : `${adminUser.email} was deleted completely.`,
-          );
-          setAdminActionLink('');
-          loadAdmins();
-        } catch (error) {
-          console.error('Error deleting admin:', error);
-          alert(await getFunctionErrorMessage(error, 'Failed to remove administrator'));
-        }
-        setConfirmDialog(null);
-      },
-    });
-  };
-
   if (!authenticated) return null;
 
   const activePracticeCount = practices.filter((practice) => practice.is_active).length;
@@ -1000,11 +867,6 @@ const AdminDashboard: React.FC = () => {
               <button type="button" className="admin-stat-card__link" onClick={() => setAdminTab('practices')}>View active →</button>
             </div>
             <div className="admin-stat-card">
-              <div className="admin-stat-card__value">{adminUsers.length}</div>
-              <div className="admin-stat-card__label">Administrators</div>
-              <button type="button" className="admin-stat-card__link" onClick={() => setAdminTab('practiceUsers')}>Manage →</button>
-            </div>
-            <div className="admin-stat-card">
               <div className="admin-stat-card__value">{enabledServiceCount}</div>
               <div className="admin-stat-card__label">Enabled Services</div>
               <button type="button" className="admin-stat-card__link" onClick={() => setAdminTab('practices')}>View breakdown →</button>
@@ -1016,58 +878,6 @@ const AdminDashboard: React.FC = () => {
             </button>
           </div>
         </section>
-      )}
-
-      {(adminActionMessage || adminActionLink) && (
-        <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
-          <h2 className="dashboard-panel-title">Access Link Ready</h2>
-          {adminActionMessage && (
-            <p className="dashboard-panel-subtitle" style={{ marginBottom: adminActionLink ? '1rem' : '0' }}>
-              {adminActionMessage}
-            </p>
-          )}
-          {adminActionLink && (
-            <>
-              <textarea
-                readOnly
-                value={adminActionLink}
-                rows={4}
-                style={{ width: '100%', resize: 'vertical' }}
-                className="dashboard-field"
-              />
-              <div className="dashboard-inline-actions" style={{ marginTop: '1rem' }}>
-                <button
-                  onClick={() => navigator.clipboard.writeText(adminActionLink)}
-                  className="action-button admin-action-button--primary"
-                >
-                  Copy Link
-                </button>
-                <button
-                  onClick={() => {
-                    setAdminActionLink('');
-                    setAdminActionMessage('');
-                  }}
-                  className="action-button admin-action-button--secondary"
-                >
-                  Clear
-                </button>
-              </div>
-            </>
-          )}
-          {!adminActionLink && (
-            <div className="dashboard-inline-actions" style={{ marginTop: '1rem' }}>
-              <button
-                onClick={() => {
-                  setAdminActionLink('');
-                  setAdminActionMessage('');
-                }}
-                className="action-button admin-action-button--secondary"
-              >
-                Clear
-              </button>
-            </div>
-          )}
-        </div>
       )}
 
       {showAddForm && activeTab === 'practices' && (
@@ -1097,45 +907,6 @@ const AdminDashboard: React.FC = () => {
             showImportantNotice={false}
             contactNameRequired={false}
           />
-        </div>
-      )}
-
-      {showAddAdminForm && activeTab === 'practiceUsers' && (
-        <div className="dashboard-panel dashboard-section" style={{ borderLeft: '4px solid #005eb8' }}>
-          <div className="dashboard-panel-header">
-            <h2 className="dashboard-panel-title">Add Administrator</h2>
-            <button
-              onClick={() => setShowAddAdminForm(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#4c6272' }}
-              aria-label="Close add administrator form"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          {addAdminError && (
-            <div className="dashboard-banner dashboard-banner--error" style={{ marginBottom: '1rem' }}>
-              {addAdminError}
-            </div>
-          )}
-          <form onSubmit={addAdmin} style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <div className="dashboard-field">
-              <label>Administrator Name</label>
-              <input
-                type="text" value={newAdminName} onChange={e => setNewAdminName(e.target.value)}
-                placeholder="e.g. Jane Smith"
-              />
-            </div>
-            <div className="dashboard-field">
-              <label>Administrator Email *</label>
-              <input
-                type="email" value={newAdminEmail} onChange={e => setNewAdminEmail(e.target.value)} required
-                placeholder="e.g. admin@nhs.net"
-              />
-            </div>
-            <button type="submit" className="action-button admin-action-button--primary" style={{ alignSelf: 'flex-start' }}>
-              <Plus size={16} /> Add Administrator
-            </button>
-          </form>
         </div>
       )}
 
@@ -1212,54 +983,6 @@ const AdminDashboard: React.FC = () => {
                 </label>
               </div>
             </div>
-          </form>
-        </Modal>
-      )}
-
-      {editingAdmin && (
-        <Modal
-          isOpen
-          onClose={() => setEditingAdmin(null)}
-          size="sm"
-          title="Edit Administrator"
-          bodyClassName="dashboard-modal__body"
-          footer={(
-            <>
-              <button type="button" onClick={() => setEditingAdmin(null)} className="action-button admin-action-button--secondary">
-                Cancel
-              </button>
-              <button type="submit" form="edit-admin-form" className="action-button admin-action-button--primary">
-                Save Changes
-              </button>
-            </>
-          )}
-        >
-          {editAdminError && (
-            <div className="dashboard-banner dashboard-banner--error" style={{ marginBottom: '1rem' }}>
-              {editAdminError}
-            </div>
-          )}
-          <form onSubmit={saveAdminEdit} className="dashboard-modal__form" id="edit-admin-form">
-            <div className="dashboard-field">
-              <label>Administrator Name *</label>
-              <input
-                type="text" value={editAdminName} onChange={e => setEditAdminName(e.target.value)} required
-              />
-            </div>
-            <div className="dashboard-field">
-              <label>Administrator Email *</label>
-              <input
-                type="email" value={editAdminEmail} onChange={e => setEditAdminEmail(e.target.value)} required
-              />
-            </div>
-            <label className="dashboard-setting-toggle">
-              <input
-                type="checkbox"
-                checked={editAdminActive}
-                onChange={e => setEditAdminActive(e.target.checked)}
-              />
-              Administrator account active
-            </label>
           </form>
         </Modal>
       )}
@@ -1420,82 +1143,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {activeTab === 'practiceUsers' && (
-      <>
         <PracticeUserManagement practices={practices} />
-
-        <div className="dashboard-panel dashboard-section">
-          <div className="dashboard-panel-header">
-            <div>
-              <h2 className="dashboard-panel-title">
-                Administrator Accounts ({adminUsers.length})
-              </h2>
-              <p className="dashboard-panel-subtitle">Users with global admin portal access. Admins who also have practice memberships appear in the table above.</p>
-            </div>
-            {!showAddAdminForm && (
-              <button onClick={() => setShowAddAdminForm(true)} className="action-button admin-action-button--primary">
-                <Plus size={16} /> Add Administrator
-              </button>
-            )}
-          </div>
-
-          {loadingAdmins ? (
-            <p style={{ color: '#4c6272' }}>Loading administrators...</p>
-          ) : adminUsers.length === 0 ? (
-            <p style={{ color: '#4c6272' }}>No administrator accounts found yet.</p>
-          ) : (
-            <div className="admin-data-table-wrap">
-              <table className="admin-data-table admin-data-table--admins">
-                <thead>
-                  <tr>
-                    <th scope="col">Administrator</th>
-                    <th scope="col">Status</th>
-                    <th scope="col">Role</th>
-                    <th scope="col">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adminUsers.map((adminUser) => (
-                    <tr key={adminUser.uid}>
-                      <td>
-                        <div className="admin-table-identity">
-                          <strong>{adminUser.name}</strong>
-                          <span className="admin-table-identity__email">{adminUser.email}</span>
-                        </div>
-                      </td>
-                      <td>
-                        <span className={`admin-status-dot ${adminUser.is_active ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
-                          <span className="admin-status-dot__circle" aria-hidden="true" />
-                          {adminUser.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`admin-role-badge admin-role-badge--${adminUser.role}`}>
-                          {adminUser.role === 'owner' ? 'Owner' : 'Admin'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="admin-table-actions">
-                          <button onClick={() => openAdminEditForm(adminUser)} className="admin-action-btn admin-action-btn--edit">
-                            <Edit2 size={14} /> Edit
-                          </button>
-                          <button onClick={() => resetAdminPassword(adminUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
-                            <RefreshCw size={15} />
-                          </button>
-                          {adminUser.role !== 'owner' && (
-                            <button onClick={() => deleteAdmin(adminUser)} className="admin-action-btn admin-action-btn--icon" title="Remove administrator">
-                              <Trash2 size={15} />
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      </>
       )}
 
       {activeTab === 'practices' && (

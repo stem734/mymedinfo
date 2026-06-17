@@ -87,6 +87,22 @@ type CustomCardDraft = {
 
 type ServiceDomain = 'medication' | PracticeTemplateBuilderType;
 type DashboardDomain = 'overview' | ServiceDomain;
+
+type PlatformConfig = {
+  service_medication_enabled: boolean;
+  service_healthcheck_enabled: boolean;
+  service_screening_enabled: boolean;
+  service_immunisation_enabled: boolean;
+  service_ltc_enabled: boolean;
+};
+
+const PLATFORM_CONFIG_KEY: Record<ServiceDomain, keyof PlatformConfig> = {
+  medication: 'service_medication_enabled',
+  healthcheck: 'service_healthcheck_enabled',
+  screening: 'service_screening_enabled',
+  immunisation: 'service_immunisation_enabled',
+  ltc: 'service_ltc_enabled',
+};
 type EditablePatientTemplate = ScreeningTemplate | ImmunisationTemplate | LongTermConditionTemplate;
 
 type PracticeTemplateDraft = {
@@ -336,6 +352,7 @@ const PracticeDashboard: React.FC = () => {
     onConfirm: () => void;
   } | null>(null);
   const [disclaimerRequest, setDisclaimerRequest] = useState<DisclaimerRequest | null>(null);
+  const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
   const { medications: allMedications, loading: loadingMedications } = useMedicationCatalog();
   const navigate = useNavigate();
   const isMountedRef = useRef(true);
@@ -526,14 +543,16 @@ const PracticeDashboard: React.FC = () => {
   useEffect(() => {
     const loadGlobalTemplates = async () => {
       try {
-        const [healthcheck, screening, immunisation, ltc] = await Promise.all([
+        const [healthcheck, screening, immunisation, ltc, configResult] = await Promise.all([
           fetchCardTemplates<HealthCheckTemplatePayload>('healthcheck'),
           fetchCardTemplates<ScreeningTemplate>('screening'),
           fetchCardTemplates<ImmunisationTemplate>('immunisation'),
           fetchCardTemplates<LongTermConditionTemplate>('ltc'),
+          supabase.from('platform_config').select('*').eq('id', 1).maybeSingle(),
         ]);
 
         setGlobalTemplateRows({ healthcheck, screening, immunisation, ltc });
+        if (configResult.data) setPlatformConfig(configResult.data as PlatformConfig);
       } catch (err) {
         console.error('Error loading global templates:', err);
       }
@@ -705,7 +724,8 @@ const PracticeDashboard: React.FC = () => {
     if (!selectedPractice) return [];
 
     return DASHBOARD_DOMAINS.map((domain) => {
-      const isActive = domainFeatureEnabled(selectedPractice, domain.id);
+      const isGloballyEnabled = !platformConfig || platformConfig[PLATFORM_CONFIG_KEY[domain.id]] !== false;
+      const isActive = isGloballyEnabled && domainFeatureEnabled(selectedPractice, domain.id);
       const practiceVersionCount = domain.id === 'medication'
         ? customCount
         : practiceTemplateRows.filter((row) => row.builder_type === domain.id).length;
@@ -716,11 +736,12 @@ const PracticeDashboard: React.FC = () => {
       return {
         ...domain,
         isActive,
+        isGloballyEnabled,
         practiceVersionCount,
         totalTemplateCount,
       };
     });
-  }, [allMedications.length, customCount, nonMedicationTemplates, practiceTemplateRows, selectedPractice]);
+  }, [allMedications.length, customCount, nonMedicationTemplates, platformConfig, practiceTemplateRows, selectedPractice]);
 
   const activeServiceSummaries = serviceSummaries.filter((service) => service.isActive);
 
@@ -1172,11 +1193,17 @@ const PracticeDashboard: React.FC = () => {
                   }
                 }}
                 disabled={!service.isActive}
-                title={!service.isActive ? `${service.label} not enabled for this practice` : undefined}
+                title={
+                  !service.isActive
+                    ? service.isGloballyEnabled
+                      ? `${service.label} not enabled for this practice`
+                      : `${service.label} is not currently available on this platform`
+                    : undefined
+                }
               >
                 {DOMAIN_ICONS[service.id]}
                 <span style={{ flex: 1 }}>{service.label}</span>
-                {!service.isActive && (
+                {!service.isActive && service.isGloballyEnabled && (
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); void requestServiceActivation(service.id, selectedPractice.name); }}
@@ -1197,6 +1224,21 @@ const PracticeDashboard: React.FC = () => {
                   >
                     {pendingRequests.has(service.id) ? 'Requested' : 'Request'}
                   </button>
+                )}
+                {!service.isGloballyEnabled && (
+                  <span style={{
+                    background: 'rgba(255,255,255,0.05)',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 4,
+                    color: 'rgba(255,255,255,0.2)',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    padding: '2px 6px',
+                    lineHeight: 1.4,
+                    flexShrink: 0,
+                  }}>
+                    Unavailable
+                  </span>
                 )}
               </button>
             ))}
