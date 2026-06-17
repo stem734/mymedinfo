@@ -414,15 +414,20 @@ type ResourcePickerTarget = OutputBuilderType | null;
 
 type CardBuilderProps = {
   embedded?: boolean;
+  initialSection?: OutputBuilderType;
+  enabledServices?: Partial<Record<OutputBuilderType, boolean>>;
   onBack?: () => void;
 };
 
-const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) => {
+const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSection, enabledServices, onBack }) => {
   const toast = useToast();
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const [uiState, dispatchUi] = useReducer(builderUiReducer, initialBuilderUiState);
+  const [uiState, dispatchUi] = useReducer(builderUiReducer, initialBuilderUiState, (init) => ({
+    ...init,
+    selectedOutputType: initialSection ?? init.selectedOutputType,
+  }));
   const {
     medications: existingMeds,
     loading: loadingMeds,
@@ -1350,6 +1355,69 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
     setSaving(false);
   };
 
+  const handleDeleteTemplate = (
+    builderType: 'screening' | 'immunisation' | 'ltc',
+    templateId: string,
+    label: string,
+  ) => {
+    setConfirmDialog({
+      title: 'Delete Card?',
+      message: `Delete "${label}"? This will remove the saved version. Built-in cards will revert to their defaults; custom cards will be removed entirely. Audit history is retained.`,
+      confirmLabel: 'Delete',
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          const { error: delError } = await supabase.functions.invoke('delete-card-template', {
+            body: { builderType, templateId, label },
+          });
+          if (delError) throw delError;
+
+          if (builderType === 'screening') {
+            setScreeningTemplates((current) => {
+              const builtIn = SCREENING_TEMPLATES[templateId as keyof typeof SCREENING_TEMPLATES];
+              if (builtIn) {
+                return { ...current, [templateId]: cloneScreeningTemplate(builtIn) };
+              }
+              const next = { ...current };
+              delete next[templateId];
+              return next;
+            });
+            if (screeningType === templateId) {
+              setScreeningType(Object.keys(SCREENING_TEMPLATES)[0] || 'cervical');
+            }
+          } else if (builderType === 'immunisation') {
+            setImmunisationTemplates((current) => {
+              const builtIn = IMMUNISATION_TEMPLATES[templateId as keyof typeof IMMUNISATION_TEMPLATES];
+              if (builtIn) {
+                return { ...current, [templateId]: cloneImmunisationTemplate(builtIn) };
+              }
+              const next = { ...current };
+              delete next[templateId];
+              return next;
+            });
+          } else if (builderType === 'ltc') {
+            setLongTermConditionTemplates((current) => {
+              const builtIn = LONG_TERM_CONDITION_TEMPLATES[templateId as keyof typeof LONG_TERM_CONDITION_TEMPLATES];
+              if (builtIn) {
+                return { ...current, [templateId]: cloneLongTermConditionTemplate(builtIn) };
+              }
+              const next = { ...current };
+              delete next[templateId];
+              return next;
+            });
+            if (selectedLongTermCondition === templateId) {
+              setSelectedLongTermCondition(Object.keys(LONG_TERM_CONDITION_TEMPLATES)[0] || 'asthma');
+            }
+          }
+          toast.success(`"${label}" deleted.`);
+        } catch {
+          toast.error('Failed to delete card. Please try again.');
+        }
+        setConfirmDialog(null);
+      },
+    });
+  };
+
   const handleDelete = (medication: MedicationRecord) => {
     setConfirmDialog({
       title: 'Delete Medication?',
@@ -1741,20 +1809,26 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
             ['screening', 'Screening'],
             ['immunisation', 'Immunisation'],
             ['ltc', 'Long Term Conditions'],
-          ] as Array<[OutputBuilderType, string]>).map(([value, label]) => (
-            <button
-              key={value}
-              onClick={() => setSelectedOutputType(value)}
-              className="action-button"
-              style={{
-                backgroundColor: selectedOutputType === value ? '#005eb8' : '#eef7ff',
-                color: selectedOutputType === value ? '#ffffff' : '#005eb8',
-                border: selectedOutputType === value ? 'none' : '1px solid #005eb8',
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          ] as Array<[OutputBuilderType, string]>).map(([value, label]) => {
+            const isServiceEnabled = !enabledServices || enabledServices[value] !== false;
+            const isActive = selectedOutputType === value;
+            return (
+              <button
+                key={value}
+                onClick={() => setSelectedOutputType(value)}
+                className="action-button"
+                style={{
+                  backgroundColor: isActive ? '#005eb8' : isServiceEnabled ? '#eef7ff' : '#f3f4f6',
+                  color: isActive ? '#ffffff' : isServiceEnabled ? '#005eb8' : '#9ca3af',
+                  border: isActive ? 'none' : isServiceEnabled ? '1px solid #005eb8' : '1px solid #d1d5db',
+                  opacity: isServiceEnabled ? 1 : 0.7,
+                }}
+              >
+                {label}
+                {!isServiceEnabled && <span style={{ marginLeft: '0.4rem', fontSize: '0.75em', fontWeight: 400 }}>Off</span>}
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -2510,6 +2584,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
                           <button onClick={() => { setScreeningType(template.id); setTemplateSaveCompleted((current) => ({ ...current, screening: false })); setScreeningEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
                           <button onClick={() => duplicateScreeningTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
+                          <button onClick={() => handleDeleteTemplate('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -2560,6 +2635,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
                           <button onClick={() => { setImmunisationSelections([template.id]); setTemplateSaveCompleted((current) => ({ ...current, immunisation: false })); setImmunisationEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
                           <button onClick={() => duplicateImmunisationTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
+                          <button onClick={() => handleDeleteTemplate('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>
@@ -2610,6 +2686,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, onBack }) =
                           <button onClick={() => { setSelectedLongTermCondition(template.id); setTemplateSaveCompleted((current) => ({ ...current, ltc: false })); setLtcEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
                           <button onClick={() => duplicateLongTermConditionTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
+                          <button onClick={() => handleDeleteTemplate('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>
                         </div>
                       </td>
                     </tr>

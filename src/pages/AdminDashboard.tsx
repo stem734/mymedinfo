@@ -159,12 +159,13 @@ const GLOBAL_SERVICES: Array<{
   practiceKey: keyof Pick<Practice, 'medication_enabled' | 'healthcheck_enabled' | 'screening_enabled' | 'immunisation_enabled' | 'ltc_enabled'>;
   label: string;
   description: string;
+  builderSection: 'medication' | 'healthcheck' | 'screening' | 'immunisation' | 'ltc';
 }> = [
-  { configKey: 'service_medication_enabled', practiceKey: 'medication_enabled', label: 'Medication Cards', description: 'Structured medication review cards for patient consultations.' },
-  { configKey: 'service_healthcheck_enabled', practiceKey: 'healthcheck_enabled', label: 'NHS Health Checks', description: 'Health check assessment pathway and outcome tracking.' },
-  { configKey: 'service_screening_enabled', practiceKey: 'screening_enabled', label: 'Screening', description: 'Cancer and vascular screening recommendations.' },
-  { configKey: 'service_immunisation_enabled', practiceKey: 'immunisation_enabled', label: 'Immunisations', description: 'Vaccination schedule and immunisation programme cards.' },
-  { configKey: 'service_ltc_enabled', practiceKey: 'ltc_enabled', label: 'Long Term Conditions', description: 'Chronic disease management and care pathway cards.' },
+  { configKey: 'service_medication_enabled', practiceKey: 'medication_enabled', label: 'Medication Cards', description: 'Structured medication review cards for patient consultations.', builderSection: 'medication' },
+  { configKey: 'service_healthcheck_enabled', practiceKey: 'healthcheck_enabled', label: 'NHS Health Checks', description: 'Health check assessment pathway and outcome tracking.', builderSection: 'healthcheck' },
+  { configKey: 'service_screening_enabled', practiceKey: 'screening_enabled', label: 'Screening', description: 'Cancer and vascular screening recommendations.', builderSection: 'screening' },
+  { configKey: 'service_immunisation_enabled', practiceKey: 'immunisation_enabled', label: 'Immunisations', description: 'Vaccination schedule and immunisation programme cards.', builderSection: 'immunisation' },
+  { configKey: 'service_ltc_enabled', practiceKey: 'ltc_enabled', label: 'Long Term Conditions', description: 'Chronic disease management and care pathway cards.', builderSection: 'ltc' },
 ];
 
 type AdminTabMeta = {
@@ -193,6 +194,7 @@ const AdminDashboard: React.FC = () => {
   const [adminUsers, setAdminUsers] = useState<AdminUser[]>([]);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);
   const [showCardBuilder, setShowCardBuilder] = useState(() => isAdminBuilderPath(window.location.pathname));
+  const [cardBuilderSection, setCardBuilderSection] = useState<'medication' | 'healthcheck' | 'screening' | 'immunisation' | 'ltc'>('medication');
   const [loginAudit, setLoginAudit] = useState<LoginAuditEntry[]>([]);
   const [practiceSearch, setPracticeSearch] = useState('');
   const [practiceStatusFilter, setPracticeStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -1757,7 +1759,7 @@ const AdminDashboard: React.FC = () => {
                 Control which services are available platform-wide. Disabled services are hidden from all practice portals regardless of per-practice settings.
               </p>
             </div>
-            <button onClick={() => setShowCardBuilder(true)} className="action-button admin-action-button--primary">
+            <button onClick={() => { setCardBuilderSection('medication'); setShowCardBuilder(true); }} className="action-button admin-action-button--primary">
               <Edit2 size={16} /> Card Builder
             </button>
           </div>
@@ -1804,7 +1806,7 @@ const AdminDashboard: React.FC = () => {
                             {isEnabled ? 'Disable' : 'Enable'}
                           </button>
                           <button
-                            onClick={() => setShowCardBuilder(true)}
+                            onClick={() => { setCardBuilderSection(service.builderSection); setShowCardBuilder(true); }}
                             className="admin-action-btn admin-action-btn--icon"
                             title="Open card builder"
                           >
@@ -1822,7 +1824,18 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {activeTab === 'services' && showCardBuilder && (
-        <CardBuilder embedded onBack={() => setShowCardBuilder(false)} />
+        <CardBuilder
+          embedded
+          initialSection={cardBuilderSection}
+          enabledServices={{
+            medication: platformConfig.service_medication_enabled,
+            healthcheck: platformConfig.service_healthcheck_enabled,
+            screening: platformConfig.service_screening_enabled,
+            immunisation: platformConfig.service_immunisation_enabled,
+            ltc: platformConfig.service_ltc_enabled,
+          }}
+          onBack={() => setShowCardBuilder(false)}
+        />
       )}
 
       {activeTab === 'library' && (
