@@ -13,6 +13,11 @@
 **Learning:** Security-sensitive tokens (password reset links, email verification links, MFA codes) must ONLY be transmitted via secure out-of-band channels (email, SMS, authenticator apps), never in API responses. Even if the API uses HTTPS, logging, monitoring, or proxy systems may record the response, exposing the sensitive token.
 **Prevention:** Always send sensitive tokens via email/SMS only. Return generic success messages (e.g., `{ success: true }`) without exposing the actual token. Log the token transmission only to secure internal logs, never in structured API responses.
 
+## 2024-06-14 - Prevent Practice Password Reset Link Leakage
+**Vulnerability:** The `upsert-practice-user`, `send-practice-password-reset`, and `create-practice-user` Edge Functions returned the `resetLink` in their JSON responses, similar to the previous admin vulnerability. This allowed potential interception of sensitive setup/reset tokens via the API response.
+**Learning:** Consistency in security patterns across different domains (admin vs. practice) is crucial. A fix in one area should be audited across all similar functional areas. Edge Functions that generate sensitive links must always use out-of-band delivery (Resend/email) and never return the link to the client.
+**Prevention:** Audit all endpoints that generate authentication or recovery tokens to ensure they follow the "no-leak" pattern. Standardize JSON responses to only indicate success and, where necessary, whether a new account was created or an existing one updated, without exposing the secret token.
+
 ## 2025-05-15 - Hardening PDF Generation API
 **Vulnerability:** The `api/pdf.ts` endpoint was vulnerable to potential SSRF bypasses via control characters, header injection in `Content-Disposition`, and information disclosure via unmasked 500 error messages. It also lacked standard security headers.
 **Learning:** Even with basic path checks (e.g., `startsWith("/")`), non-printable control characters (like `%00`) can sometimes bypass filters or cause unexpected behavior in URL resolution and header generation. Leaking stack traces or raw error messages in serverless functions can expose sensitive backend infrastructure details.
