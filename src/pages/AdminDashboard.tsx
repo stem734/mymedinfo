@@ -45,6 +45,7 @@ import {
 } from '../localResourceLibrary';
 import { buildDemoPatientUrlForType } from '../demoHelpers';
 import { fetchCardTemplates } from '../cardTemplateStore';
+import { getCurrentUserAdminRole } from '../adminAccess';
 import type { CardTemplateBuilderType, HealthCheckTemplatePayload } from '../cardTemplateTypes';
 import { loadMedicationCatalog } from '../medicationCatalog';
 import type { MedicationRecord } from '../medicationCatalog';
@@ -356,18 +357,30 @@ const AdminDashboard: React.FC = () => {
   }, [activeTab, authenticated, showCardBuilder]);
 
   useEffect(() => {
-    const hydrate = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setAuthenticated(true);
-        setCurrentUserEmail(session.user.email ?? '');
-        loadDashboardData();
-        void loadPlatformConfig();
-        void loadServiceRequests();
-        void loadServiceWork();
+    const loadForAdminSession = async (session: Session) => {
+      const adminRole = await getCurrentUserAdminRole(session.user.id);
+      if (!adminRole) {
+        setAuthenticated(false);
+        navigate(resolvePath('/admin'));
         return;
       }
 
+      setAuthenticated(true);
+      setCurrentUserEmail(session.user.email ?? '');
+      loadDashboardData();
+      void loadPlatformConfig();
+      void loadServiceRequests();
+      void loadServiceWork();
+    };
+
+    const hydrate = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadForAdminSession(session);
+        return;
+      }
+
+      setAuthenticated(false);
       navigate(resolvePath('/admin'));
     };
 
@@ -375,11 +388,9 @@ const AdminDashboard: React.FC = () => {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
-        setAuthenticated(true);
-        loadDashboardData();
-        void loadServiceRequests();
-        void loadServiceWork();
+        void loadForAdminSession(session);
       } else {
+        setAuthenticated(false);
         navigate(resolvePath('/admin'));
       }
     });

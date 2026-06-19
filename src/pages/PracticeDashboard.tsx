@@ -25,6 +25,7 @@ import MedicationPreviewModal from '../components/MedicationPreviewModal';
 import ConfirmDialog from '../components/ConfirmDialog';
 import DisclaimerDialog from '../components/DisclaimerDialog';
 import Modal from '../components/Modal';
+import { getCurrentUserAdminRole } from '../adminAccess';
 import { type MedicationRecord, useMedicationCatalog } from '../medicationCatalog';
 import { getFunctionErrorMessage } from '../supabaseFunctionError';
 import { fetchCardTemplates } from '../cardTemplateStore';
@@ -564,23 +565,22 @@ const PracticeDashboard: React.FC = () => {
   useEffect(() => {
     isMountedRef.current = true;
 
+    const refreshAdminAccess = async (uid: string) => {
+      setIsAdmin(false);
+      const role = await getCurrentUserAdminRole(uid);
+      if (isMountedRef.current) {
+        setIsAdmin(Boolean(role));
+      }
+    };
+
     const hydrate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         setCurrentUserEmail(session.user.email ?? '');
-
-        // Check if this user also has admin access
-        const { data: userRow } = await supabase
-          .from('users')
-          .select('global_role')
-          .eq('uid', session.user.id)
-          .maybeSingle();
-        if (userRow?.global_role === 'owner' || userRow?.global_role === 'admin') {
-          setIsAdmin(true);
-        }
-
+        await refreshAdminAccess(session.user.id);
         await loadMemberships();
       } else {
+        setIsAdmin(false);
         navigate(resolvePath('/practice'));
       }
     };
@@ -597,8 +597,11 @@ const PracticeDashboard: React.FC = () => {
       }
 
       if (session?.user) {
+        setCurrentUserEmail(session.user.email ?? '');
+        await refreshAdminAccess(session.user.id);
         await loadMemberships();
       } else {
+        setIsAdmin(false);
         navigate(resolvePath('/practice'));
       }
     });
