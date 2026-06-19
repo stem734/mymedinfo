@@ -1048,6 +1048,10 @@ const AdminDashboard: React.FC = () => {
 
         {/* Logout at bottom */}
         <div className="admin-portal-nav__bottom">
+          <button type="button" className="admin-portal-nav__item" onClick={() => navigate(resolvePath('/practice/dashboard'))} style={{ width: '100%' }}>
+            <Building2 size={16} aria-hidden="true" />
+            <span>Practice portal</span>
+          </button>
           <button type="button" className="admin-portal-nav__item" onClick={handleSignOut} style={{ width: '100%' }}>
             <LogOut size={16} aria-hidden="true" />
             <span>Sign out</span>
