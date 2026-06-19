@@ -55,5 +55,8 @@ verify_jwt = false
 [functions.update-practice-user]
 verify_jwt = false
 
+[functions.update-user-admin-role]
+verify_jwt = false
+
 [functions.upsert-practice-user]
 verify_jwt = false

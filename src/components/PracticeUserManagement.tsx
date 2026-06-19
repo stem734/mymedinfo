@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Edit2, Mail, Plus, RefreshCw, Trash2, KeyRound } from 'lucide-react';
+import { Edit2, Mail, Plus, RefreshCw, ShieldCheck, ShieldMinus, Trash2, KeyRound } from 'lucide-react';
 import { supabase } from '../supabase';
 import ConfirmDialog from './ConfirmDialog';
 import Modal from './Modal';
@@ -391,6 +391,47 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
     });
   };
 
+  const updateAdminRole = (appUser: AppUserSummary, shouldBeAdmin: boolean) => {
+    const roleLabel = shouldBeAdmin ? 'Promote to Admin' : 'Demote Admin';
+    setConfirmDialog({
+      title: roleLabel,
+      message: shouldBeAdmin
+        ? `Promote "${appUser.email}" to global administrator? They will be able to access the admin portal and manage platform content.`
+        : `Remove global administrator access for "${appUser.email}"? Their practice access, if any, will remain unchanged.`,
+      confirmLabel: shouldBeAdmin ? 'Promote' : 'Demote',
+      isDangerous: !shouldBeAdmin,
+      onConfirm: () => {
+        void (async () => {
+          try {
+            const { error: invokeError } = await supabase.functions.invoke('update-user-admin-role', {
+              body: {
+                uid: appUser.uid,
+                globalRole: shouldBeAdmin ? 'admin' : null,
+              },
+            });
+
+            if (invokeError) {
+              throw invokeError;
+            }
+
+            setActionMessage(
+              shouldBeAdmin
+                ? `${appUser.email} promoted to global administrator.`
+                : `${appUser.email} demoted from global administrator.`,
+            );
+            setActionLink('');
+            await loadUsers();
+          } catch (err) {
+            console.error('Error updating administrator access:', err);
+            setError(await getFunctionErrorMessage(err, 'Unable to update administrator access.'));
+          } finally {
+            setConfirmDialog(null);
+          }
+        })();
+      },
+    });
+  };
+
   const addAdmin = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdminFormError('');
@@ -700,6 +741,16 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                         <button onClick={() => void sendPasswordReset(appUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
                           <KeyRound size={15} />
                         </button>
+                        {appUser.global_role === 'admin' && (
+                          <button onClick={() => updateAdminRole(appUser, false)} className="admin-action-btn admin-action-btn--icon" title="Demote administrator">
+                            <ShieldMinus size={15} />
+                          </button>
+                        )}
+                        {!appUser.global_role && (
+                          <button onClick={() => updateAdminRole(appUser, true)} className="admin-action-btn admin-action-btn--activate" title="Promote to administrator">
+                            <ShieldCheck size={15} /> Promote
+                          </button>
+                        )}
                         <button onClick={() => deleteUser(appUser)} className="admin-action-btn admin-action-btn--icon" title={appUser.global_role ? 'Remove administrator' : 'Delete user'}>
                           <Trash2 size={15} />
                         </button>
