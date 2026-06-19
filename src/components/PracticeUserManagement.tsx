@@ -77,6 +77,55 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
   } | null>(null);
   const editModalRef = useRef<HTMLDivElement | null>(null);
 
+  const loadUsers = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data, error: userError } = await supabase.functions.invoke('list-practice-users');
+
+      if (userError) {
+        throw userError;
+      }
+
+      const payload = (data || {}) as PracticeUsersPayload;
+      const mappedUsers = (payload.users || []).map((row) => ({
+        uid: row.uid,
+        email: row.email,
+        name: row.name,
+        is_active: row.is_active,
+        global_role: row.global_role || null,
+        memberships: (row.memberships || [])
+          .flatMap((membership) => {
+            const practice = normalisePractice(membership.practice);
+            if (!practice) {
+              return [];
+            }
+
+            return [{
+              ...membership,
+              practice,
+            }];
+          })
+          .sort((left, right) => Number(right.is_default) - Number(left.is_default) || left.practice.name.localeCompare(right.practice.name)),
+      }));
+
+      setUsers(mappedUsers);
+    } catch (err) {
+      console.error('Error loading users:', err);
+      setError(await getFunctionErrorMessage(err, 'Unable to load users.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm());
+    setShowAddForm(false);
+    setEditingUser(null);
+    setError('');
+  };
+
   useEffect(() => {
     void loadUsers();
   }, []);
@@ -152,55 +201,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
     () => [...practices].sort((left, right) => left.name.localeCompare(right.name)),
     [practices],
   );
-
-  const loadUsers = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { data, error: userError } = await supabase.functions.invoke('list-practice-users');
-
-      if (userError) {
-        throw userError;
-      }
-
-      const payload = (data || {}) as PracticeUsersPayload;
-      const mappedUsers = (payload.users || []).map((row) => ({
-        uid: row.uid,
-        email: row.email,
-        name: row.name,
-        is_active: row.is_active,
-        global_role: row.global_role || null,
-        memberships: (row.memberships || [])
-          .flatMap((membership) => {
-            const practice = normalisePractice(membership.practice);
-            if (!practice) {
-              return [];
-            }
-
-            return [{
-              ...membership,
-              practice,
-            }];
-          })
-          .sort((left, right) => Number(right.is_default) - Number(left.is_default) || left.practice.name.localeCompare(right.practice.name)),
-      }));
-
-      setUsers(mappedUsers);
-    } catch (err) {
-      console.error('Error loading users:', err);
-      setError(await getFunctionErrorMessage(err, 'Unable to load users.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setForm(emptyForm());
-    setShowAddForm(false);
-    setEditingUser(null);
-    setError('');
-  };
 
   const openAddForm = () => {
     setForm({
@@ -278,13 +278,13 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         throw invokeError;
       }
 
-      if (data?.resetLink) {
-        setActionLink(data.resetLink);
-        setActionMessage(`User created and linked to practice access. Copy the setup link below and send it to ${form.email.trim()}.`);
+      if (data?.created !== false) {
+        setActionMessage(`Practice account created for ${form.email.trim()}. A setup link has been sent to their email.`);
       } else {
         setActionMessage(`Existing user updated with access to ${form.practiceIds.length} practice${form.practiceIds.length === 1 ? '' : 's'}.`);
       }
 
+      setActionLink('');
       resetForm();
       await loadUsers();
     } catch (err) {
@@ -336,7 +336,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
 
   const sendPasswordReset = async (appUser: AppUserSummary) => {
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke('send-practice-password-reset', {
+      const { error: invokeError } = await supabase.functions.invoke('send-practice-password-reset', {
         body: { uid: appUser.uid },
       });
 
@@ -344,8 +344,8 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         throw invokeError;
       }
 
-      setActionMessage(`Password reset link prepared for ${appUser.email}. Copy and send it manually if needed.`);
-      setActionLink(data?.resetLink || '');
+      setActionMessage(`A password reset link has been sent to ${appUser.email}.`);
+      setActionLink('');
     } catch (err) {
       console.error('Error sending password reset:', err);
       setError(await getFunctionErrorMessage(err, 'Unable to send password reset.'));
