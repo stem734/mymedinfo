@@ -67,7 +67,6 @@ serve(async (req) => {
         success: true,
         uid: existingUser.uid,
         created: false,
-        resetLink: '',
       });
     }
 
@@ -145,7 +144,6 @@ serve(async (req) => {
       success: true,
       uid: userRecord.user.id,
       created: true,
-      resetLink,
     });
   } catch (err) {
     console.error('Unexpected edge function error:', err);

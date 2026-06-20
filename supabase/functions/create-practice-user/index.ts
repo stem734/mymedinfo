@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
+import { Resend } from 'https://esm.sh/resend@6';
 import {
   addPracticeMemberships,
   assertPracticeIdsExist,
@@ -70,7 +71,6 @@ serve(async (req) => {
         success: true,
         uid: existingUser.uid,
         created: false,
-        resetLink: '',
       });
     }
 
@@ -127,11 +127,37 @@ serve(async (req) => {
       return errorResponse('Failed to generate reset link', 500);
     }
 
+    const resetLink = linkData?.properties?.action_link || '';
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
+
+    if (resendApiKey && resendFromEmail && resetLink) {
+      const resend = new Resend(resendApiKey);
+      await resend.emails.send({
+        from: resendFromEmail,
+        to: email,
+        subject: 'Set up your MyMedInfo practice account',
+        text: `Hello ${displayName},\n\nYour MyMedInfo practice account has been created. Set your password using this secure link:\n${resetLink}\n\nAfter setting your password, sign in at ${appBaseUrl}/practice\n`,
+        html: `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #212b32;">
+            <h2 style="color: #005eb8;">Welcome to MyMedInfo</h2>
+            <p>Hello ${displayName},</p>
+            <p>Your MyMedInfo practice account has been created. Use the button below to set your password.</p>
+            <p style="margin: 24px 0;">
+              <a href="${resetLink}" style="background: #005eb8; color: white; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">Set Your Password</a>
+            </p>
+            <p>If the button does not work, copy and paste this link into your browser:</p>
+            <p><a href="${resetLink}">${resetLink}</a></p>
+            <p>After setting your password, sign in at <a href="${appBaseUrl}/practice">${appBaseUrl}/practice</a>.</p>
+          </div>
+        `,
+      });
+    }
+
     return jsonResponse({
       success: true,
       uid: userRecord.user.id,
       created: true,
-      resetLink: linkData?.properties?.action_link || '',
     });
   } catch (err) {
     console.error('Unexpected edge function error:', err);
