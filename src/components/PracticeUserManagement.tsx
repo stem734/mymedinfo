@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Edit2, Mail, Plus, RefreshCw, ShieldCheck, ShieldMinus, Trash2, KeyRound } from 'lucide-react';
+import { Edit2, Plus, RefreshCw, ShieldCheck, ShieldMinus, Trash2, KeyRound } from 'lucide-react';
 import { supabase } from '../supabase';
 import ConfirmDialog from './ConfirmDialog';
 import Modal from './Modal';
@@ -66,7 +66,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
   const [editingUser, setEditingUser] = useState<AppUserSummary | null>(null);
   const [form, setForm] = useState<UserFormState>(emptyForm());
   const [error, setError] = useState('');
-  const [actionLink, setActionLink] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [confirmDialog, setConfirmDialog] = useState<{
     title: string;
@@ -76,6 +75,67 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
     onConfirm: () => void;
   } | null>(null);
   const editModalRef = useRef<HTMLDivElement | null>(null);
+
+  const loadUsers = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const { data, error: userError } = await supabase.functions.invoke('list-practice-users');
+
+      if (userError) {
+        throw userError;
+      }
+
+      const payload = (data || {}) as PracticeUsersPayload;
+      const mappedUsers = (payload.users || []).map((row) => ({
+        uid: row.uid,
+        email: row.email,
+        name: row.name,
+        is_active: row.is_active,
+        global_role: row.global_role || null,
+        memberships: (row.memberships || [])
+          .flatMap((membership) => {
+            const practice = normalisePractice(membership.practice);
+            if (!practice) {
+              return [];
+            }
+
+            return [{
+              ...membership,
+              practice,
+            }];
+          })
+          .sort((left, right) => Number(right.is_default) - Number(left.is_default) || left.practice.name.localeCompare(right.practice.name)),
+      }));
+
+      setUsers(mappedUsers);
+    } catch (err) {
+      console.error('Error loading users:', err);
+      setError(await getFunctionErrorMessage(err, 'Unable to load users.'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setForm(emptyForm());
+    setShowAddForm(false);
+    setEditingUser(null);
+    setError('');
+  };
+
+
+  const openAddForm = () => {
+    setForm({
+      ...emptyForm(),
+      practiceIds: activePractices[0] ? [activePractices[0].id] : [],
+      defaultPracticeId: activePractices[0]?.id || '',
+    });
+    setShowAddForm(true);
+    setEditingUser(null);
+    setError('');
+  };
 
   useEffect(() => {
     void loadUsers();
@@ -153,66 +213,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
     [practices],
   );
 
-  const loadUsers = async () => {
-    setLoading(true);
-    setError('');
-
-    try {
-      const { data, error: userError } = await supabase.functions.invoke('list-practice-users');
-
-      if (userError) {
-        throw userError;
-      }
-
-      const payload = (data || {}) as PracticeUsersPayload;
-      const mappedUsers = (payload.users || []).map((row) => ({
-        uid: row.uid,
-        email: row.email,
-        name: row.name,
-        is_active: row.is_active,
-        global_role: row.global_role || null,
-        memberships: (row.memberships || [])
-          .flatMap((membership) => {
-            const practice = normalisePractice(membership.practice);
-            if (!practice) {
-              return [];
-            }
-
-            return [{
-              ...membership,
-              practice,
-            }];
-          })
-          .sort((left, right) => Number(right.is_default) - Number(left.is_default) || left.practice.name.localeCompare(right.practice.name)),
-      }));
-
-      setUsers(mappedUsers);
-    } catch (err) {
-      console.error('Error loading users:', err);
-      setError(await getFunctionErrorMessage(err, 'Unable to load users.'));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const resetForm = () => {
-    setForm(emptyForm());
-    setShowAddForm(false);
-    setEditingUser(null);
-    setError('');
-  };
-
-  const openAddForm = () => {
-    setForm({
-      ...emptyForm(),
-      practiceIds: activePractices[0] ? [activePractices[0].id] : [],
-      defaultPracticeId: activePractices[0]?.id || '',
-    });
-    setShowAddForm(true);
-    setEditingUser(null);
-    setError('');
-  };
-
   const openEditForm = (appUser: AppUserSummary) => {
     setEditingUser(appUser);
     setShowAddForm(false);
@@ -251,7 +251,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
   const handleCreate = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
-    setActionLink('');
     setActionMessage('');
 
     if (!form.email.trim()) {
@@ -278,9 +277,8 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         throw invokeError;
       }
 
-      if (data?.resetLink) {
-        setActionLink(data.resetLink);
-        setActionMessage(`User created and linked to practice access. Copy the setup link below and send it to ${form.email.trim()}.`);
+      if (data?.created === true) {
+        setActionMessage(`Account created for ${form.email.trim()} and linked to practice access. A setup link has been sent to their email.`);
       } else {
         setActionMessage(`Existing user updated with access to ${form.practiceIds.length} practice${form.practiceIds.length === 1 ? '' : 's'}.`);
       }
@@ -325,7 +323,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       }
 
       setActionMessage(`User ${form.email.trim()} updated successfully.`);
-      setActionLink('');
       resetForm();
       await loadUsers();
     } catch (err) {
@@ -336,7 +333,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
 
   const sendPasswordReset = async (appUser: AppUserSummary) => {
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke('send-practice-password-reset', {
+      const { error: invokeError } = await supabase.functions.invoke('send-practice-password-reset', {
         body: { uid: appUser.uid },
       });
 
@@ -344,8 +341,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         throw invokeError;
       }
 
-      setActionMessage(`Password reset link prepared for ${appUser.email}. Copy and send it manually if needed.`);
-      setActionLink(data?.resetLink || '');
+      setActionMessage(`A password reset link has been sent to ${appUser.email}.`);
     } catch (err) {
       console.error('Error sending password reset:', err);
       setError(await getFunctionErrorMessage(err, 'Unable to send password reset.'));
@@ -378,7 +374,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                 ? `${appUser.email} still has practice access — global admin role removed.`
                 : `${appUser.email} deleted.`,
             );
-            setActionLink('');
             await loadUsers();
           } catch (err) {
             console.error('Error deleting user:', err);
@@ -419,7 +414,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                 ? `${appUser.email} promoted to global administrator.`
                 : `${appUser.email} demoted from global administrator.`,
             );
-            setActionLink('');
             await loadUsers();
           } catch (err) {
             console.error('Error updating administrator access:', err);
@@ -456,7 +450,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           ? `Global admin access added to existing account for ${nextEmail}.`
           : `Administrator account created for ${nextEmail}. A setup link has been sent to their email.`,
       );
-      setActionLink('');
       await loadUsers();
     } catch (err) {
       console.error('Error adding admin:', err);
@@ -562,22 +555,14 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         />
       )}
 
-      {(actionMessage || actionLink) && (
+      {actionMessage && (
         <div className="dashboard-panel dashboard-section">
           <div className="dashboard-panel-header">
             <div>
               <h2 className="dashboard-panel-title">User Action</h2>
-              {actionMessage && <p className="dashboard-panel-subtitle">{actionMessage}</p>}
+              <p className="dashboard-panel-subtitle">{actionMessage}</p>
             </div>
-            {actionLink && (
-              <button onClick={() => navigator.clipboard.writeText(actionLink)} className="admin-action-btn admin-action-btn--edit">
-                <Mail size={14} /> Copy Link
-              </button>
-            )}
           </div>
-          {actionLink && (
-            <div className="admin-code-block" style={{ marginTop: 12 }}>{actionLink}</div>
-          )}
         </div>
       )}
 
