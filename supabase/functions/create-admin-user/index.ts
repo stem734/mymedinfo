@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
+import { getAppBaseUrl, getResendConfig, sendAuthLinkEmail } from '../_shared/auth-email.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
-import { Resend } from 'https://esm.sh/resend@6';
 import { loadUserByEmail, normaliseEmail } from '../_shared/practice-user-management.ts';
 
 serve(async (req) => {
@@ -20,6 +20,10 @@ serve(async (req) => {
     const supabase = createServiceClient();
     const normalisedEmail = normaliseEmail(email);
     const displayName = typeof name === 'string' && name.trim() ? name.trim() : normalisedEmail;
+    const emailConfig = getResendConfig();
+    if (!emailConfig) {
+      return errorResponse('Email service is not configured', 500);
+    }
 
     const existingUser = await loadUserByEmail(supabase, normalisedEmail);
     if (existingUser) {
@@ -49,40 +53,30 @@ serve(async (req) => {
         return errorResponse('Failed to update user record', 500);
       }
 
-      const appBaseUrl = (Deno.env.get('APP_BASE_URL') || 'https://www.mymedinfo.info').replace(/\/$/, '');
-      const { data: linkData } = await supabase.auth.admin.generateLink({
+      const appBaseUrl = getAppBaseUrl();
+      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
         type: 'recovery',
         email: normalisedEmail,
         options: { redirectTo: `${appBaseUrl}/reset-password` },
       });
 
-      // Send email if reset link is available
-      const resendApiKey = Deno.env.get('RESEND_API_KEY');
-      const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
-      const resetLink = linkData?.properties?.action_link || '';
-
-      if (resendApiKey && resendFromEmail && resetLink) {
-        const resend = new Resend(resendApiKey);
-        await resend.emails.send({
-          from: resendFromEmail,
-          to: normalisedEmail,
-          subject: 'Reset your MyMedInfo administrator password',
-          text: `Hello ${displayName},\n\nUse this secure link to reset your MyMedInfo administrator password:\n${resetLink}\n\nIf you did not request this, you can ignore this email.\n`,
-          html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #212b32;">
-              <h2 style="color: #005eb8;">Reset your MyMedInfo password</h2>
-              <p>Hello ${displayName},</p>
-              <p>Use the button below to reset your MyMedInfo administrator password.</p>
-              <p style="margin: 24px 0;">
-                <a href="${resetLink}" style="background: #005eb8; color: white; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">Reset Password</a>
-              </p>
-              <p>If the button does not work, copy and paste this link into your browser:</p>
-              <p><a href="${resetLink}">${resetLink}</a></p>
-              <p>If you did not request this, you can ignore this email.</p>
-            </div>
-          `,
-        });
+      if (linkError) {
+        console.error('Reset link generation error:', linkError);
+        return errorResponse('Failed to generate reset link', 500);
       }
+
+      const resetLink = linkData?.properties?.action_link || '';
+      if (!resetLink) {
+        return errorResponse('Failed to generate reset link', 500);
+      }
+
+      await sendAuthLinkEmail(emailConfig, {
+        appBaseUrl,
+        displayName,
+        kind: 'adminReset',
+        resetLink,
+        to: normalisedEmail,
+      });
 
       return jsonResponse({
         success: true,
@@ -121,41 +115,30 @@ serve(async (req) => {
       return errorResponse('Failed to create user record', 500);
     }
 
-    // Generate password reset link
-    const appBaseUrl = (Deno.env.get('APP_BASE_URL') || 'https://www.mymedinfo.info').replace(/\/$/, '');
-    const { data: linkData } = await supabase.auth.admin.generateLink({
+    const appBaseUrl = getAppBaseUrl();
+    const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email: normalisedEmail,
       options: { redirectTo: `${appBaseUrl}/reset-password` },
     });
 
-    const resetLink = linkData?.properties?.action_link || '';
-
-    // Send welcome email via Resend
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
-    if (resendApiKey && resendFromEmail && resetLink) {
-      const resend = new Resend(resendApiKey);
-      await resend.emails.send({
-        from: resendFromEmail,
-        to: normalisedEmail,
-        subject: 'Set up your MyMedInfo administrator account',
-        text: `Hello ${displayName},\n\nYour MyMedInfo administrator account has been created. Set your password using this secure link:\n${resetLink}\n\nAfter setting your password, sign in at ${appBaseUrl}/admin\n`,
-        html: `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #212b32;">
-            <h2 style="color: #005eb8;">Welcome to MyMedInfo</h2>
-            <p>Hello ${displayName},</p>
-            <p>Your MyMedInfo administrator account has been created. Use the button below to set your password.</p>
-            <p style="margin: 24px 0;">
-              <a href="${resetLink}" style="background: #005eb8; color: white; padding: 12px 18px; border-radius: 8px; text-decoration: none; font-weight: 700;">Set Your Password</a>
-            </p>
-            <p>If the button does not work, copy and paste this link into your browser:</p>
-            <p><a href="${resetLink}">${resetLink}</a></p>
-            <p>After setting your password, sign in at <a href="${appBaseUrl}/admin">${appBaseUrl}/admin</a>.</p>
-          </div>
-        `,
-      });
+    if (linkError) {
+      console.error('Reset link generation error:', linkError);
+      return errorResponse('Failed to generate reset link', 500);
     }
+
+    const resetLink = linkData?.properties?.action_link || '';
+    if (!resetLink) {
+      return errorResponse('Failed to generate reset link', 500);
+    }
+
+    await sendAuthLinkEmail(emailConfig, {
+      appBaseUrl,
+      displayName,
+      kind: 'adminSetup',
+      resetLink,
+      to: normalisedEmail,
+    });
 
     return jsonResponse({ success: true, uid: userRecord.user.id, created: true });
   } catch (err) {

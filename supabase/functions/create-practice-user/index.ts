@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
+import { getAppBaseUrl, getResendConfig, sendAuthLinkEmail } from '../_shared/auth-email.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
 import {
   addPracticeMemberships,
@@ -30,6 +31,7 @@ serve(async (req) => {
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
     const [practiceId] = await assertPracticeIdsExist(supabase, [body.practiceId]);
+    const emailConfig = getResendConfig();
 
     const existingUser = await loadUserByEmail(supabase, email);
     if (existingUser) {
@@ -70,8 +72,11 @@ serve(async (req) => {
         success: true,
         uid: existingUser.uid,
         created: false,
-        resetLink: '',
       });
+    }
+
+    if (!emailConfig) {
+      return errorResponse('Email service is not configured', 500);
     }
 
     const tempPassword = crypto.randomUUID() + crypto.randomUUID();
@@ -115,7 +120,7 @@ serve(async (req) => {
       return errorResponse('Failed to update practice contact email', 500);
     }
 
-    const appBaseUrl = (Deno.env.get('APP_BASE_URL') || 'https://www.mymedinfo.info').replace(/\/$/, '');
+    const appBaseUrl = getAppBaseUrl();
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
       type: 'recovery',
       email,
@@ -127,11 +132,23 @@ serve(async (req) => {
       return errorResponse('Failed to generate reset link', 500);
     }
 
+    const resetLink = linkData?.properties?.action_link || '';
+    if (!resetLink) {
+      return errorResponse('Failed to generate reset link', 500);
+    }
+
+    await sendAuthLinkEmail(emailConfig, {
+      appBaseUrl,
+      displayName,
+      kind: 'practiceSetup',
+      resetLink,
+      to: email,
+    });
+
     return jsonResponse({
       success: true,
       uid: userRecord.user.id,
       created: true,
-      resetLink: linkData?.properties?.action_link || '',
     });
   } catch (err) {
     console.error('Unexpected edge function error:', err);

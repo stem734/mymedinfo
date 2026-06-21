@@ -36,7 +36,12 @@ export async function getAuthUser(authHeader: string | null) {
     throw new Error('Missing Authorization header');
   }
 
-  const token = authHeader.replace('Bearer ', '');
+  const tokenMatch = authHeader.match(/^Bearer\s+(.+)$/i);
+  if (!tokenMatch) {
+    throw new Error('Invalid Authorization header');
+  }
+
+  const token = tokenMatch[1].trim();
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SB_PUBLISHABLE_KEY') ||
@@ -50,11 +55,7 @@ export async function getAuthUser(authHeader: string | null) {
     throw new Error('Invalid or expired token');
   }
 
-  return {
-    id: user.id,
-    email: user.email,
-    user_metadata: user.user_metadata || {},
-  };
+  return user;
 }
 
 /** Standard CORS headers for Edge Functions. */
