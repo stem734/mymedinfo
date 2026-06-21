@@ -5,6 +5,16 @@ import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '.
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc'] as const;
 type BuilderType = typeof VALID_BUILDER_TYPES[number];
 
+const isValidHttpUrl = (url: string | undefined): boolean => {
+  if (!url || typeof url !== 'string' || !url.trim()) return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -34,6 +44,39 @@ serve(async (req) => {
     }
     if (!body.payload || typeof body.payload !== 'object') {
       return errorResponse('Template payload is required', 400);
+    }
+
+    // Validate URLs in the payload to prevent XSS (javascript:, data: URIs)
+    const payload = body.payload as Record<string, unknown>;
+    if (builderType === 'screening' || builderType === 'immunisation' || builderType === 'ltc') {
+      const videoUrl = payload.videoUrl;
+      if (typeof videoUrl === 'string' && videoUrl && videoUrl.trim() && !isValidHttpUrl(videoUrl)) {
+        return errorResponse('Video URL must be a valid HTTP or HTTPS URL', 400);
+      }
+      const nhsLinks = payload.nhsLinks;
+      if (Array.isArray(nhsLinks)) {
+        for (const link of nhsLinks) {
+          const url = (link as Record<string, unknown>)?.url;
+          if (typeof url === 'string' && url && url.trim() && !isValidHttpUrl(url)) {
+            return errorResponse('All resource links must be valid HTTP or HTTPS URLs', 400);
+          }
+        }
+      }
+    } else if (builderType === 'healthcheck') {
+      const variants = payload.variants;
+      if (variants && typeof variants === 'object' && variants !== null) {
+        for (const variant of Object.values(variants)) {
+          const v = variant as Record<string, unknown>;
+          if (v && Array.isArray(v.links)) {
+            for (const link of v.links) {
+              const website = (link as Record<string, unknown>)?.website;
+              if (typeof website === 'string' && website && website.trim() && !isValidHttpUrl(website)) {
+                return errorResponse('All service website links must be valid HTTP or HTTPS URLs', 400);
+              }
+            }
+          }
+        }
+      }
     }
 
     const supabase = createServiceClient();
