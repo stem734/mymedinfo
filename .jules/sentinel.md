@@ -22,3 +22,8 @@
 **Vulnerability:** The `save-card-template` Edge Function accepted arbitrary strings for `website`, `nhsLinks`, and `videoUrl` without protocol validation. This allowed Stored XSS via `javascript:` or `data:` URIs in the global template library.
 **Learning:** Security validation must be applied to all entry points that store user-supplied URLs, including those in nested JSON payloads or complex objects. Relying on "admin-only" access is not enough; defense-in-depth requires server-side validation to prevent malicious data from entering the system.
 **Prevention:** Implement recursive or targeted protocol checks (allowing only http: and https:) for all URL-like fields within JSON payloads. Use `Record<string, unknown>` and safe casting in TypeScript Edge Functions to maintain type safety while performing these security checks.
+
+## 2025-06-16 - Safe User Deactivation in Supabase Auth
+**Vulnerability:** The `update-admin-user` Edge Function incorrectly unbanned users when they were deactivated due to a logic reversal (`isActive === false ? 'none' : ...`). Additionally, a simple boolean check for deactivation can cause security regressions during partial updates if the field is missing, leading to unintended unbanning of previously deactivated users.
+**Learning:** `ban_duration` in Supabase Auth must be set to a duration (e.g., '876600h') to deactivate and 'none' to reactivate. Partial updates must explicitly check for `true` and `false` to avoid overwriting the ban status when the field is omitted from the request payload.
+**Prevention:** Always use explicit equality checks (e.g., `isActive === false ? '876600h' : isActive === true ? 'none' : undefined`) when updating Auth metadata or ban status to ensure state is only changed when intended.

@@ -38,7 +38,7 @@ serve(async (req) => {
     const { error: authError } = await supabase.auth.admin.updateUserById(uid, {
       email: email.trim(),
       user_metadata: { name: name.trim() },
-      ban_duration: isActive === false ? 'none' : undefined,
+      ban_duration: isActive === false ? '876600h' : isActive === true ? 'none' : undefined,
     });
 
     if (authError) {
