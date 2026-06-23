@@ -5,6 +5,16 @@ import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '.
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc'] as const;
 type BuilderType = typeof VALID_BUILDER_TYPES[number];
 
+const isValidHttpUrl = (url: string | undefined): boolean => {
+  if (!url || typeof url !== 'string') return true;
+  try {
+    const parsed = new URL(url);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -34,6 +44,37 @@ serve(async (req) => {
     }
     if (!body.payload || typeof body.payload !== 'object') {
       return errorResponse('Template payload is required', 400);
+    }
+
+    // Validate URLs to prevent Stored XSS via javascript: or data: URIs
+    if (builderType === 'healthcheck') {
+      const p = body.payload as Record<string, unknown>;
+      if (p.variants && typeof p.variants === 'object') {
+        for (const variant of Object.values(p.variants as Record<string, unknown>)) {
+          const v = variant as Record<string, unknown>;
+          if (Array.isArray(v?.links)) {
+            for (const link of v.links) {
+              const l = link as Record<string, unknown>;
+              if (!isValidHttpUrl(l.website as string | undefined)) {
+                return errorResponse('All website links must be valid HTTP or HTTPS URLs', 400);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      const p = body.payload as Record<string, unknown>;
+      if (!isValidHttpUrl(p.videoUrl as string | undefined)) {
+        return errorResponse('Video URL must be a valid HTTP or HTTPS URL', 400);
+      }
+      if (Array.isArray(p.nhsLinks)) {
+        for (const link of p.nhsLinks) {
+          const l = link as Record<string, unknown>;
+          if (!isValidHttpUrl(l.url as string | undefined)) {
+            return errorResponse('All NHS links must be valid HTTP or HTTPS URLs', 400);
+          }
+        }
+      }
     }
 
     const supabase = createServiceClient();
