@@ -11,8 +11,12 @@ export type AdminRecord = {
 };
 
 /**
- * Verify the caller is an active admin. Bootstraps the first admin
- * if no admins exist yet (same behaviour as the Firebase Cloud Function).
+ * Verify the caller is an active admin.
+ *
+ * As a controlled fallback, the first owner can be seeded when no owner/admin
+ * exists yet, but ONLY for an email explicitly allow-listed in the
+ * BOOTSTRAP_ADMIN_EMAILS secret. Arbitrary authenticated users are never
+ * auto-promoted.
  *
  * Returns the admin record on success; throws on failure.
  */
@@ -35,7 +39,24 @@ export async function assertAdmin(authHeader: string | null): Promise<{ admin: A
     return { admin: admin as AdminRecord, userId: user.id };
   }
 
-  // Bootstrap: if no admins exist, make this user the owner
+  // Controlled bootstrap. A user is ONLY ever auto-promoted to owner when BOTH:
+  //   1. their email is explicitly listed in the BOOTSTRAP_ADMIN_EMAILS secret, and
+  //   2. no owner/admin exists yet.
+  // Every Edge Function runs with verify_jwt = false, so this in-code check is
+  // the only gate — it must fail closed. Without the allow-list we never silently
+  // promote an authenticated user, even if the users table has been emptied.
+  // Leave BOOTSTRAP_ADMIN_EMAILS unset in normal operation; set it only to seed
+  // or recover the first owner, then unset it again.
+  const bootstrapEmails = (Deno.env.get('BOOTSTRAP_ADMIN_EMAILS') || '')
+    .split(',')
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+  const callerEmail = (user.email || '').toLowerCase();
+
+  if (bootstrapEmails.length === 0 || !callerEmail || !bootstrapEmails.includes(callerEmail)) {
+    throw new Error('Administrator access required');
+  }
+
   const { count } = await supabase
     .from('users')
     .select('*', { count: 'exact', head: true })
