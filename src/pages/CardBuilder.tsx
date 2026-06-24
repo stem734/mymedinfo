@@ -507,6 +507,35 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   const [savedImmunisationIds, setSavedImmunisationIds] = useState<Set<string>>(new Set());
   const [immunisationSelections, setImmunisationSelections] = useState<string[]>(['flu']);
   const [longTermConditionTemplates, setLongTermConditionTemplates] = useState<Record<string, LongTermConditionTemplate>>(() => createDefaultLongTermConditionState());
+
+  // Memoize sorted results to prevent unnecessary re-sorting on every render of this large component.
+  // Performance impact: Reduces O(N log N) operations and object mappings to once per data/sort change.
+  const sortedMeds = useMemo(() =>
+    medTable.sortRows(existingMeds as unknown as Record<string, unknown>[]).map(med => (med as unknown as MedicationRecord)),
+    [existingMeds, medTable]
+  );
+
+  const sortedScreening = useMemo(() =>
+    screeningTable.sortRows(
+      Object.values(screeningTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
+    ).map(row => row as unknown as ScreeningTemplate),
+    [screeningTemplates, screeningTable]
+  );
+
+  const sortedImmunisation = useMemo(() =>
+    immunisationTable.sortRows(
+      Object.values(immunisationTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
+    ).map(row => row as unknown as ImmunisationTemplate),
+    [immunisationTemplates, immunisationTable]
+  );
+
+  const sortedLtc = useMemo(() =>
+    ltcTable.sortRows(
+      Object.values(longTermConditionTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
+    ).map(row => row as unknown as LongTermConditionTemplate),
+    [longTermConditionTemplates, ltcTable]
+  );
+
   const [savedLtcIds, setSavedLtcIds] = useState<Set<string>>(new Set());
   const [selectedLongTermCondition, setSelectedLongTermCondition] = useState('');
   const [templateSaveCompleted, setTemplateSaveCompleted] = useState<Record<Exclude<OutputBuilderType, 'medication'>, boolean>>({
@@ -2227,7 +2256,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {medTable.sortRows(existingMeds as unknown as Record<string, unknown>[]).map(med => (med as unknown as MedicationRecord)).map(med => (
+                {sortedMeds.map(med => (
                   <tr key={med.code}>
                     <td>
                       <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{med.code}</span>
@@ -2661,10 +2690,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {screeningTable.sortRows(
-                  Object.values(screeningTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
-                ).map((row) => {
-                  const template = row as unknown as ScreeningTemplate;
+                {sortedScreening.map((template) => {
                   const previewUrl = buildScreeningPreviewUrl(template);
                   return (
                     <tr key={template.id}>
@@ -2721,10 +2747,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {immunisationTable.sortRows(
-                  Object.values(immunisationTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
-                ).map((row) => {
-                  const template = row as unknown as ImmunisationTemplate;
+                {sortedImmunisation.map((template) => {
                   const previewUrl = buildImmunisationPreviewUrl(template);
                   return (
                     <tr key={template.id}>
@@ -2781,10 +2804,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {ltcTable.sortRows(
-                  Object.values(longTermConditionTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
-                ).map((row) => {
-                  const template = row as unknown as LongTermConditionTemplate;
+                {sortedLtc.map((template) => {
                   const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'ltc', ltc: template.code || template.id }));
                   return (
                     <tr key={template.id}>
