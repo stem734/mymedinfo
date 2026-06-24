@@ -114,7 +114,6 @@ const AppContent: React.FC = () => {
     dateStyle: 'medium',
     timeStyle: 'short',
   });
-  const gitRefLabel = __APP_COMMIT_HASH__;
 
   // Detect implicit-flow Supabase auth recovery tokens in the URL hash
   // and redirect to /reset-password. The PKCE ?code= flow is NOT handled
@@ -173,8 +172,6 @@ const AppContent: React.FC = () => {
                 © {new Date().getFullYear()} <a href="https://www.nottinghamwestpcn.co.uk/" target="_blank" rel="noopener noreferrer">Nottingham West Primary Care Network</a> - MyMedInfo
               </p>
               <p className="footer__version" title={`Commit ${__APP_COMMIT_HASH__}`}>
-                <span className="footer__beta">Beta</span>
-                <span>GitHub ref {gitRefLabel}</span>
                 <span className="footer__build-stamp">{buildLabel}</span>
               </p>
             </div>

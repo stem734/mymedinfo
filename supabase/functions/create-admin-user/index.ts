@@ -20,10 +20,6 @@ serve(async (req) => {
     const supabase = createServiceClient();
     const normalisedEmail = normaliseEmail(email);
     const displayName = typeof name === 'string' && name.trim() ? name.trim() : normalisedEmail;
-    const emailConfig = getEmailConfig();
-    if (!emailConfig) {
-      return errorResponse('Email service is not configured', 500);
-    }
 
     const existingUser = await loadUserByEmail(supabase, normalisedEmail);
     if (existingUser) {
@@ -53,36 +49,48 @@ serve(async (req) => {
         return errorResponse('Failed to update user record', 500);
       }
 
-      const appBaseUrl = getAppBaseUrl();
-      const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
-        type: 'recovery',
-        email: normalisedEmail,
-        options: { redirectTo: `${appBaseUrl}/reset-password` },
-      });
+      const emailConfig = getEmailConfig();
+      let emailSent = false;
 
-      if (linkError) {
-        console.error('Reset link generation error:', linkError);
-        return errorResponse('Failed to generate reset link', 500);
+      if (emailConfig) {
+        const appBaseUrl = getAppBaseUrl();
+        const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+          type: 'recovery',
+          email: normalisedEmail,
+          options: { redirectTo: `${appBaseUrl}/reset-password` },
+        });
+
+        if (linkError) {
+          console.error('Reset link generation error:', linkError);
+          return errorResponse('Failed to generate reset link', 500);
+        }
+
+        const resetLink = linkData?.properties?.action_link || '';
+        if (!resetLink) {
+          return errorResponse('Failed to generate reset link', 500);
+        }
+
+        await sendAuthLinkEmail(emailConfig, {
+          appBaseUrl,
+          displayName,
+          kind: 'adminReset',
+          resetLink,
+          to: normalisedEmail,
+        });
+        emailSent = true;
       }
-
-      const resetLink = linkData?.properties?.action_link || '';
-      if (!resetLink) {
-        return errorResponse('Failed to generate reset link', 500);
-      }
-
-      await sendAuthLinkEmail(emailConfig, {
-        appBaseUrl,
-        displayName,
-        kind: 'adminReset',
-        resetLink,
-        to: normalisedEmail,
-      });
 
       return jsonResponse({
         success: true,
         uid: existingUser.uid,
         created: false,
+        emailSent,
       });
+    }
+
+    const emailConfig = getEmailConfig();
+    if (!emailConfig) {
+      return errorResponse('Email service is not configured', 500);
     }
 
     // Create auth user with a random temp password
