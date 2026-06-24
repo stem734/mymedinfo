@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
-import { Resend } from 'https://esm.sh/resend@6';
+import { sendTransactionalEmail } from '../_shared/brevo.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -34,10 +34,6 @@ serve(async (req) => {
 
     const resetLink = linkData?.properties?.action_link || '';
 
-    // Send email via Resend
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
-
     const { data: adminData } = await supabase
       .from('users')
       .select('name, global_role')
@@ -50,14 +46,12 @@ serve(async (req) => {
 
     const displayName = adminData.name || user.email;
 
-    if (resendApiKey && resendFromEmail && resetLink) {
-      const resend = new Resend(resendApiKey);
-      await resend.emails.send({
-        from: resendFromEmail,
-        to: user.email,
+    if (resetLink) {
+      await sendTransactionalEmail({
+        to: [{ email: user.email, name: displayName }],
         subject: 'Reset your MyMedInfo administrator password',
-        text: `Hello ${displayName},\n\nUse this secure link to reset your MyMedInfo administrator password:\n${resetLink}\n\nIf you did not request this, you can ignore this email.\n`,
-        html: `
+        textContent: `Hello ${displayName},\n\nUse this secure link to reset your MyMedInfo administrator password:\n${resetLink}\n\nIf you did not request this, you can ignore this email.\n`,
+        htmlContent: `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #212b32;">
             <h2 style="color: #005eb8;">Reset your MyMedInfo password</h2>
             <p>Hello ${displayName},</p>

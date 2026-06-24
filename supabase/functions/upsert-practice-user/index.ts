@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { Resend } from 'https://esm.sh/resend@6';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
+import { sendTransactionalEmail } from '../_shared/brevo.ts';
 import {
   addPracticeMemberships,
   assertPracticeIdsExist,
@@ -67,7 +67,6 @@ serve(async (req) => {
         success: true,
         uid: existingUser.uid,
         created: false,
-        resetLink: '',
       });
     }
 
@@ -115,17 +114,13 @@ serve(async (req) => {
     }
 
     const resetLink = linkData?.properties?.action_link || '';
-    const resendApiKey = Deno.env.get('RESEND_API_KEY');
-    const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
 
-    if (resendApiKey && resendFromEmail && resetLink) {
-      const resend = new Resend(resendApiKey);
-      await resend.emails.send({
-        from: resendFromEmail,
-        to: email,
+    if (resetLink) {
+      await sendTransactionalEmail({
+        to: [{ email, name: displayName }],
         subject: 'Set up your MyMedInfo practice account',
-        text: `Hello ${displayName},\n\nYour MyMedInfo practice account has been created. Set your password using this secure link:\n${resetLink}\n\nAfter setting your password, sign in at ${appBaseUrl}/practice\n`,
-        html: `
+        textContent: `Hello ${displayName},\n\nYour MyMedInfo practice account has been created. Set your password using this secure link:\n${resetLink}\n\nAfter setting your password, sign in at ${appBaseUrl}/practice\n`,
+        htmlContent: `
           <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #212b32;">
             <h2 style="color: #005eb8;">Welcome to MyMedInfo</h2>
             <p>Hello ${displayName},</p>
@@ -145,7 +140,6 @@ serve(async (req) => {
       success: true,
       uid: userRecord.user.id,
       created: true,
-      resetLink,
     });
   } catch (err) {
     console.error('Unexpected edge function error:', err);
