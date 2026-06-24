@@ -17,6 +17,7 @@ import WarningCallout from '../components/WarningCallout';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
+import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
 
 /**
  * ScreeningView — renders screening invitation / result info.
@@ -44,6 +45,7 @@ const ScreeningView: React.FC = () => {
   ).trim();
   const [loadedTemplate, setLoadedTemplate] = useState<ScreeningTemplate | null>(null);
   const access = usePracticeContentAccess(practiceIdentifier, 'screening_enabled', { skip: isDemoMode || previewOnly });
+  const practicePhone = access.details?.contactPhone || '';
   const knownTemplateIds = useMemo(() => Object.keys(SCREENING_TEMPLATES), []);
   const selectedTemplate = loadedTemplate;
   const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
@@ -59,7 +61,11 @@ const ScreeningView: React.FC = () => {
         try {
           const raw = window.sessionStorage.getItem(previewToken);
           if (raw) {
-            setLoadedTemplate(withScreeningTemplateDefaults(JSON.parse(raw) as ScreeningTemplate));
+            setLoadedTemplate(
+              withScreeningTemplateDefaults(
+                interpolatePracticeTemplateVariables(JSON.parse(raw) as ScreeningTemplate, { practicePhone }),
+              ),
+            );
             return;
           }
         } catch {
@@ -77,8 +83,8 @@ const ScreeningView: React.FC = () => {
           : [];
         const globalRows = await fetchCardTemplates<ScreeningTemplate>('screening');
         const candidateTemplates = [
-          ...practiceRows.map((row) => hydrateScreeningTemplate(row.payload)),
-          ...globalRows.map((row) => hydrateScreeningTemplate(row.payload)),
+          ...practiceRows.map((row) => hydrateScreeningTemplate(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
+          ...globalRows.map((row) => hydrateScreeningTemplate(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];
         setLoadedTemplate(findScreeningTemplateByIdentifier(screenIdentifier, candidateTemplates));
       } catch (error) {
@@ -87,7 +93,7 @@ const ScreeningView: React.FC = () => {
       }
     };
     void loadTemplate();
-  }, [isDemoMode, knownTemplateIds, practiceIdentifier, previewOnly, previewToken, screenIdentifier]);
+  }, [isDemoMode, knownTemplateIds, practiceIdentifier, practicePhone, previewOnly, previewToken, screenIdentifier]);
 
   if (access.loading) {
     return (

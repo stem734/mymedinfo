@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { validateOrganisation } from './protocolService';
+import { validateOrganisation, type PracticePublicDetails } from './protocolService';
 import { PRACTICE_FEATURE_METADATA, type PracticeFeatureKey } from './practiceFeatures';
 
 type PracticeContentAccessState = {
   loading: boolean;
   allowed: boolean;
   error: string;
+  details: PracticePublicDetails | null;
 };
 
 export function usePracticeContentAccess(
@@ -15,7 +16,7 @@ export function usePracticeContentAccess(
 ): PracticeContentAccessState {
   const skip = options?.skip === true;
   const trimmedOrgName = orgName.trim();
-  const [state, setState] = useState<PracticeContentAccessState>({ loading: false, allowed: true, error: '' });
+  const [state, setState] = useState<PracticeContentAccessState>({ loading: false, allowed: true, error: '', details: null });
 
   useEffect(() => {
     if (skip || !trimmedOrgName) {
@@ -25,7 +26,7 @@ export function usePracticeContentAccess(
     let cancelled = false;
 
     const load = async () => {
-      setState({ loading: true, allowed: false, error: '' });
+      setState({ loading: true, allowed: false, error: '', details: null });
       const result = await validateOrganisation(trimmedOrgName);
       if (cancelled) return;
 
@@ -34,6 +35,7 @@ export function usePracticeContentAccess(
           loading: false,
           allowed: false,
           error: result.error || 'This practice is not registered with MyMedInfo.',
+          details: null,
         });
         return;
       }
@@ -43,11 +45,12 @@ export function usePracticeContentAccess(
           loading: false,
           allowed: false,
           error: `${PRACTICE_FEATURE_METADATA[featureKey].label} are not enabled for this practice yet.`,
+          details: result.practiceDetails,
         });
         return;
       }
 
-      setState({ loading: false, allowed: true, error: '' });
+      setState({ loading: false, allowed: true, error: '', details: result.practiceDetails });
     };
 
     void load();
@@ -58,7 +61,7 @@ export function usePracticeContentAccess(
   }, [featureKey, skip, trimmedOrgName]);
 
   if (skip || !trimmedOrgName) {
-    return { loading: false, allowed: true, error: '' };
+    return { loading: false, allowed: true, error: '', details: null };
   }
 
   return state;

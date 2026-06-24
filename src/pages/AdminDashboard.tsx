@@ -79,6 +79,7 @@ interface Practice {
   is_active: boolean;
   ods_code?: string;
   contact_email?: string;
+  contact_phone?: string;
   medication_enabled?: boolean;
   healthcheck_enabled?: boolean;
   screening_enabled?: boolean;
@@ -268,6 +269,7 @@ const AdminDashboard: React.FC = () => {
   const [newName, setNewName] = useState('');
   const [newOds, setNewOds] = useState('');
   const [newEmail, setNewEmail] = useState('');
+  const [newPhone, setNewPhone] = useState('');
   const [addError, setAddError] = useState('');
   const [editingPractice, setEditingPractice] = useState<Practice | null>(null);
   const [localResources, setLocalResources] = useState<LocalResourceLink[]>([]);
@@ -280,6 +282,7 @@ const AdminDashboard: React.FC = () => {
   const [editName, setEditName] = useState('');
   const [editOds, setEditOds] = useState('');
   const [editEmail, setEditEmail] = useState('');
+  const [editPhone, setEditPhone] = useState('');
   const [editMedicationEnabled, setEditMedicationEnabled] = useState(true);
   const [editHealthcheckEnabled, setEditHealthcheckEnabled] = useState(false);
   const [editScreeningEnabled, setEditScreeningEnabled] = useState(false);
@@ -846,6 +849,7 @@ const AdminDashboard: React.FC = () => {
           name: newName.trim(),
           ods_code: newOds.trim().toUpperCase(),
           contact_email: newEmail.trim(),
+          contact_phone: newPhone.trim(),
           is_active: true,
           link_visit_count: 0,
         });
@@ -856,6 +860,7 @@ const AdminDashboard: React.FC = () => {
       setNewName('');
       setNewOds('');
       setNewEmail('');
+      setNewPhone('');
       setShowAddForm(false);
       await loadDashboardData();
       toast.success(`Added ${addedName}.`);
@@ -870,6 +875,7 @@ const AdminDashboard: React.FC = () => {
     setEditName(practice.name);
     setEditOds(practice.ods_code || '');
     setEditEmail(practice.contact_email || '');
+    setEditPhone(practice.contact_phone || '');
     setEditMedicationEnabled(practice.medication_enabled !== false);
     setEditHealthcheckEnabled(practice.healthcheck_enabled === true);
     setEditScreeningEnabled(practice.screening_enabled === true);
@@ -899,6 +905,7 @@ const AdminDashboard: React.FC = () => {
         name: editName.trim(),
         ods_code: editOds.trim().toUpperCase(),
         contact_email: editEmail.trim(),
+        contact_phone: editPhone.trim(),
         medication_enabled: editMedicationEnabled,
         healthcheck_enabled: editHealthcheckEnabled,
         screening_enabled: editScreeningEnabled,
@@ -918,6 +925,7 @@ const AdminDashboard: React.FC = () => {
             name: updatePayload.name,
             ods_code: updatePayload.ods_code,
             contact_email: updatePayload.contact_email,
+            contact_phone: updatePayload.contact_phone,
             healthcheck_enabled: updatePayload.healthcheck_enabled,
             screening_enabled: updatePayload.screening_enabled,
             immunisation_enabled: updatePayload.immunisation_enabled,
@@ -954,7 +962,7 @@ const AdminDashboard: React.FC = () => {
     0,
   );
   const filteredPractices = practices.filter((practice) => {
-    const matchesSearch = practiceSearch === '' || [practice.name, practice.ods_code || '', practice.contact_email || ''].some((field) =>
+    const matchesSearch = practiceSearch === '' || [practice.name, practice.ods_code || '', practice.contact_email || '', practice.contact_phone || ''].some((field) =>
       field.toLowerCase().includes(practiceSearch.toLowerCase()),
     );
     const matchesStatus = practiceStatusFilter === 'all' || (practiceStatusFilter === 'active' ? practice.is_active : !practice.is_active);
@@ -1138,6 +1146,16 @@ const AdminDashboard: React.FC = () => {
             showImportantNotice={false}
             contactNameRequired={false}
           />
+          <div className="dashboard-field" style={{ marginTop: '1rem' }}>
+            <label>Patient-facing phone number</label>
+            <input
+              type="text"
+              value={newPhone}
+              onChange={(event) => setNewPhone(event.target.value)}
+              placeholder="e.g. 0115 123 4567"
+            />
+            <p className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>
+          </div>
         </div>
       )}
 
@@ -1186,6 +1204,16 @@ const AdminDashboard: React.FC = () => {
                   type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} required
                   placeholder="e.g. admin@nhs.net"
                 />
+              </div>
+              <div className="dashboard-field">
+                <label>Patient-facing phone number</label>
+                <input
+                  type="text"
+                  value={editPhone}
+                  onChange={e => setEditPhone(e.target.value)}
+                  placeholder="e.g. 0115 123 4567"
+                />
+                <p className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>
               </div>
             </div>
             <div className="dashboard-settings">
@@ -1468,6 +1496,7 @@ const AdminDashboard: React.FC = () => {
                               <div className="admin-table-identity">
                                 <strong>{practice.name}</strong>
                                 {practice.contact_email && <span className="admin-table-identity__email">{practice.contact_email}</span>}
+                                {practice.contact_phone && <span className="admin-table-identity__email">{practice.contact_phone}</span>}
                               </div>
                             </td>
                             <td>

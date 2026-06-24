@@ -22,6 +22,8 @@ export type ParsedPatientLinkCodes = {
   unknownIdentifiers: string[];
 };
 
+const stripLinkCodeSuffix = (token: string) => token.split('@')[0]?.trim() || '';
+
 export const splitPatientLinkCodes = (codesParam: string): string[] =>
   codesParam
     .split(',')
@@ -37,7 +39,12 @@ export const parsePatientLinkCodes = (codesParam: string): ParsedPatientLinkCode
     unknownIdentifiers: [],
   };
 
-  splitPatientLinkCodes(codesParam).forEach((token) => {
+  splitPatientLinkCodes(codesParam).forEach((rawToken) => {
+    const token = stripLinkCodeSuffix(rawToken);
+    if (!token) {
+      return;
+    }
+
     if (/^\d{3}$/.test(token)) {
       result.medicationCodes.push(token);
       return;
@@ -58,7 +65,16 @@ export const parsePatientLinkCodes = (codesParam: string): ParsedPatientLinkCode
       return;
     }
 
-    result.unknownIdentifiers.push(token);
+    // Immunisation templates are now editor-driven, so new codes may exist in
+    // stored templates before the client bundle knows about them. Let any
+    // letter-based code survive routing and resolve it later against fetched
+    // template data instead of dropping it here.
+    if (/^(?=.*[a-z])[a-z0-9]+$/i.test(token)) {
+      result.immunisationIdentifiers.push(token);
+      return;
+    }
+
+    result.unknownIdentifiers.push(rawToken);
   });
 
   return result;

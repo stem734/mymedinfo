@@ -50,6 +50,7 @@ BEGIN
 
   RETURN jsonb_build_object(
     'valid', true,
+    'contact_phone', practice_record.contact_phone,
     'medication_enabled', practice_record.medication_enabled,
     'healthcheck_enabled', practice_record.healthcheck_enabled,
     'screening_enabled', practice_record.screening_enabled,

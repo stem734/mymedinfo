@@ -21,4 +21,24 @@ describe('parsePatientLinkCodes', () => {
       unknownIdentifiers: ['UNKNOWN'],
     });
   });
+
+  it('keeps editor-defined immunisation codes so fetched templates can resolve them later', () => {
+    expect(parsePatientLinkCodes('PN1,RSV1,SHINGOA')).toEqual({
+      medicationCodes: [],
+      screeningIdentifiers: [],
+      immunisationIdentifiers: ['PN1', 'RSV1', 'SHINGOA'],
+      longTermConditionIdentifiers: [],
+      unknownIdentifiers: [],
+    });
+  });
+
+  it('strips appended timestamp placeholders from the final code token', () => {
+    expect(parsePatientLinkCodes('CS1,PN1@URLDT')).toEqual({
+      medicationCodes: [],
+      screeningIdentifiers: ['CS1'],
+      immunisationIdentifiers: ['PN1'],
+      longTermConditionIdentifiers: [],
+      unknownIdentifiers: [],
+    });
+  });
 });

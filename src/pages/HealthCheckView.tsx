@@ -13,6 +13,7 @@ import type { HealthCheckTemplatePayload } from '../cardTemplateTypes';
 import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { getExpiryDate, isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
+import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
 
 // ─── Helpers (ported from NHSHealthCheck/App.tsx) ─────────────────────────────
 
@@ -139,6 +140,7 @@ const HealthCheckView: React.FC = () => {
   const hasData = metrics.length > 0;
   const [templateOverrides, setTemplateOverrides] = useState<Record<string, HealthCheckTemplatePayload>>({});
   const access = usePracticeContentAccess(practiceIdentifier, 'healthcheck_enabled', { skip: previewOnly || isDemoMode });
+  const practicePhone = access.details?.contactPhone || localSupportPhone;
   const templateIds = useMemo(
     () => Array.from(new Set(metrics.map((metric) => metricIdToTemplateId(metric.id)))),
     [metrics],
@@ -172,10 +174,20 @@ const HealthCheckView: React.FC = () => {
     const loadOverrides = async () => {
       try {
         const practiceRows = await fetchPatientPracticeCardTemplates<HealthCheckTemplatePayload>(practiceIdentifier, 'healthcheck', templateIds);
-        const practiceMap = Object.fromEntries(practiceRows.map((row) => [row.template_id, row.payload]));
+        const practiceMap = Object.fromEntries(
+          practiceRows.map((row) => [
+            row.template_id,
+            interpolatePracticeTemplateVariables(row.payload, { practicePhone }),
+          ]),
+        );
         const rows = await fetchCardTemplates<HealthCheckTemplatePayload>('healthcheck', templateIds);
         setTemplateOverrides({
-          ...Object.fromEntries(rows.map((row) => [row.template_id, row.payload])),
+          ...Object.fromEntries(
+            rows.map((row) => [
+              row.template_id,
+              interpolatePracticeTemplateVariables(row.payload, { practicePhone }),
+            ]),
+          ),
           ...practiceMap,
         });
       } catch (error) {
@@ -184,7 +196,7 @@ const HealthCheckView: React.FC = () => {
       }
     };
     loadOverrides();
-  }, [isDemoMode, practiceIdentifier, templateIds]);
+  }, [isDemoMode, practiceIdentifier, practicePhone, templateIds]);
 
   const displayMetrics = useMemo(() => {
     const baseMetrics = previewOnly && previewDomain ? metrics : getDisplayMetrics(metrics);

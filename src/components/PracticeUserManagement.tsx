@@ -446,7 +446,9 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       setShowAddAdminForm(false);
       setActionMessage(
         data?.created === false
-          ? `Global admin access added to existing account for ${nextEmail}. A password reset email has been sent.`
+          ? data?.emailSent === false
+            ? `Global admin access added to existing account for ${nextEmail}. Email delivery is not configured, so no reset email was sent.`
+            : `Global admin access added to existing account for ${nextEmail}. A password reset email has been sent.`
           : `Administrator account created for ${nextEmail}. A setup email has been sent.`,
       );
       await loadUsers();

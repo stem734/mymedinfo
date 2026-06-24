@@ -2,6 +2,10 @@ import { DEFAULT_PRACTICE_FEATURE_SETTINGS, coercePracticeFeatureSettings, type 
 import { supabase } from './supabase';
 import { resolvePatientMedicationCards, type ResolvedMedicationCard } from './practicePortal';
 
+export type PracticePublicDetails = {
+  contactPhone: string | null;
+};
+
 /**
  * Validate a practice identifier against signed-up practices in Supabase
  * via PostgreSQL RPC function. The identifier may be a practice name or ODS code.
@@ -10,6 +14,7 @@ export async function validateOrganisation(practiceIdentifier: string): Promise<
   valid: boolean;
   error?: string;
   practiceFeatures: PracticeFeatureSettings;
+  practiceDetails: PracticePublicDetails;
 }> {
   try {
     const { data, error } = await supabase.rpc('validate_practice', { org_name: practiceIdentifier });
@@ -20,6 +25,7 @@ export async function validateOrganisation(practiceIdentifier: string): Promise<
         valid: false,
         error: 'Unable to verify practice. Please try again later.',
         practiceFeatures: DEFAULT_PRACTICE_FEATURE_SETTINGS,
+        practiceDetails: { contactPhone: null },
       };
     }
 
@@ -27,6 +33,9 @@ export async function validateOrganisation(practiceIdentifier: string): Promise<
       return {
         valid: true,
         practiceFeatures: coercePracticeFeatureSettings(data),
+        practiceDetails: {
+          contactPhone: typeof data.contact_phone === 'string' ? data.contact_phone : null,
+        },
       };
     }
 
@@ -34,6 +43,7 @@ export async function validateOrganisation(practiceIdentifier: string): Promise<
       valid: false,
       error: 'This practice is not registered with MyMedInfo.',
       practiceFeatures: DEFAULT_PRACTICE_FEATURE_SETTINGS,
+      practiceDetails: { contactPhone: null },
     };
   } catch (error) {
     console.error('Organisation validation error:', error);
@@ -41,6 +51,7 @@ export async function validateOrganisation(practiceIdentifier: string): Promise<
       valid: false,
       error: 'Unable to verify practice. Please try again later.',
       practiceFeatures: DEFAULT_PRACTICE_FEATURE_SETTINGS,
+      practiceDetails: { contactPhone: null },
     };
   }
 }
