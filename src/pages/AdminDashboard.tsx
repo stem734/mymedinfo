@@ -294,6 +294,8 @@ const AdminDashboard: React.FC = () => {
     onConfirm: () => void;
   } | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [testEmailTo, setTestEmailTo] = useState('');
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<ServiceActivationRequest[]>([]);
   const [loadingServiceRequests, setLoadingServiceRequests] = useState(false);
   const [serviceWorkItems, setServiceWorkItems] = useState<ServiceWorkItem[]>([]);
@@ -332,6 +334,27 @@ const AdminDashboard: React.FC = () => {
     navigate(resolvePath('/admin'));
   };
 
+  const sendTestEmail = async () => {
+    const target = testEmailTo.trim();
+    if (!target) {
+      toast.error('Enter an email address to test.');
+      return;
+    }
+    setSendingTestEmail(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('send-test-email', {
+        body: { to: target },
+      });
+      if (error) throw error;
+      toast.success(`Test email sent to ${data?.to || target}. Check the inbox (and spam folder).`);
+    } catch (error) {
+      console.error('Test email failed:', error);
+      toast.error(await getFunctionErrorMessage(error, 'Failed to send test email.'));
+    } finally {
+      setSendingTestEmail(false);
+    }
+  };
+
   useEffect(() => {
     const requestedTab = parseAdminTabFromLocation(location.pathname, location.search);
     if (!requestedTab) return;
@@ -355,6 +378,10 @@ const AdminDashboard: React.FC = () => {
     if (!authenticated || activeTab !== 'services' || showCardBuilder) return;
     void loadServiceWork();
   }, [activeTab, authenticated, showCardBuilder]);
+
+  useEffect(() => {
+    if (currentUserEmail) setTestEmailTo((prev) => prev || currentUserEmail);
+  }, [currentUserEmail]);
 
   useEffect(() => {
     const loadForAdminSession = async (session: Session) => {
@@ -1607,6 +1634,7 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {activeTab === 'setup' && (
+      <>
       <div className="dashboard-panel dashboard-section">
         <div className="dashboard-panel-header">
           <div>
@@ -1627,6 +1655,38 @@ const AdminDashboard: React.FC = () => {
           Use the Users tab to create accounts, assign users to multiple practices, and send reset links after accounts are created.
         </div>
       </div>
+
+      <div className="dashboard-panel dashboard-section">
+        <div className="dashboard-panel-header">
+          <div>
+            <h2 className="dashboard-panel-title">Email Delivery</h2>
+            <p className="dashboard-panel-subtitle">Send a test email through Brevo to confirm transactional email is working.</p>
+          </div>
+        </div>
+        <div className="dashboard-field" style={{ maxWidth: 420 }}>
+          <label htmlFor="test-email-to">Send test email to</label>
+          <input
+            id="test-email-to"
+            type="email"
+            value={testEmailTo}
+            onChange={(e) => setTestEmailTo(e.target.value)}
+            placeholder="you@example.com"
+          />
+        </div>
+        <button
+          type="button"
+          onClick={() => void sendTestEmail()}
+          className="action-button admin-action-button--primary"
+          disabled={sendingTestEmail}
+          style={{ alignSelf: 'flex-start', marginTop: '0.75rem' }}
+        >
+          {sendingTestEmail ? 'Sending…' : 'Send test email'}
+        </button>
+        <div className="dashboard-banner dashboard-banner--info" style={{ marginTop: '1rem' }}>
+          Requires the <code>BREVO_API_KEY</code> secret on Supabase Edge Functions. A failure here shows the exact reason returned by Brevo.
+        </div>
+      </div>
+      </>
       )}
 
       {activeTab === 'activationRequests' && (

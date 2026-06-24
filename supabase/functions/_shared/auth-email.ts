@@ -1,10 +1,9 @@
-import { Resend } from 'https://esm.sh/resend@6';
-
 export type AuthEmailKind = 'adminSetup' | 'adminReset' | 'practiceSetup' | 'practiceReset';
 
-type ResendConfig = {
+export type EmailConfig = {
   apiKey: string;
   fromEmail: string;
+  fromName: string;
 };
 
 type AuthEmailOptions = {
@@ -14,6 +13,16 @@ type AuthEmailOptions = {
   resetLink: string;
   to: string;
 };
+
+type EmailMessage = {
+  to: string;
+  toName?: string;
+  subject: string;
+  html: string;
+  text: string;
+};
+
+const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
 
 const escapeHtml = (value: string) =>
   value
@@ -27,27 +36,66 @@ export function getAppBaseUrl() {
   return (Deno.env.get('APP_BASE_URL') || 'https://www.mymedinfo.info').replace(/\/$/, '');
 }
 
-export function getResendConfig(): ResendConfig | null {
-  const apiKey = Deno.env.get('RESEND_API_KEY');
-  const fromEmail = Deno.env.get('RESEND_FROM_EMAIL');
-
-  if (!apiKey || !fromEmail) {
+/**
+ * Read the transactional email provider configuration (Brevo).
+ * Only BREVO_API_KEY is required; the from address/name fall back to the
+ * MyMedInfo domain that is authorised in Brevo. Returns null when unconfigured
+ * so callers can surface a clear "email service not configured" message.
+ */
+export function getEmailConfig(): EmailConfig | null {
+  const apiKey = Deno.env.get('BREVO_API_KEY');
+  if (!apiKey) {
     return null;
   }
 
-  return { apiKey, fromEmail };
+  const fromEmail = Deno.env.get('BREVO_FROM_EMAIL') || 'no-reply@mymedinfo.info';
+  const fromName = Deno.env.get('BREVO_FROM_NAME') || 'MyMedInfo';
+
+  return { apiKey, fromEmail, fromName };
 }
 
-export async function sendAuthLinkEmail(config: ResendConfig, options: AuthEmailOptions) {
-  const resend = new Resend(config.apiKey);
+/**
+ * Low-level send via the Brevo transactional email API. Throws with the
+ * provider's error message on failure so callers can log/surface it.
+ */
+export async function sendEmail(config: EmailConfig, message: EmailMessage) {
+  const response = await fetch(BREVO_ENDPOINT, {
+    method: 'POST',
+    headers: {
+      'api-key': config.apiKey,
+      'accept': 'application/json',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({
+      sender: { name: config.fromName, email: config.fromEmail },
+      to: [{ email: message.to, name: message.toName || message.to }],
+      subject: message.subject,
+      htmlContent: message.html,
+      textContent: message.text,
+    }),
+  });
+
+  if (!response.ok) {
+    let detail = '';
+    try {
+      const body = await response.json() as { message?: string; code?: string };
+      detail = body?.message || body?.code || JSON.stringify(body);
+    } catch {
+      detail = await response.text().catch(() => '');
+    }
+    throw new Error(`Brevo send failed (${response.status}): ${detail || 'unknown error'}`);
+  }
+}
+
+export async function sendAuthLinkEmail(config: EmailConfig, options: AuthEmailOptions) {
   const content = getEmailContent(options.kind, options.appBaseUrl);
   const displayName = escapeHtml(options.displayName);
   const resetLink = escapeHtml(options.resetLink);
   const signInUrl = escapeHtml(content.signInUrl);
 
-  await resend.emails.send({
-    from: config.fromEmail,
+  await sendEmail(config, {
     to: options.to,
+    toName: options.displayName,
     subject: content.subject,
     text: content.text(options.displayName, options.resetLink),
     html: `
@@ -61,6 +109,36 @@ export async function sendAuthLinkEmail(config: ResendConfig, options: AuthEmail
         <p>If the button does not work, copy and paste this link into your browser:</p>
         <p><a href="${resetLink}">${resetLink}</a></p>
         ${content.signInUrl ? `<p>After setting your password, sign in at <a href="${signInUrl}">${signInUrl}</a>.</p>` : '<p>If you did not request this, you can ignore this email.</p>'}
+      </div>
+    `,
+  });
+}
+
+/**
+ * Confirmation email sent to a practice contact when they submit the public
+ * registration form. Informational only — no auth link, since the account is
+ * not provisioned until an admin approves the registration.
+ */
+export async function sendSignupConfirmationEmail(config: EmailConfig, options: {
+  practiceName: string;
+  contactName: string;
+  to: string;
+}) {
+  const practiceName = escapeHtml(options.practiceName);
+  const contactName = escapeHtml(options.contactName || 'there');
+
+  await sendEmail(config, {
+    to: options.to,
+    toName: options.contactName || options.to,
+    subject: 'We have received your MyMedInfo registration',
+    text: `Hello ${options.contactName || 'there'},\n\nThank you for registering ${options.practiceName} with MyMedInfo. Your application is now under review by the Nottingham West PCN team.\n\nWe will contact you at this email address once your registration has been processed.\n\nIf you did not request this, you can safely ignore this email.\n`,
+    html: `
+      <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #212b32;">
+        <h2 style="color: #005eb8;">Registration received</h2>
+        <p>Hello ${contactName},</p>
+        <p>Thank you for registering <strong>${practiceName}</strong> with MyMedInfo. Your application is now under review by the Nottingham West PCN team.</p>
+        <p>We will contact you at this email address once your registration has been processed.</p>
+        <p style="color: #4c6272; font-size: 0.9em;">If you did not request this, you can safely ignore this email.</p>
       </div>
     `,
   });

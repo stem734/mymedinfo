@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
-import { getAppBaseUrl, getResendConfig, sendAuthLinkEmail } from '../_shared/auth-email.ts';
+import { getAppBaseUrl, getEmailConfig, sendAuthLinkEmail } from '../_shared/auth-email.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
 import {
   addPracticeMemberships,
@@ -32,7 +32,7 @@ serve(async (req) => {
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
     const practiceIds = await assertPracticeIdsExist(supabase, Array.isArray(body.practiceIds) ? body.practiceIds : []);
-    const emailConfig = getResendConfig();
+    const emailConfig = getEmailConfig();
 
     const existingUser = await loadUserByEmail(supabase, email);
     if (existingUser) {

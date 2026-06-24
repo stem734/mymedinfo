@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { getEmailConfig, sendSignupConfirmationEmail } from '../_shared/auth-email.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
 
 type SignupBody = {
@@ -134,6 +135,23 @@ serve(async (req) => {
     if (insertError) {
       console.error('Registration submission error:', insertError);
       return errorResponse('Failed to submit registration', 500);
+    }
+
+    // Best-effort confirmation email. The registration is already saved, so a
+    // mail failure must never fail the request — just log it.
+    try {
+      const emailConfig = getEmailConfig();
+      if (emailConfig) {
+        await sendSignupConfirmationEmail(emailConfig, {
+          practiceName: name,
+          contactName,
+          to: contactEmail,
+        });
+      } else {
+        console.error('Signup confirmation skipped: email service not configured (BREVO_API_KEY missing).');
+      }
+    } catch (emailError) {
+      console.error('Signup confirmation email failed:', emailError);
     }
 
     return jsonResponse({ success: true, status: 'submitted' });

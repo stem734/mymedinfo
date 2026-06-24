@@ -43,7 +43,13 @@ verify_jwt = false
 [functions.send-admin-password-reset]
 verify_jwt = false
 
+[functions.send-password-reset]
+verify_jwt = false
+
 [functions.send-practice-password-reset]
+verify_jwt = false
+
+[functions.send-test-email]
 verify_jwt = false
 
 [functions.submit-practice-signup]

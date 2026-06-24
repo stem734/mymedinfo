@@ -170,11 +170,11 @@ const ResetPassword: React.FC = () => {
     const handleResend = async (e: React.FormEvent) => {
       e.preventDefault();
       setError('');
-      const { error: resendError } = await supabase.auth.resetPasswordForEmail(resendEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error: resendError } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: resendEmail.trim().toLowerCase() },
       });
       if (resendError) {
-        setError(resendError.message);
+        setError('Unable to send a new link right now. Please try again.');
       } else {
         setResendSent(true);
       }

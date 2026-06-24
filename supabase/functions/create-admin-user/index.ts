@@ -1,6 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
-import { getAppBaseUrl, getResendConfig, sendAuthLinkEmail } from '../_shared/auth-email.ts';
+import { getAppBaseUrl, getEmailConfig, sendAuthLinkEmail } from '../_shared/auth-email.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
 import { loadUserByEmail, normaliseEmail } from '../_shared/practice-user-management.ts';
 
@@ -20,7 +20,7 @@ serve(async (req) => {
     const supabase = createServiceClient();
     const normalisedEmail = normaliseEmail(email);
     const displayName = typeof name === 'string' && name.trim() ? name.trim() : normalisedEmail;
-    const emailConfig = getResendConfig();
+    const emailConfig = getEmailConfig();
     if (!emailConfig) {
       return errorResponse('Email service is not configured', 500);
     }

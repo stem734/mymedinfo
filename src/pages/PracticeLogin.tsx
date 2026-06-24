@@ -97,14 +97,14 @@ const PracticeLogin: React.FC = () => {
       return;
     }
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase(), {
-        redirectTo: `${window.location.origin}/reset-password`,
+      const { error: resetError } = await supabase.functions.invoke('send-password-reset', {
+        body: { email: email.trim().toLowerCase(), portal: 'practice' },
       });
       if (resetError) throw resetError;
       setResetSent(true);
       setError('');
     } catch {
-      setError('Unable to send reset email. Check the address and try again.');
+      setError('Unable to send reset email. Please try again.');
     }
   };
 
@@ -164,7 +164,7 @@ const PracticeLogin: React.FC = () => {
           )}
           {resetSent && (
             <div className="practice-login-form__alert practice-login-form__alert--success" role="status">
-              Password reset email sent. Check your inbox.
+              If an account exists for that email, a reset link has been sent. Check your inbox.
             </div>
           )}
 
