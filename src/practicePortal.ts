@@ -21,6 +21,7 @@ export type PracticeSummary = Partial<PracticeFeatureSettings> & {
   name: string;
   ods_code?: string | null;
   contact_email?: string | null;
+  contact_phone?: string | null;
   is_active: boolean;
   link_visit_count?: number | null;
   patient_rating_count?: number | null;
@@ -158,6 +159,7 @@ export const coercePracticeSummary = (value: unknown): PracticeSummary | null =>
     name: row.name,
     ods_code: typeof row.ods_code === 'string' ? row.ods_code : null,
     contact_email: typeof row.contact_email === 'string' ? row.contact_email : null,
+    contact_phone: typeof row.contact_phone === 'string' ? row.contact_phone : null,
     is_active: row.is_active === true,
     link_visit_count: typeof row.link_visit_count === 'number' ? row.link_visit_count : null,
     patient_rating_count: typeof row.patient_rating_count === 'number' ? row.patient_rating_count : null,

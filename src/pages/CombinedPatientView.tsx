@@ -19,8 +19,8 @@ import {
   withScreeningTemplateDefaults,
 } from '../patientTemplateCatalog';
 import WarningCallout from '../components/WarningCallout';
-import PatientGuidanceNotice from '../components/PatientGuidanceNotice';
 import PatientSupportFooter from '../components/PatientSupportFooter';
+import PatientRatingCard from '../components/PatientRatingCard';
 import SickDayRulesModal from '../components/SickDayRulesModal';
 import type { SickDayRulesVariant } from '../components/SickDayRulesModal';
 import { NhsCross, NhsTick } from '../components/NhsIcons';
@@ -29,6 +29,7 @@ import { isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateH
 import { saveElementAsPdf } from '../pdfExport';
 import { getVideoEmbedUrl } from '../videoEmbed';
 import { parsePatientLinkCodes } from '../patientLinkCodes';
+import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
 
 const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALIDATION_CACHE_VERSION = 'v2';
@@ -70,7 +71,12 @@ const readValidationCache = (cacheKey: string) => {
     const cached = window.sessionStorage.getItem(cacheKey);
     if (!cached) return null;
 
-    const parsed = JSON.parse(cached) as { expiresAt?: number; valid?: boolean; practiceFeatures?: PracticeFeatureSettings };
+    const parsed = JSON.parse(cached) as {
+      expiresAt?: number;
+      valid?: boolean;
+      practiceFeatures?: PracticeFeatureSettings;
+      practiceDetails?: { contactPhone?: string | null };
+    };
     return isFreshValidationCache(parsed) ? parsed : null;
   } catch {
     return null;
@@ -220,6 +226,7 @@ const CombinedPatientView: React.FC = () => {
     if (isDemoMode) return DEFAULT_PRACTICE_FEATURE_SETTINGS;
     return cachedValidation?.practiceFeatures || DEFAULT_PRACTICE_FEATURE_SETTINGS;
   });
+  const [practicePhone, setPracticePhone] = useState<string | null>(() => cachedValidation?.practiceDetails?.contactPhone || null);
   const [validationNonce, setValidationNonce] = useState(0);
   const { medicationMap: allMeds } = useMedicationCatalog();
   const [resolvedContents, setResolvedContents] = useState<Array<{
@@ -307,12 +314,14 @@ const CombinedPatientView: React.FC = () => {
       setAuthError(result.valid ? null : result.error || 'Practice not registered');
       setIsValidating(false);
       setPracticeFeatures(result.valid ? result.practiceFeatures : DEFAULT_PRACTICE_FEATURE_SETTINGS);
+      setPracticePhone(result.valid ? result.practiceDetails.contactPhone : null);
 
       if (result.valid) {
         window.sessionStorage.setItem(validationCacheKey, JSON.stringify({
           valid: true,
           expiresAt: Date.now() + VALIDATION_CACHE_TTL_MS,
           practiceFeatures: result.practiceFeatures,
+          practiceDetails: result.practiceDetails,
         }));
       } else {
         window.sessionStorage.removeItem(validationCacheKey);
@@ -449,8 +458,8 @@ const CombinedPatientView: React.FC = () => {
         ]);
 
         const candidates = [
-          ...practiceRows.map((row) => hydrateScreeningTemplate(row.payload)),
-          ...globalRows.map((row) => hydrateScreeningTemplate(row.payload)),
+          ...practiceRows.map((row) => hydrateScreeningTemplate(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
+          ...globalRows.map((row) => hydrateScreeningTemplate(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];
 
         const resolvedScreenings = requestedScreenings
@@ -479,7 +488,7 @@ const CombinedPatientView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [builtInScreeningIds, builtInScreeningTemplates, isAuthorised, isDemoMode, practiceFeatures.screening_enabled, practiceIdentifier, requestedScreenings]);
+  }, [builtInScreeningIds, builtInScreeningTemplates, isAuthorised, isDemoMode, practiceFeatures.screening_enabled, practiceIdentifier, practicePhone, requestedScreenings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -511,8 +520,8 @@ const CombinedPatientView: React.FC = () => {
 
         const candidates = [
           ...builtInImmunisationTemplates,
-          ...globalRows.map((row) => withImmunisationTemplateDefaults(row.payload)),
-          ...practiceRows.map((row) => withImmunisationTemplateDefaults(row.payload)),
+          ...globalRows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
+          ...practiceRows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];
         const resolvedImmunisations = requestedImmunisations
           .map((identifier) => findImmunisationTemplateByIdentifier(identifier, candidates))
@@ -540,7 +549,7 @@ const CombinedPatientView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [builtInImmunisationIds, builtInImmunisationTemplates, isAuthorised, isDemoMode, practiceFeatures.immunisation_enabled, practiceIdentifier, requestedImmunisations]);
+  }, [builtInImmunisationIds, builtInImmunisationTemplates, isAuthorised, isDemoMode, practiceFeatures.immunisation_enabled, practiceIdentifier, practicePhone, requestedImmunisations]);
 
   const medicationContents = useMemo(() => {
     if (isDemoMode || !hasPracticeIdentifier) {
@@ -1162,9 +1171,12 @@ const CombinedPatientView: React.FC = () => {
         <PatientSupportFooter text={orgName || 'Nottingham West Primary Care Network'} />
       )}
 
-      <div className="hc-rating__notice">
-        <PatientGuidanceNotice text="Service provided by your GP practice on behalf of the NHS." />
-      </div>
+      {hasPracticeIdentifier && isAuthorised && !isDemoMode && (resolvedContents.length > 0 || selectedScreenings.length > 0 || selectedImmunisations.length > 0) && (
+        <PatientRatingCard
+          guidanceNoticeText="Service provided by your GP practice on behalf of the NHS."
+          practiceIdentifier={practiceIdentifier}
+        />
+      )}
     </div>
   );
 };

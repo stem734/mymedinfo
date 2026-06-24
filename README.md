@@ -31,6 +31,8 @@ npm install
 cp .env.example .env.local
 ```
 
+For auth invite/reset flows handled by Supabase Edge Functions, also set `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `APP_BASE_URL`.
+
 3. Start the dev server:
 
 ```bash

@@ -13,6 +13,7 @@ CREATE TABLE practices (
   name_lowercase          text NOT NULL GENERATED ALWAYS AS (lower(trim(name))) STORED,
   ods_code                text,
   contact_email           text,
+  contact_phone           text,
   contact_name            text,
   is_active               boolean NOT NULL DEFAULT false,
   auth_uid                uuid REFERENCES auth.users(id) ON DELETE SET NULL,

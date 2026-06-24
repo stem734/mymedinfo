@@ -15,6 +15,7 @@ import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
+import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
 
 
 const formatExpiryWindowLabel = (value?: number, unit?: 'weeks' | 'months') => {
@@ -35,6 +36,7 @@ const LongTermConditionView: React.FC = () => {
   const issuedAt = useMemo(() => parseSystmOneTimestamp(searchParams.get('codes')), [searchParams]);
   const [loadedTemplate, setLoadedTemplate] = useState<LongTermConditionTemplate | null>(null);
   const access = usePracticeContentAccess(practiceIdentifier, 'ltc_enabled', { skip: isDemoMode || previewOnly });
+  const practicePhone = access.details?.contactPhone || '';
   const selectedTemplate = loadedTemplate;
   const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
   const isExpired = useMemo(
@@ -53,7 +55,11 @@ const LongTermConditionView: React.FC = () => {
         try {
           const raw = window.sessionStorage.getItem(previewToken);
           if (raw) {
-            setLoadedTemplate(withLongTermConditionTemplateDefaults(JSON.parse(raw) as LongTermConditionTemplate));
+            setLoadedTemplate(
+              withLongTermConditionTemplateDefaults(
+                interpolatePracticeTemplateVariables(JSON.parse(raw) as LongTermConditionTemplate, { practicePhone }),
+              ),
+            );
             return;
           }
         } catch {
@@ -70,8 +76,8 @@ const LongTermConditionView: React.FC = () => {
         const rows = await fetchCardTemplates<LongTermConditionTemplate>('ltc');
         const candidates = [
           ...Object.values(LONG_TERM_CONDITION_TEMPLATES).map(withLongTermConditionTemplateDefaults),
-          ...rows.map((row) => withLongTermConditionTemplateDefaults(row.payload)),
-          ...practiceRows.map((row) => withLongTermConditionTemplateDefaults(row.payload)),
+          ...rows.map((row) => withLongTermConditionTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
+          ...practiceRows.map((row) => withLongTermConditionTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];
         setLoadedTemplate(findLongTermConditionTemplateByIdentifier(identifier, candidates));
       } catch (error) {
@@ -80,7 +86,7 @@ const LongTermConditionView: React.FC = () => {
       }
     };
     void loadTemplate();
-  }, [conditionType, practiceIdentifier, previewOnly, previewToken]);
+  }, [conditionType, practiceIdentifier, practicePhone, previewOnly, previewToken]);
 
   if (access.loading) {
     return (

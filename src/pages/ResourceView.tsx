@@ -1,16 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { AlertCircle, ExternalLink, FlaskConical, Info, Printer, Star } from 'lucide-react';
+import { AlertCircle, ExternalLink, FlaskConical, Info, Printer } from 'lucide-react';
 import { parseMedicationCodes, recordPatientAccess, resolveOrganisationMedicationCards, validateOrganisation } from '../protocolService';
 import { DEFAULT_PRACTICE_FEATURE_SETTINGS, type PracticeFeatureSettings } from '../practiceFeatures';
 import { useMedicationCatalog } from '../medicationCatalog';
-import { supabase } from '../supabase';
 import { getDemoNoticeText } from '../demoHelpers';
 import { isIssuedDateStale, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
 import { saveElementAsPdf } from '../pdfExport';
 import WarningCallout from '../components/WarningCallout';
-import PatientGuidanceNotice from '../components/PatientGuidanceNotice';
 import PatientSupportFooter from '../components/PatientSupportFooter';
+import PatientRatingCard from '../components/PatientRatingCard';
 import SickDayRulesModal from '../components/SickDayRulesModal';
 import type { SickDayRulesVariant } from '../components/SickDayRulesModal';
 import { NhsCross, NhsTick } from '../components/NhsIcons';
@@ -200,10 +199,6 @@ const ResourceView: React.FC = () => {
   const [resolveError, setResolveError] = useState<string | null>(null);
   const loggedAccessKeyRef = useRef<string | null>(null);
 
-  const [rating, setRating] = useState<number>(0);
-  const [hasRated, setHasRated] = useState<boolean>(false);
-  const [isSubmittingRating, setIsSubmittingRating] = useState<boolean>(false);
-  const [ratingError, setRatingError] = useState<string | null>(null);
   const [sickDayModalOpen, setSickDayModalOpen] = useState(false);
   const [sickDayRulesVariant, setSickDayRulesVariant] = useState<SickDayRulesVariant>('standard');
   const exportRef = useRef<HTMLDivElement | null>(null);
@@ -263,34 +258,6 @@ const ResourceView: React.FC = () => {
       return [];
     }
   }, [previewOnly, previewToken]);
-
-  const handleRating = async (value: number) => {
-    if (hasRated || !practiceIdentifier) return;
-    setRating(value);
-    setRatingError(null);
-    setIsSubmittingRating(true);
-    try {
-      const { data, error } = await supabase.rpc('submit_patient_rating', {
-        org_name: practiceIdentifier,
-        rating_value: value,
-      });
-      if (error) {
-        throw error;
-      }
-      const result = data as { success?: boolean; error?: string; rate_limited?: boolean } | null;
-      if (result && result.success === false) {
-        setRatingError(result.error || 'Unable to submit rating. Please try again later.');
-        setRating(0);
-      } else {
-        setHasRated(true);
-      }
-    } catch (err) {
-      console.error('Failed to submit rating:', err);
-      setRatingError('Unable to submit rating. Please try again later.');
-      setRating(0);
-    }
-    setIsSubmittingRating(false);
-  };
 
   const handleSavePdf = async () => {
     if (!exportRef.current || isSavingPdf) return;
@@ -879,76 +846,7 @@ const ResourceView: React.FC = () => {
       )}
 
       {hasPracticeIdentifier && isAuthorised && contents.length > 0 && (
-        <div className="card hc-rating" style={{ marginTop: '2rem', textAlign: 'center', padding: '2rem 1rem' }}>
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '1rem', color: '#212b32' }}>Did you find this information useful?</h2>
-          {hasRated ? (
-            <div style={{ color: '#007f3b', fontWeight: 'bold', fontSize: '1.1rem', marginTop: '1rem' }}>Thank you for your feedback!</div>
-          ) : (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <button
-                  key={star}
-                  onClick={() => handleRating(star)}
-                  disabled={isSubmittingRating}
-                  aria-label={`Rate ${star} out of 5 stars${rating === star ? ', selected' : ''}`}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    cursor: isSubmittingRating ? 'default' : 'pointer',
-                    padding: '0.5rem',
-                    opacity: isSubmittingRating ? 0.5 : 1,
-                    transition: 'transform 0.2s',
-                    outline: 'none',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (!isSubmittingRating) {
-                      const buttons = e.currentTarget.parentElement?.querySelectorAll('button');
-                      if (buttons) {
-                        for (let i = 0; i < 5; i += 1) {
-                          const svg = buttons[i].querySelector('svg');
-                          if (svg) svg.style.fill = i <= star - 1 ? '#fbc02d' : 'none';
-                          if (svg) svg.style.stroke = i <= star - 1 ? '#fbc02d' : '#8A99A8';
-                        }
-                      }
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (!isSubmittingRating) {
-                      const buttons = e.currentTarget.parentElement?.querySelectorAll('button');
-                      if (buttons) {
-                        for (let i = 0; i < 5; i += 1) {
-                          const svg = buttons[i].querySelector('svg');
-                          if (svg) svg.style.fill = i <= rating - 1 ? '#fbc02d' : 'none';
-                          if (svg) svg.style.stroke = i <= rating - 1 ? '#fbc02d' : '#8A99A8';
-                        }
-                      }
-                    }
-                  }}
-                >
-                  <Star
-                    size={36}
-                    color={star <= rating ? '#fbc02d' : '#8A99A8'}
-                    fill={star <= rating ? '#fbc02d' : 'none'}
-                  />
-                </button>
-              ))}
-            </div>
-          )}
-          {ratingError && !hasRated && (
-            <p
-              role="alert"
-              style={{ marginTop: '1rem', color: '#d5281b', fontSize: '0.95rem' }}
-            >
-              {ratingError}
-            </p>
-          )}
-        </div>
-      )}
-
-      {hasPracticeIdentifier && isAuthorised && contents.length > 0 && (
-        <div className="hc-rating__notice">
-          <PatientGuidanceNotice text={guidanceNoticeText} />
-        </div>
+        <PatientRatingCard guidanceNoticeText={guidanceNoticeText} practiceIdentifier={practiceIdentifier} />
       )}
 
     </div>

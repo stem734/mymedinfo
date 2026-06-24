@@ -20,7 +20,6 @@ serve(async (req) => {
     const supabase = createServiceClient();
     const normalisedEmail = normaliseEmail(email);
     const displayName = typeof name === 'string' && name.trim() ? name.trim() : normalisedEmail;
-
     const existingUser = await loadUserByEmail(supabase, normalisedEmail);
     if (existingUser) {
       const { error: authError } = await supabase.auth.admin.updateUserById(existingUser.uid, {

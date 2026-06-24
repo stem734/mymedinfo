@@ -15,6 +15,7 @@ import { usePracticeContentAccess } from '../usePracticeContentAccess';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
+import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
 
 /**
  * ImmunisationView — renders post-immunisation information.
@@ -48,6 +49,7 @@ const ImmunisationView: React.FC = () => {
   const requestedVaccinesKey = requestedVaccines.join(',');
   const [loadedTemplateMap, setLoadedTemplateMap] = useState<Record<string, ImmunisationTemplate>>({});
   const access = usePracticeContentAccess(practiceIdentifier, 'immunisation_enabled', { skip: isDemoMode || previewOnly });
+  const practicePhone = access.details?.contactPhone || localPhone;
   const selectedVaccines = requestedVaccines
     .map((vaccineCode) => loadedTemplateMap[vaccineCode])
     .filter(Boolean);
@@ -57,7 +59,9 @@ const ImmunisationView: React.FC = () => {
         try {
           const raw = window.sessionStorage.getItem(previewToken);
           if (raw) {
-            const previewTemplate = withImmunisationTemplateDefaults(JSON.parse(raw) as ImmunisationTemplate);
+            const previewTemplate = withImmunisationTemplateDefaults(
+              interpolatePracticeTemplateVariables(JSON.parse(raw) as ImmunisationTemplate, { practicePhone }),
+            );
             setLoadedTemplateMap({
               [previewTemplate.id.toLowerCase()]: previewTemplate,
               [(previewTemplate.code || '').toLowerCase()]: previewTemplate,
@@ -77,8 +81,8 @@ const ImmunisationView: React.FC = () => {
         const rows = await fetchCardTemplates<ImmunisationTemplate>('immunisation');
         const candidates = [
           ...Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults),
-          ...rows.map((row) => withImmunisationTemplateDefaults(row.payload)),
-          ...practiceRows.map((row) => withImmunisationTemplateDefaults(row.payload)),
+          ...rows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
+          ...practiceRows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];
         const selectedMap = Object.fromEntries(
           requestedVaccines.flatMap((identifier) => {
@@ -99,7 +103,7 @@ const ImmunisationView: React.FC = () => {
       }
     };
     void loadTemplates();
-  }, [practiceIdentifier, previewOnly, previewToken, requestedVaccines, requestedVaccinesKey]);
+  }, [practiceIdentifier, practicePhone, previewOnly, previewToken, requestedVaccines, requestedVaccinesKey]);
 
   if (access.loading) {
     return (
