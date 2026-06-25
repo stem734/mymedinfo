@@ -6,6 +6,7 @@ type PracticeFormValues = {
   odsCode: string;
   contactName: string;
   contactEmail: string;
+  contactPhone?: string;
 };
 
 type PracticeFormProps = {
@@ -16,8 +17,10 @@ type PracticeFormProps = {
   onSubmit: (event: React.FormEvent) => void;
   onChange: (field: keyof PracticeFormValues, value: string) => void;
   showContactName?: boolean;
+  showContactPhone?: boolean;
   showImportantNotice?: boolean;
   contactNameRequired?: boolean;
+  contactPhoneHelpText?: string;
 };
 
 const PracticeForm: React.FC<PracticeFormProps> = ({
@@ -28,8 +31,10 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
   onSubmit,
   onChange,
   showContactName = true,
+  showContactPhone = false,
   showImportantNotice = true,
   contactNameRequired = true,
+  contactPhoneHelpText,
 }) => {
   const emailError = validatePracticeContactEmail(values.contactEmail);
   const contactLabel = contactNameRequired ? 'Contact Name *' : 'Contact Name';
@@ -94,6 +99,25 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
           </p>
         )}
       </div>
+
+      {showContactPhone && (
+        <div className="form-field">
+          <label htmlFor="practice-contact-phone">Patient-facing phone number</label>
+          <input
+            id="practice-contact-phone"
+            type="text"
+            value={values.contactPhone || ''}
+            onChange={(event) => onChange('contactPhone', event.target.value)}
+            placeholder="e.g. 0115 123 4567"
+            aria-describedby={contactPhoneHelpText ? 'practice-contact-phone-help' : undefined}
+          />
+          {contactPhoneHelpText && (
+            <p id="practice-contact-phone-help" className="form-field__help">
+              {contactPhoneHelpText}
+            </p>
+          )}
+        </div>
+      )}
 
       {showImportantNotice && (
         <div className="form-callout" role="note">

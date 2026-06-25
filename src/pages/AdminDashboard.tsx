@@ -1159,7 +1159,7 @@ const AdminDashboard: React.FC = () => {
             </button>
           </div>
           <PracticeForm
-            values={{ name: newName, odsCode: newOds, contactName: '', contactEmail: newEmail }}
+            values={{ name: newName, odsCode: newOds, contactName: '', contactEmail: newEmail, contactPhone: newPhone }}
             error={addError}
             loading={false}
             submitLabel="Add Practice"
@@ -1168,21 +1168,14 @@ const AdminDashboard: React.FC = () => {
               if (field === 'name') setNewName(value);
               if (field === 'odsCode') setNewOds(value);
               if (field === 'contactEmail') setNewEmail(value);
+              if (field === 'contactPhone') setNewPhone(value);
             }}
             showContactName={false}
+            showContactPhone
             showImportantNotice={false}
             contactNameRequired={false}
+            contactPhoneHelpText="Available in card text as {{practice_phone}}."
           />
-          <div className="dashboard-field" style={{ marginTop: '1rem' }}>
-            <label>Patient-facing phone number</label>
-            <input
-              type="text"
-              value={newPhone}
-              onChange={(event) => setNewPhone(event.target.value)}
-              placeholder="e.g. 0115 123 4567"
-            />
-            <p className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>
-          </div>
         </div>
       )}
 
