@@ -39,7 +39,7 @@ async function saveElementAsLocalPdf(element: HTMLElement, filename: string) {
     '.patient-print-bar',
     '.hc-rating',
     '.hc-rating__notice',
-    '.patient-page-shell__brand',
+    '.patient-page-shell__masthead',
   ];
 
   selectorsToRemove.forEach((selector) => {

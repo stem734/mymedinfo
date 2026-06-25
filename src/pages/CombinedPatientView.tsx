@@ -601,7 +601,9 @@ const CombinedPatientView: React.FC = () => {
     [groupedMedicationContents, issuedAt],
   );
 
-  const pageHeadline = 'Your GP practice has shared some information with you which you may find useful.';
+  const pageHeadline = orgName
+    ? `${orgName} has shared some information with you which you may find useful.`
+    : 'Your GP practice has shared some information with you which you may find useful.';
 
   const sectionLinks = useMemo(() => {
     const links: Array<{ id: string; label: string; observerId?: string }> = [];
@@ -667,7 +669,7 @@ const CombinedPatientView: React.FC = () => {
 
   const summaryText = summaryParts.length > 0
     ? `${getContentListPhrase(summaryParts)} ready to review.`
-    : 'Your GP practice has shared information for you to review.';
+    : `${orgName || 'Your GP practice'} has shared information for you to review.`;
 
   if ((isValidating || isResolvingContents) && hasPracticeIdentifier && !isDemoMode) {
     return (

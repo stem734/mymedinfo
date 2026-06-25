@@ -542,7 +542,9 @@ const ResourceView: React.FC = () => {
     [groupedContents, issuedAt],
   );
 
-  const pageHeadline = 'Your GP practice has shared some information with you which you may find useful.';
+  const pageHeadline = orgName
+    ? `${orgName} has shared some information with you which you may find useful.`
+    : 'Your GP practice has shared some information with you which you may find useful.';
 
   const guidanceOrganisationName = useMemo(() => {
     if (resolvedContents.some((content) => content.state === 'custom') && orgName) {

@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { detectContentType, CONTENT_TYPES } from '../contentRouter';
-import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { parsePatientLinkCodes } from '../patientLinkCodes';
 
 // All content views are lazy-loaded to keep patient routes split by content type.
@@ -25,7 +24,6 @@ const LongTermConditionView = React.lazy(() => import('./LongTermConditionView')
  */
 const PatientRouter: React.FC = () => {
   const [searchParams] = useSearchParams();
-  const practiceLookup = getPracticeLookupFromSearchParams(searchParams);
   const explicitType = (searchParams.get('type') || '').toLowerCase().trim();
   const codesParam = (searchParams.get('codes') || '').trim();
   const parsedCodes = useMemo(() => parsePatientLinkCodes(codesParam), [codesParam]);
@@ -92,19 +90,19 @@ const PatientRouter: React.FC = () => {
       </div>
     }>
       <div className="patient-page-shell">
-        <div className="patient-page-shell__brand no-print">
-          <div className="mymedinfo-wordmark patient-page-shell__brand-wordmark">
-            MyMed<span>Info</span>
+        <header className="patient-page-shell__masthead no-print">
+          <div className="patient-page-shell__masthead-top">
+            <img className="patient-page-shell__nhs-logo" src="/nhs-wordmark-blue.jpg" alt="NHS" />
+            <span className="patient-page-shell__product">
+              <span className="mymedinfo-wordmark patient-page-shell__product-mark">
+                MyMed<span>Info</span>
+              </span>
+              <span className="patient-page-shell__product-owner">
+                An NHS service from Nottingham West Primary Care Network
+              </span>
+            </span>
           </div>
-          {practiceLookup.orgName && (
-            <div className="patient-page-shell__brand-partner-block">
-              <img className="patient-page-shell__brand-partner-logo" src="/nhs-wordmark-blue.jpg" alt="NHS" />
-              <p className="patient-page-shell__brand-partner">
-                Partnering with {practiceLookup.orgName}
-              </p>
-            </div>
-          )}
-        </div>
+        </header>
         {renderContent()}
       </div>
     </React.Suspense>

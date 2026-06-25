@@ -1288,61 +1288,53 @@ p {
   width: 100%;
 }
 
-.patient-page-shell__brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 1rem;
-  margin: 0 0 0.9rem;
+/* Patient masthead: NHS logo is the dominant trust signal and is given its
+   own clear space; MyMedInfo is a subordinate product mark, spatially
+   separated rather than co-branded into a lockup (per NHS Identity rules). */
+.patient-page-shell__masthead {
+  margin: 0 0 1.1rem;
 }
 
-.patient-page-shell__brand-wordmark {
+.patient-page-shell__masthead-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  /* Clear space around the NHS logo: keep other elements off it. */
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--nhs-border);
+}
+
+.patient-page-shell__nhs-logo {
+  width: min(96px, 28vw);
+  height: auto;
+  display: block;
+}
+
+.patient-page-shell__product {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
   flex-shrink: 0;
-  font-size: clamp(1.55rem, 5vw, 2rem);
+}
+
+.patient-page-shell__product-mark {
+  font-size: clamp(1rem, 3.5vw, 1.2rem);
+}
+
+.patient-page-shell__product-owner {
+  margin-top: 0.2rem;
+  max-width: 15rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--nhs-secondary-text);
 }
 
 .patient-state-card__wordmark {
   margin: 0 0 1rem;
   font-size: clamp(2rem, 8vw, 2.75rem);
-}
-
-.patient-page-shell__brand-partner-block {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.45rem;
-  max-width: min(320px, 60vw);
-}
-
-.patient-page-shell__brand-partner-logo {
-  width: min(108px, 32vw);
-  height: auto;
-  display: block;
-}
-
-.patient-page-shell__brand-partner {
-  margin: 0;
-  color: #4c6272;
-  font-size: 0.9rem;
-  font-weight: 700;
-  line-height: 1.35;
-  text-align: left;
-}
-
-@media (max-width: 640px) {
-  .patient-page-shell__brand {
-    flex-direction: column;
-    gap: 0.65rem;
-  }
-
-  .patient-page-shell__brand-partner-block {
-    align-items: center;
-    max-width: none;
-  }
-
-  .patient-page-shell__brand-partner {
-    text-align: center;
-  }
 }
 
 .patient-view h1.patient-medication-title {
@@ -3810,10 +3802,20 @@ p {
     font-size: 1rem;
   }
 
+  /* On mobile, make this a proper opaque action bar pinned to the bottom and
+     reserve space for it so it never covers the rating/footer. */
   .patient-print-bar {
-    right: 16px;
-    left: 16px;
-    bottom: 16px;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    padding: 0.75rem 16px calc(0.75rem + env(safe-area-inset-bottom));
+    background: var(--nhs-white);
+    border-top: 1px solid var(--nhs-border);
+    box-shadow: 0 -4px 12px rgba(16, 32, 51, 0.08);
+  }
+
+  .patient-view {
+    padding-bottom: 5.5rem;
   }
 
   .patient-print-button {
@@ -5135,6 +5137,88 @@ p {
   color: var(--nhs-green);
   font-weight: 700;
   font-size: 1.05rem;
+}
+
+/* Binary "was this useful?" feedback — clearer and higher-response than stars. */
+.patient-feedback {
+  margin-top: 2rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.patient-feedback__title {
+  font-size: 1.2rem;
+  margin-bottom: 1.25rem;
+  color: var(--nhs-text);
+}
+
+.patient-feedback__choices {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.patient-feedback__btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 48px;
+  padding: 0.65rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: inherit;
+  color: var(--nhs-blue);
+  background: var(--nhs-white);
+  border: 2px solid var(--nhs-border-strong);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.patient-feedback__btn:hover:not(:disabled) {
+  border-color: var(--nhs-blue);
+  background: var(--nhs-blue-tint);
+}
+
+.patient-feedback__btn:focus-visible {
+  outline: 3px solid var(--nhs-blue);
+  outline-offset: 2px;
+}
+
+.patient-feedback__btn:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.patient-feedback__btn[aria-pressed='true'] {
+  color: var(--nhs-white);
+  background: var(--nhs-blue);
+  border-color: var(--nhs-blue);
+}
+
+.patient-feedback__thanks {
+  color: var(--nhs-green);
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin: 0.5rem 0 0;
+}
+
+.patient-feedback__error {
+  margin-top: 1rem;
+  color: var(--nhs-red);
+  font-size: 0.95rem;
+}
+
+@media (max-width: 420px) {
+  .patient-feedback__choices {
+    flex-direction: column;
+  }
+
+  .patient-feedback__btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 .hc-rating__stars {
