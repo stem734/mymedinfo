@@ -20,7 +20,7 @@ import {
   Plus,
   RefreshCw,
   Settings,
-  Star,
+  ThumbsUp,
   Trash2,
   Users,
   X,
@@ -856,7 +856,8 @@ const AdminDashboard: React.FC = () => {
       return 'No ratings';
     }
 
-    return `${(total / count).toFixed(1)}/5 (${count})`;
+    const percent = Math.round(((total / count - 1) / 4) * 100);
+    return `${percent}% found useful (${count})`;
   };
 
   const addPractice = async (e: React.FormEvent) => {
@@ -1009,6 +1010,26 @@ const AdminDashboard: React.FC = () => {
     (total, practice) => total + PRACTICE_FUNCTIONS.filter((feature) => feature.isEnabled(practice)).length,
     0,
   );
+
+  // Platform-wide patient satisfaction: pool every practice's ratings so each
+  // rating counts equally (a practice with 200 ratings weighs more than one
+  // with 2). Stored on a 1-5 scale (useful = 5, not = 1) → mapped to "% found
+  // useful". ratingPracticeCount = how many practices have any ratings yet.
+  const { platformRatingTotal, platformRatingCount, ratingPracticeCount } = practices.reduce(
+    (acc, practice) => {
+      const count = practice.patient_rating_count ?? 0;
+      if (count > 0) {
+        acc.platformRatingTotal += practice.patient_rating_total ?? 0;
+        acc.platformRatingCount += count;
+        acc.ratingPracticeCount += 1;
+      }
+      return acc;
+    },
+    { platformRatingTotal: 0, platformRatingCount: 0, ratingPracticeCount: 0 },
+  );
+  const platformSatisfactionLabel = platformRatingCount > 0
+    ? `${Math.round((((platformRatingTotal / platformRatingCount) - 1) / 4) * 100)}%`
+    : 'No ratings';
   const filteredPractices = practices.filter((practice) => {
     const matchesSearch = practiceSearch === '' || [practice.name, practice.ods_code || '', practice.contact_email || '', practice.contact_phone || ''].some((field) =>
       field.toLowerCase().includes(practiceSearch.toLowerCase()),
@@ -1157,6 +1178,18 @@ const AdminDashboard: React.FC = () => {
               <div className="admin-stat-card__value">{enabledServiceCount}</div>
               <div className="admin-stat-card__label">Enabled Services</div>
               <button type="button" className="admin-stat-card__link" onClick={() => setAdminTab('practices')}>View breakdown →</button>
+            </div>
+            <div className="admin-stat-card">
+              <div className="admin-stat-card__value" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                {platformSatisfactionLabel}
+                {platformSatisfactionLabel !== 'No ratings' && <ThumbsUp size={18} color="var(--nhs-green)" />}
+              </div>
+              <div className="admin-stat-card__label">Found Useful (all practices)</div>
+              {platformRatingCount > 0 && (
+                <span className="admin-stat-card__link" style={{ cursor: 'default' }}>
+                  {platformRatingCount.toLocaleString()} ratings · {ratingPracticeCount} {ratingPracticeCount === 1 ? 'practice' : 'practices'}
+                </span>
+              )}
             </div>
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
@@ -1521,8 +1554,8 @@ const AdminDashboard: React.FC = () => {
                     {filteredPractices.map((practice) => {
                       const isExpanded = Boolean(expandedPracticeCards[practice.id]);
                       const ratingCount = practice.patient_rating_count ?? 0;
-                      const ratingAvg = ratingCount > 0
-                        ? (practice.patient_rating_total ?? 0) / ratingCount
+                      const ratingPercent = ratingCount > 0
+                        ? Math.round((((practice.patient_rating_total ?? 0) / ratingCount - 1) / 4) * 100)
                         : null;
                       const services = [
                         { key: 'medication_enabled' as const, short: 'Meds', enabled: practice.medication_enabled !== false },
@@ -1566,10 +1599,10 @@ const AdminDashboard: React.FC = () => {
                               </div>
                             </td>
                             <td>
-                              {ratingAvg !== null ? (
+                              {ratingPercent !== null ? (
                                 <span className="admin-rating">
-                                  <Star size={13} className="admin-rating__star" aria-hidden="true" />
-                                  {ratingAvg.toFixed(1)}
+                                  <ThumbsUp size={13} className="admin-rating__star" aria-hidden="true" />
+                                  {ratingPercent}%
                                   <span className="admin-rating__count">({ratingCount})</span>
                                 </span>
                               ) : (
