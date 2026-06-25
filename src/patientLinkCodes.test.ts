@@ -13,12 +13,16 @@ describe('parsePatientLinkCodes', () => {
   });
 
   it('recognises immunisation and long term condition identifiers', () => {
+    // Unrecognised letter-based tokens (UNKNOWN) are intentionally routed to
+    // immunisationIdentifiers so editor-defined codes can resolve against
+    // fetched template data later; only non-letter tokens fall through to
+    // unknownIdentifiers.
     expect(parsePatientLinkCodes('IM1,LC1,UNKNOWN')).toEqual({
       medicationCodes: [],
       screeningIdentifiers: [],
-      immunisationIdentifiers: ['IM1'],
+      immunisationIdentifiers: ['IM1', 'UNKNOWN'],
       longTermConditionIdentifiers: ['LC1'],
-      unknownIdentifiers: ['UNKNOWN'],
+      unknownIdentifiers: [],
     });
   });
 

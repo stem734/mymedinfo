@@ -15,7 +15,7 @@ import {
   Plus,
   Save,
   Search,
-  Star,
+  ThumbsUp,
   Syringe,
   Trash2,
 } from 'lucide-react';
@@ -51,6 +51,8 @@ import {
   GLOBAL_TEMPLATE_DISCLAIMER_TEXT,
   PRACTICE_SELECTION_STORAGE_KEY,
   coercePracticeSummary,
+  fetchPracticeAccessStats,
+  type PracticeAccessStats,
   type PracticeMembership,
   type PracticeMedicationCardRow,
   type PracticeSummary,
@@ -338,6 +340,7 @@ const PracticeDashboard: React.FC = () => {
   const [currentUserEmail, setCurrentUserEmail] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<Set<string>>(new Set());
+  const [accessStats, setAccessStats] = useState<PracticeAccessStats | null>(null);
   const deferredSearch = useDeferredValue(librarySearch);
   const [previewMed, setPreviewMed] = useState<MedContent | null>(null);
   const [draft, setDraft] = useState<CustomCardDraft | null>(null);
@@ -631,6 +634,28 @@ const PracticeDashboard: React.FC = () => {
     void loadPendingRequests(selectedPracticeId);
   }, [loadPracticeCards, loadPendingRequests, loadPracticeTemplates, selectedPracticeId]);
 
+  useEffect(() => {
+    if (!selectedPracticeId) {
+      setAccessStats(null);
+      return;
+    }
+
+    let cancelled = false;
+    setAccessStats(null);
+    fetchPracticeAccessStats(selectedPracticeId)
+      .then((stats) => {
+        if (!cancelled) setAccessStats(stats);
+      })
+      .catch((err) => {
+        console.error('Failed to load access stats:', err);
+        if (!cancelled) setAccessStats(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedPracticeId]);
+
   const selectedMembership = useMemo(
     () => memberships.find((membership) => membership.practice_id === selectedPracticeId) || null,
     [memberships, selectedPracticeId],
@@ -776,7 +801,11 @@ const PracticeDashboard: React.FC = () => {
     const total = selectedPractice.patient_rating_total ?? 0;
     if (count <= 0) return 'No ratings';
 
-    return `${(total / count).toFixed(1)}/5`;
+    // Ratings are a binary useful/not signal stored on a 1-5 scale
+    // (useful = 5, not = 1). Map the average back to a 0-100% "found useful".
+    const average = total / count;
+    const percent = Math.round(((average - 1) / 4) * 100);
+    return `${percent}%`;
   }, [selectedPractice]);
 
 
@@ -1519,9 +1548,32 @@ const PracticeDashboard: React.FC = () => {
             <div className="admin-stat-card">
               <div className="admin-stat-card__value" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 {satisfactionLabel}
-                {satisfactionLabel !== 'No ratings' && <Star size={20} fill="#fbc02d" color="#fbc02d" />}
+                {satisfactionLabel !== 'No ratings' && <ThumbsUp size={20} color="var(--nhs-green)" />}
               </div>
-              <div className="admin-stat-card__label">Patient Rating</div>
+              <div className="admin-stat-card__label">Found Useful</div>
+            </div>
+          </div>
+
+          <div className="dashboard-panel dashboard-section">
+            <div className="dashboard-panel-header">
+              <div>
+                <h2 className="dashboard-panel-title">Patient Access</h2>
+                <p className="dashboard-panel-subtitle">Times patients opened a link from this practice.</p>
+              </div>
+            </div>
+            <div className="admin-stat-row" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
+              <div className="admin-stat-card">
+                <div className="admin-stat-card__value">{accessStats ? accessStats.week.toLocaleString() : '—'}</div>
+                <div className="admin-stat-card__label">This Week</div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-card__value">{accessStats ? accessStats.month.toLocaleString() : '—'}</div>
+                <div className="admin-stat-card__label">This Month</div>
+              </div>
+              <div className="admin-stat-card">
+                <div className="admin-stat-card__value">{accessStats ? accessStats.year.toLocaleString() : '—'}</div>
+                <div className="admin-stat-card__label">This Year</div>
+              </div>
             </div>
           </div>
 

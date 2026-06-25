@@ -173,6 +173,38 @@ export const coercePracticeSummary = (value: unknown): PracticeSummary | null =>
   };
 };
 
+export type PracticeAccessStats = {
+  week: number;
+  month: number;
+  year: number;
+  total: number;
+};
+
+const toCount = (value: unknown): number =>
+  typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
+export async function fetchPracticeAccessStats(practiceId: string): Promise<PracticeAccessStats | null> {
+  const { data, error } = await supabase.rpc('get_practice_access_stats', {
+    target_practice: practiceId,
+  });
+
+  if (error) {
+    throw error;
+  }
+
+  const row = (data && typeof data === 'object' ? data : {}) as Record<string, unknown>;
+  if (row.success === false) {
+    return null;
+  }
+
+  return {
+    week: toCount(row.week),
+    month: toCount(row.month),
+    year: toCount(row.year),
+    total: toCount(row.total),
+  };
+}
+
 export async function resolvePatientMedicationCards(practiceIdentifier: string, requestedCodes: string[]): Promise<ResolvedMedicationCard[]> {
   const { data, error } = await supabase.rpc('resolve_patient_medication_cards', {
     org_name: practiceIdentifier,
