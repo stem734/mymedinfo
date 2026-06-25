@@ -31,9 +31,8 @@ import { getFunctionErrorMessage } from '../supabaseFunctionError';
 import { fetchCardTemplates } from '../cardTemplateStore';
 import type { CardTemplateRecord, HealthCheckTemplatePayload } from '../cardTemplateTypes';
 import {
-  IMMUNISATION_TEMPLATES,
-  LONG_TERM_CONDITION_TEMPLATES,
-  SCREENING_TEMPLATES,
+  withImmunisationTemplateDefaults,
+  withLongTermConditionTemplateDefaults,
   withScreeningTemplateDefaults,
   type ImmunisationTemplate,
   type LongTermConditionTemplate,
@@ -256,6 +255,9 @@ const textToResourceLinks = (value: string): PatientResourceLink[] =>
       return { title, url, description };
     })
     .filter((link) => link.title && link.url);
+
+const isObjectRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
 const normalisePracticeSummary = (value: PracticeSummary | PracticeSummary[] | null | undefined): PracticeSummary | null => {
   const practice = Array.isArray(value) ? value[0] : value;
@@ -690,36 +692,27 @@ const PracticeDashboard: React.FC = () => {
         payload: row.payload,
         isJsonMode: true,
       })),
-      screening: Object.values(SCREENING_TEMPLATES).map((template) => {
-        const globalRow = globalTemplateRows.screening.find((row) => row.template_id === template.id);
-        return {
+      screening: globalTemplateRows.screening.map((row) => ({
           builderType: 'screening' as const,
-          templateId: template.id,
-          label: globalRow?.label || template.label,
-          payload: (globalRow?.payload || template) as ScreeningTemplate,
+          templateId: row.template_id,
+          label: row.label,
+          payload: withScreeningTemplateDefaults(row.payload as ScreeningTemplate),
           isJsonMode: false,
-        };
-      }),
-      immunisation: Object.values(IMMUNISATION_TEMPLATES).map((template) => {
-        const globalRow = globalTemplateRows.immunisation.find((row) => row.template_id === template.id);
-        return {
+      })),
+      immunisation: globalTemplateRows.immunisation.map((row) => ({
           builderType: 'immunisation' as const,
-          templateId: template.id,
-          label: globalRow?.label || template.label,
-          payload: (globalRow?.payload || template) as ImmunisationTemplate,
+          templateId: row.template_id,
+          label: row.label,
+          payload: withImmunisationTemplateDefaults(row.payload as ImmunisationTemplate),
           isJsonMode: false,
-        };
-      }),
-      ltc: Object.values(LONG_TERM_CONDITION_TEMPLATES).map((template) => {
-        const globalRow = globalTemplateRows.ltc.find((row) => row.template_id === template.id);
-        return {
+      })),
+      ltc: globalTemplateRows.ltc.map((row) => ({
           builderType: 'ltc' as const,
-          templateId: template.id,
-          label: globalRow?.label || template.label,
-          payload: (globalRow?.payload || template) as LongTermConditionTemplate,
+          templateId: row.template_id,
+          label: row.label,
+          payload: withLongTermConditionTemplateDefaults(row.payload as LongTermConditionTemplate),
           isJsonMode: false,
-        };
-      }),
+      })),
     };
 
     return globalRowsByDomain;
@@ -840,11 +833,37 @@ const PracticeDashboard: React.FC = () => {
   };
 
   const buildTemplateDraftPayload = (draftValue: PracticeTemplateDraft) => {
+    const globalTemplate = selectedDomainTemplates.find((template) => template.templateId === draftValue.templateId);
+
     if (draftValue.isJsonMode) {
-      return JSON.parse(draftValue.payloadJson);
+      const submittedPayload = JSON.parse(draftValue.payloadJson) as unknown;
+      if (draftValue.builderType !== 'healthcheck') return submittedPayload;
+
+      const globalPayload = isObjectRecord(globalTemplate?.payload) ? globalTemplate.payload as HealthCheckTemplatePayload : null;
+      const submitted = isObjectRecord(submittedPayload) ? submittedPayload : {};
+      const submittedVariants = isObjectRecord(submitted.variants) ? submitted.variants : {};
+      const lockedVariants = Object.fromEntries(
+        Object.entries(globalPayload?.variants || {}).map(([resultCode, globalVariant]) => {
+          const submittedVariant = isObjectRecord(submittedVariants[resultCode]) ? submittedVariants[resultCode] : {};
+          return [
+            resultCode,
+            {
+              ...globalVariant,
+              ...submittedVariant,
+              resultCode: globalVariant.resultCode || resultCode,
+            },
+          ];
+        }),
+      );
+      const { id: _id, code: _code, templateId: _templateId, variants: _variants, ...rest } = submitted;
+
+      return {
+        ...rest,
+        variants: lockedVariants,
+      };
     }
 
-    const basePayload = selectedDomainTemplates.find((template) => template.templateId === draftValue.templateId)?.payload;
+    const basePayload = globalTemplate?.payload;
     const existing = isEditablePatientTemplate(basePayload) ? basePayload : null;
     if (!existing) {
       throw new Error('Unable to build template payload.');
@@ -996,6 +1015,15 @@ const PracticeDashboard: React.FC = () => {
 
   const saveTemplateDraft = () => {
     if (!selectedPracticeId || !templateDraft) return;
+
+    const isPublishedGlobalTemplate = globalTemplateRows[templateDraft.builderType].some(
+      (row) => row.template_id === templateDraft.templateId,
+    );
+    if (!isPublishedGlobalTemplate) {
+      setError('This template is no longer available in the admin library. Practice versions can only be created from admin templates.');
+      setTemplateDraft(null);
+      return;
+    }
 
     setDisclaimerRequest({
       title: 'Save Practice Template',

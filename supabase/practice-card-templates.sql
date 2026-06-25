@@ -41,13 +41,75 @@ CREATE POLICY "practice_card_templates_select_member"
 CREATE POLICY "practice_card_templates_write_member"
   ON practice_card_templates FOR INSERT
   TO authenticated
-  WITH CHECK (is_admin() OR is_practice_member(practice_id));
+  WITH CHECK (
+    (is_admin() OR is_practice_member(practice_id))
+    AND EXISTS (
+      SELECT 1
+      FROM public.card_templates AS global_templates
+      WHERE global_templates.builder_type = practice_card_templates.builder_type
+        AND global_templates.template_id = practice_card_templates.template_id
+        AND (
+          (
+            practice_card_templates.builder_type = 'healthcheck'
+            AND NOT EXISTS (
+              SELECT 1
+              FROM jsonb_object_keys(COALESCE(practice_card_templates.payload->'variants', '{}'::jsonb)) AS submitted(result_code)
+              WHERE NOT (COALESCE(global_templates.payload->'variants', '{}'::jsonb) ? submitted.result_code)
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM jsonb_each(COALESCE(practice_card_templates.payload->'variants', '{}'::jsonb)) AS submitted(result_code, variant)
+              WHERE COALESCE(submitted.variant->>'resultCode', submitted.result_code) <>
+                COALESCE((global_templates.payload->'variants'->submitted.result_code)->>'resultCode', submitted.result_code)
+            )
+          )
+          OR (
+            practice_card_templates.builder_type <> 'healthcheck'
+            AND COALESCE(practice_card_templates.payload->>'id', practice_card_templates.template_id) =
+              COALESCE(global_templates.payload->>'id', global_templates.template_id)
+            AND COALESCE(practice_card_templates.payload->>'code', practice_card_templates.template_id) =
+              COALESCE(global_templates.payload->>'code', global_templates.template_id)
+          )
+        )
+    )
+  );
 
 CREATE POLICY "practice_card_templates_update_member"
   ON practice_card_templates FOR UPDATE
   TO authenticated
   USING (is_admin() OR is_practice_member(practice_id))
-  WITH CHECK (is_admin() OR is_practice_member(practice_id));
+  WITH CHECK (
+    (is_admin() OR is_practice_member(practice_id))
+    AND EXISTS (
+      SELECT 1
+      FROM public.card_templates AS global_templates
+      WHERE global_templates.builder_type = practice_card_templates.builder_type
+        AND global_templates.template_id = practice_card_templates.template_id
+        AND (
+          (
+            practice_card_templates.builder_type = 'healthcheck'
+            AND NOT EXISTS (
+              SELECT 1
+              FROM jsonb_object_keys(COALESCE(practice_card_templates.payload->'variants', '{}'::jsonb)) AS submitted(result_code)
+              WHERE NOT (COALESCE(global_templates.payload->'variants', '{}'::jsonb) ? submitted.result_code)
+            )
+            AND NOT EXISTS (
+              SELECT 1
+              FROM jsonb_each(COALESCE(practice_card_templates.payload->'variants', '{}'::jsonb)) AS submitted(result_code, variant)
+              WHERE COALESCE(submitted.variant->>'resultCode', submitted.result_code) <>
+                COALESCE((global_templates.payload->'variants'->submitted.result_code)->>'resultCode', submitted.result_code)
+            )
+          )
+          OR (
+            practice_card_templates.builder_type <> 'healthcheck'
+            AND COALESCE(practice_card_templates.payload->>'id', practice_card_templates.template_id) =
+              COALESCE(global_templates.payload->>'id', global_templates.template_id)
+            AND COALESCE(practice_card_templates.payload->>'code', practice_card_templates.template_id) =
+              COALESCE(global_templates.payload->>'code', global_templates.template_id)
+          )
+        )
+    )
+  );
 
 CREATE POLICY "practice_card_templates_delete_member"
   ON practice_card_templates FOR DELETE
