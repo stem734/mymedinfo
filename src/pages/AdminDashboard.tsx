@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -251,6 +251,7 @@ const parseAdminTabFromLocation = (pathname: string, search: string): AdminTab |
 
 const AdminDashboard: React.FC = () => {
   const location = useLocation();
+  const loadedAdminUserIdRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromLocation(window.location.pathname, window.location.search) || 'overview');
   const [practices, setPractices] = useState<Practice[]>([]);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig>(DEFAULT_PLATFORM_CONFIG);
@@ -388,13 +389,21 @@ const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     const loadForAdminSession = async (session: Session) => {
+      if (loadedAdminUserIdRef.current === session.user.id) {
+        setAuthenticated(true);
+        setCurrentUserEmail(session.user.email ?? '');
+        return;
+      }
+
       const adminRole = await getCurrentUserAdminRole(session.user.id);
       if (!adminRole) {
+        loadedAdminUserIdRef.current = null;
         setAuthenticated(false);
         navigate(resolvePath('/admin'));
         return;
       }
 
+      loadedAdminUserIdRef.current = session.user.id;
       setAuthenticated(true);
       setCurrentUserEmail(session.user.email ?? '');
       loadDashboardData();
@@ -411,6 +420,7 @@ const AdminDashboard: React.FC = () => {
       }
 
       setAuthenticated(false);
+      loadedAdminUserIdRef.current = null;
       navigate(resolvePath('/admin'));
     };
 
@@ -420,6 +430,7 @@ const AdminDashboard: React.FC = () => {
       if (session?.user) {
         void loadForAdminSession(session);
       } else {
+        loadedAdminUserIdRef.current = null;
         setAuthenticated(false);
         navigate(resolvePath('/admin'));
       }
