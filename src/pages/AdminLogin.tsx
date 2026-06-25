@@ -16,6 +16,7 @@ const AdminLogin: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [resetSent, setResetSent] = useState(false);
   const navigate = useNavigate();
 
@@ -27,7 +28,12 @@ const AdminLogin: React.FC = () => {
         const adminRole = await getCurrentUserAdminRole(session.user.id);
         if (!cancelled && adminRole) {
           navigate(resolvePath('/admin/dashboard'), { replace: true });
+          return;
         }
+      }
+
+      if (!cancelled) {
+        setCheckingSession(false);
       }
     };
     void hydrate();
@@ -85,6 +91,14 @@ const AdminLogin: React.FC = () => {
       setError('Unable to send reset email. Please try again.');
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="loading-state">
+        <p>Opening the admin dashboard...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="portal-login-split portal-login-split--admin">

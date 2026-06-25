@@ -30,6 +30,7 @@ const PracticeLogin: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [resetSent, setResetSent] = useState(false);
   const [platformConfig, setPlatformConfig] = useState<PlatformConfig | null>(null);
   const navigate = useNavigate();
@@ -47,6 +48,11 @@ const PracticeLogin: React.FC = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!cancelled && session?.user) {
         navigate(resolvePath('/practice/dashboard'), { replace: true });
+        return;
+      }
+
+      if (!cancelled) {
+        setCheckingSession(false);
       }
     };
 
@@ -107,6 +113,14 @@ const PracticeLogin: React.FC = () => {
       setError('Unable to send reset email. Please try again.');
     }
   };
+
+  if (checkingSession) {
+    return (
+      <div className="loading-state">
+        <p>Opening your practice workspace...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="practice-login-split">
