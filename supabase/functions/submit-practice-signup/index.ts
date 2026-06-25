@@ -7,6 +7,7 @@ type SignupBody = {
   odsCode?: unknown;
   contactName?: unknown;
   contactEmail?: unknown;
+  contactPhone?: unknown;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -37,9 +38,10 @@ serve(async (req) => {
     const odsCode = normaliseText(body.odsCode, 16).toUpperCase();
     const contactName = normaliseText(body.contactName, 140);
     const contactEmail = normaliseText(body.contactEmail, 254).toLowerCase();
+    const contactPhone = normaliseText(body.contactPhone, 40);
 
-    if (!name || !odsCode || !contactName || !contactEmail) {
-      return errorResponse('Organisation name, ODS code, contact name, and contact email are required');
+    if (!name || !odsCode || !contactName || !contactEmail || !contactPhone) {
+      return errorResponse('Organisation name, ODS code, contact name, contact email, and patient-facing phone number are required');
     }
 
     if (!isValidOdsCode(odsCode)) {
@@ -121,6 +123,7 @@ serve(async (req) => {
       ods_code: odsCode,
       contact_email: contactEmail,
       contact_name: contactName,
+      contact_phone: contactPhone,
       signup_ip: clientIp,
       is_active: false,
       auth_uid: null,

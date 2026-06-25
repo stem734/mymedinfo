@@ -12,6 +12,7 @@ const PracticeSignup: React.FC = () => {
   const [odsCode, setOdsCode] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -29,6 +30,12 @@ const PracticeSignup: React.FC = () => {
       return;
     }
 
+    if (!contactPhone.trim()) {
+      setError('Patient-facing phone number is required');
+      setLoading(false);
+      return;
+    }
+
     try {
       const { data, error: signupError } = await supabase.functions.invoke('submit-practice-signup', {
         body: {
@@ -36,6 +43,7 @@ const PracticeSignup: React.FC = () => {
           odsCode: odsCode.trim().toUpperCase(),
           contactEmail: contactEmail.trim().toLowerCase(),
           contactName: contactName.trim(),
+          contactPhone: contactPhone.trim(),
         },
       });
       if (signupError) throw signupError;
@@ -177,7 +185,7 @@ const PracticeSignup: React.FC = () => {
           )}
 
           <PracticeForm
-            values={{ name, odsCode, contactName, contactEmail }}
+            values={{ name, odsCode, contactName, contactEmail, contactPhone }}
             error=""
             loading={loading}
             submitLabel="Register Practice"
@@ -187,8 +195,11 @@ const PracticeSignup: React.FC = () => {
               if (field === 'odsCode') setOdsCode(value);
               if (field === 'contactName') setContactName(value);
               if (field === 'contactEmail') setContactEmail(value);
+              if (field === 'contactPhone') setContactPhone(value);
             }}
             showContactName
+            showContactPhone
+            contactPhoneRequired
           />
 
           <div className="practice-login-form__footer" style={{ marginTop: '1.5rem' }}>

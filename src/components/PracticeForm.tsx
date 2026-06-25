@@ -20,6 +20,7 @@ type PracticeFormProps = {
   showContactPhone?: boolean;
   showImportantNotice?: boolean;
   contactNameRequired?: boolean;
+  contactPhoneRequired?: boolean;
   contactPhoneHelpText?: string;
 };
 
@@ -34,10 +35,12 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
   showContactPhone = false,
   showImportantNotice = true,
   contactNameRequired = true,
+  contactPhoneRequired = false,
   contactPhoneHelpText,
 }) => {
   const emailError = validatePracticeContactEmail(values.contactEmail);
   const contactLabel = contactNameRequired ? 'Contact Name *' : 'Contact Name';
+  const contactPhoneLabel = contactPhoneRequired ? 'Patient-facing phone number *' : 'Patient-facing phone number';
 
   return (
     <form onSubmit={onSubmit} className="practice-form">
@@ -102,12 +105,13 @@ const PracticeForm: React.FC<PracticeFormProps> = ({
 
       {showContactPhone && (
         <div className="form-field">
-          <label htmlFor="practice-contact-phone">Patient-facing phone number</label>
+          <label htmlFor="practice-contact-phone">{contactPhoneLabel}</label>
           <input
             id="practice-contact-phone"
             type="text"
             value={values.contactPhone || ''}
             onChange={(event) => onChange('contactPhone', event.target.value)}
+            required={contactPhoneRequired}
             placeholder="e.g. 0115 123 4567"
             aria-describedby={contactPhoneHelpText ? 'practice-contact-phone-help' : undefined}
           />

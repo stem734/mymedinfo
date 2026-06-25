@@ -862,6 +862,11 @@ const AdminDashboard: React.FC = () => {
       return;
     }
 
+    if (!newPhone.trim()) {
+      setAddError('Patient-facing phone number is required');
+      return;
+    }
+
     const emailError = validatePracticeContactEmail(newEmail);
     if (emailError) {
       setAddError(emailError);
@@ -924,6 +929,11 @@ const AdminDashboard: React.FC = () => {
 
     if (!editEmail.trim()) {
       setEditError('Contact email is required');
+      return;
+    }
+
+    if (!editPhone.trim()) {
+      setEditError('Patient-facing phone number is required');
       return;
     }
 
@@ -1172,6 +1182,7 @@ const AdminDashboard: React.FC = () => {
             }}
             showContactName={false}
             showContactPhone
+            contactPhoneRequired
             showImportantNotice={false}
             contactNameRequired={false}
             contactPhoneHelpText="Available in card text as {{practice_phone}}."
@@ -1226,11 +1237,12 @@ const AdminDashboard: React.FC = () => {
                 />
               </div>
               <div className="dashboard-field">
-                <label>Patient-facing phone number</label>
+                <label>Patient-facing phone number *</label>
                 <input
                   type="text"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
+                  required
                   placeholder="e.g. 0115 123 4567"
                 />
                 <p className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>

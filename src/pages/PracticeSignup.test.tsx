@@ -35,6 +35,7 @@ describe('PracticeSignup', () => {
     await user.type(screen.getByPlaceholderText('e.g. C84001'), 'c84001');
     await user.type(screen.getByPlaceholderText('e.g. Dr Sarah Jones'), 'Dr Sarah Jones');
     await user.type(screen.getByPlaceholderText('e.g. sarah.jones@nhs.net'), 'Sarah.Jones@NHS.NET');
+    await user.type(screen.getByPlaceholderText('e.g. 0115 123 4567'), '0115 123 4567');
     await user.click(screen.getByRole('button', { name: 'Register Practice' }));
 
     await waitFor(() => {
@@ -44,6 +45,7 @@ describe('PracticeSignup', () => {
           odsCode: 'C84001',
           contactEmail: 'sarah.jones@nhs.net',
           contactName: 'Dr Sarah Jones',
+          contactPhone: '0115 123 4567',
         },
       });
     });
