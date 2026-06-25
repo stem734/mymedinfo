@@ -1,4 +1,4 @@
-import React, { useMemo, useReducer, useState, useEffect } from 'react';
+import React, { useCallback, useMemo, useReducer, useState, useEffect } from 'react';
 import { useTableSort } from '../hooks/useTableSort';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
