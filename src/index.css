@@ -6244,6 +6244,126 @@ p {
   border: 1px solid #bbf7d0;
 }
 
+.portal-auth-handoff {
+  min-height: 100vh;
+  width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 2rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(244, 248, 252, 0.98)),
+    linear-gradient(135deg, var(--pcn-blue-deep), var(--nhs-blue));
+  box-sizing: border-box;
+}
+
+.portal-auth-handoff__mark {
+  position: fixed;
+  top: 2rem;
+  left: 2rem;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--pcn-blue-deep);
+  letter-spacing: 0;
+}
+
+.portal-auth-handoff__mark span {
+  color: var(--pcn-green-mid);
+}
+
+.portal-auth-handoff__panel {
+  width: min(100%, 420px);
+  padding: 2rem;
+  border: 1px solid rgba(216, 221, 224, 0.9);
+  border-left: 4px solid var(--nhs-blue);
+  border-radius: 8px;
+  background: #ffffff;
+  box-shadow: var(--shadow-lg);
+}
+
+.portal-auth-handoff--admin .portal-auth-handoff__panel {
+  border-left-color: var(--pcn-blue-dark);
+}
+
+.portal-auth-handoff__eyebrow {
+  margin: 0 0 0.55rem;
+  color: var(--nhs-blue);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.portal-auth-handoff--admin .portal-auth-handoff__eyebrow {
+  color: var(--pcn-blue-dark);
+}
+
+.portal-auth-handoff h1 {
+  margin: 0 0 0.45rem;
+  color: #0f172a;
+  font-size: 1.55rem;
+  line-height: 1.2;
+}
+
+.portal-auth-handoff p {
+  margin: 0;
+  color: #64748b;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.portal-auth-handoff__bar {
+  display: block;
+  height: 4px;
+  margin-top: 1.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #e2e8f0;
+}
+
+.portal-auth-handoff__bar::before {
+  content: '';
+  display: block;
+  width: 42%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--nhs-blue), var(--pcn-green-mid));
+  animation: portal-auth-handoff-progress 1.1s ease-in-out infinite;
+}
+
+@keyframes portal-auth-handoff-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .portal-auth-handoff__bar::before {
+    animation: none;
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-auth-handoff {
+    align-content: center;
+    padding: 1.25rem;
+  }
+
+  .portal-auth-handoff__mark {
+    position: static;
+    justify-self: start;
+    align-self: end;
+    margin-bottom: 1rem;
+  }
+
+  .portal-auth-handoff__panel {
+    padding: 1.35rem;
+  }
+}
+
 /* ── Portal landing (home / portal selector) ── */
 
 .portal-landing {

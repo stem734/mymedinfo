@@ -94,8 +94,14 @@ const AdminLogin: React.FC = () => {
 
   if (checkingSession) {
     return (
-      <div className="loading-state">
-        <p>Opening the admin dashboard...</p>
+      <div className="portal-auth-handoff portal-auth-handoff--admin" role="status" aria-live="polite">
+        <div className="portal-auth-handoff__mark">MyMed<span>Info</span></div>
+        <div className="portal-auth-handoff__panel">
+          <p className="portal-auth-handoff__eyebrow">Admin Portal</p>
+          <h1>Opening the dashboard</h1>
+          <p>Checking your secure session and permissions.</p>
+          <span className="portal-auth-handoff__bar" aria-hidden="true" />
+        </div>
       </div>
     );
   }

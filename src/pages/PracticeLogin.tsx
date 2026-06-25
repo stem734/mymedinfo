@@ -116,8 +116,14 @@ const PracticeLogin: React.FC = () => {
 
   if (checkingSession) {
     return (
-      <div className="loading-state">
-        <p>Opening your practice workspace...</p>
+      <div className="portal-auth-handoff portal-auth-handoff--practice" role="status" aria-live="polite">
+        <div className="portal-auth-handoff__mark">MyMed<span>Info</span></div>
+        <div className="portal-auth-handoff__panel">
+          <p className="portal-auth-handoff__eyebrow">Practice Portal</p>
+          <h1>Opening your workspace</h1>
+          <p>Checking your secure session.</p>
+          <span className="portal-auth-handoff__bar" aria-hidden="true" />
+        </div>
       </div>
     );
   }
