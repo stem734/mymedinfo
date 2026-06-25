@@ -207,6 +207,9 @@ const PRACTICE_MEMBERSHIP_SELECT_WITH_FEATURES = `
 const domainFeatureEnabled = (practice: PracticeSummary, domain: ServiceDomain) =>
   domain === 'medication' ? practice.medication_enabled !== false : practice[DOMAIN_FEATURE_KEY[domain]] === true;
 
+const platformServiceEnabled = (platformConfig: PlatformConfig | null, domain: ServiceDomain) =>
+  platformConfig?.[PLATFORM_CONFIG_KEY[domain]] === true;
+
 const isMissingColumnError = (error: unknown) => {
   const row = (error && typeof error === 'object' ? error : {}) as QueryErrorLike;
   const message = typeof row.message === 'string' ? row.message.toLowerCase() : '';
@@ -364,8 +367,10 @@ const PracticeDashboard: React.FC = () => {
     navigate(resolvePath('/practice'));
   };
 
-  const requestServiceActivation = async (service: string, practiceName: string) => {
+  const requestServiceActivation = async (service: ServiceDomain, practiceName: string) => {
     if (!selectedPracticeId || pendingRequests.has(service)) return;
+    if (!platformServiceEnabled(platformConfig, service)) return;
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
@@ -727,7 +732,7 @@ const PracticeDashboard: React.FC = () => {
     if (!selectedPractice) return [];
 
     return DASHBOARD_DOMAINS.map((domain) => {
-      const isGloballyEnabled = !platformConfig || platformConfig[PLATFORM_CONFIG_KEY[domain.id]] !== false;
+      const isGloballyEnabled = platformServiceEnabled(platformConfig, domain.id);
       const isActive = isGloballyEnabled && domainFeatureEnabled(selectedPractice, domain.id);
       const practiceVersionCount = domain.id === 'medication'
         ? customCount
@@ -1524,7 +1529,7 @@ const PracticeDashboard: React.FC = () => {
                             <span className="admin-status-dot__circle" />
                           </span>
                           <span className="admin-table-muted">{service.isActive ? 'Active' : 'Not enabled'}</span>
-                          {!service.isActive && (
+                          {!service.isActive && service.isGloballyEnabled && (
                             <button
                               type="button"
                               className="admin-action-btn admin-action-btn--edit"
@@ -1534,6 +1539,9 @@ const PracticeDashboard: React.FC = () => {
                             >
                               {pendingRequests.has(service.id) ? 'Requested' : 'Request activation'}
                             </button>
+                          )}
+                          {!service.isActive && !service.isGloballyEnabled && (
+                            <span className="admin-table-muted">Unavailable</span>
                           )}
                         </div>
                       </td>

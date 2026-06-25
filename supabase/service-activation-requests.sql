@@ -21,13 +21,27 @@ CREATE INDEX idx_service_requests_status   ON service_activation_requests (statu
 
 ALTER TABLE service_activation_requests ENABLE ROW LEVEL SECURITY;
 
--- Practice members can insert requests and read their own practice's requests
+-- Practice members can insert requests only for globally available services,
+-- and read their own practice's requests.
+DROP POLICY IF EXISTS "practice_members_insert" ON service_activation_requests;
 CREATE POLICY "practice_members_insert" ON service_activation_requests
   FOR INSERT WITH CHECK (
     EXISTS (
       SELECT 1 FROM practice_memberships
       WHERE user_uid = auth.uid()
         AND practice_id = service_activation_requests.practice_id
+    )
+    AND EXISTS (
+      SELECT 1 FROM platform_config
+      WHERE id = 1
+        AND CASE service_activation_requests.service
+          WHEN 'medication' THEN service_medication_enabled
+          WHEN 'healthcheck' THEN service_healthcheck_enabled
+          WHEN 'screening' THEN service_screening_enabled
+          WHEN 'immunisation' THEN service_immunisation_enabled
+          WHEN 'ltc' THEN service_ltc_enabled
+          ELSE false
+        END
     )
   );
 
