@@ -426,6 +426,7 @@ type CardBuilderProps = {
 };
 
 const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSection, enabledServices, onBack }) => {
+  const [now] = useState(() => Date.now());
   const toast = useToast();
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
@@ -836,8 +837,43 @@ const createNewScreeningTemplate = () => {
     return 'Custom';
   };
 
-  const buildPatientUrl = (params: URLSearchParams) =>
-    `${window.location.origin}${resolvePath('/patient')}?${params.toString()}`;
+  const buildPatientUrl = useCallback((params: URLSearchParams) =>
+    `${window.location.origin}${resolvePath('/patient')}?${params.toString()}`, []);
+
+  const sortedMeds = useMemo(
+    () => medTable.sortRows(existingMeds as unknown as Record<string, unknown>[]) as unknown as MedicationRecord[],
+    [existingMeds, medTable],
+  );
+
+  const sortedScreeningRows = useMemo(
+    () =>
+      screeningTable.sortRows(
+        Object.values(screeningTemplates).map(
+          (t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>,
+        ),
+      ) as unknown as ScreeningTemplate[],
+    [screeningTemplates, screeningTable],
+  );
+
+  const sortedImmunisationRows = useMemo(
+    () =>
+      immunisationTable.sortRows(
+        Object.values(immunisationTemplates).map(
+          (t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>,
+        ),
+      ) as unknown as ImmunisationTemplate[],
+    [immunisationTemplates, immunisationTable],
+  );
+
+  const sortedLtcRows = useMemo(
+    () =>
+      ltcTable.sortRows(
+        Object.values(longTermConditionTemplates).map(
+          (t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>,
+        ),
+      ) as unknown as LongTermConditionTemplate[],
+    [longTermConditionTemplates, ltcTable],
+  );
 
   const medicationPreviewPayload = useMemo(() => {
     if (!previewDraft) return '';
@@ -881,7 +917,7 @@ const createNewScreeningTemplate = () => {
     });
 
     return buildPatientUrl(params);
-  }, [medicationPreviewReadyToken, medicationPreviewToken, previewDraft]);
+  }, [medicationPreviewReadyToken, medicationPreviewToken, previewDraft, buildPatientUrl]);
 
   const copyText = async (value: string) => {
     try {
@@ -913,7 +949,7 @@ const createNewScreeningTemplate = () => {
     window.open(target, '_blank', 'noopener,noreferrer');
   };
 
-  const buildHealthCheckFamilyPreviewUrl = (domainId: ClinicalDomainId) => {
+  const buildHealthCheckFamilyPreviewUrl = useCallback((domainId: ClinicalDomainId) => {
     const params = new URLSearchParams({ type: 'healthcheck', previewOnly: '1', previewDomain: domainId });
     const previewPayload = {
       variants: withHealthCheckDomainWhatFields(
@@ -930,7 +966,7 @@ const createNewScreeningTemplate = () => {
       // sessionStorage may be unavailable; fall back to saved templates only.
     }
     return buildPatientUrl(params);
-  };
+  }, [healthCheckBuilderConfigs, buildPatientUrl]);
 
   const buildScreeningPreviewUrl = (template: ScreeningTemplate) => {
     const params = new URLSearchParams({
@@ -1004,7 +1040,7 @@ const createNewScreeningTemplate = () => {
   const selectedImmunisationPreviewUrl = buildImmunisationPreviewUrl(selectedImmunisationTemplate);
   const selectedLongTermConditionPreviewUrl = buildLongTermConditionPreviewUrl(selectedLongTermConditionTemplate);
 
-  const healthCheckCatalogueRows = CLINICAL_DOMAIN_IDS.map((domainId) => {
+  const healthCheckCatalogueRows = useMemo(() => CLINICAL_DOMAIN_IDS.map((domainId) => {
     const metricByCode = PREVIEW_DOMAIN_CONFIGS[domainId].metricByCode;
     const resultCodes = Object.keys(metricByCode);
     const familyCode = (domainId === 'ldl' ? 'chol' : domainId).toUpperCase();
@@ -1018,7 +1054,7 @@ const createNewScreeningTemplate = () => {
       resultCodes,
       previewUrl: buildHealthCheckFamilyPreviewUrl(domainId),
     };
-  });
+  }), [buildHealthCheckFamilyPreviewUrl]);
 
   const selectedHealthCheckDomainConfig = PREVIEW_DOMAIN_CONFIGS[selectedHealthCheckDomain];
   const selectedHealthCheckDomainCodes = Object.keys(selectedHealthCheckDomainConfig.metricByCode);
@@ -2227,7 +2263,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {medTable.sortRows(existingMeds as unknown as Record<string, unknown>[]).map(med => (med as unknown as MedicationRecord)).map(med => (
+                {sortedMeds.map(med => (
                   <tr key={med.code}>
                     <td>
                       <span style={{ fontFamily: 'monospace', fontWeight: 700, fontSize: 13, color: '#005eb8' }}>{med.code}</span>
@@ -2252,8 +2288,8 @@ const createNewScreeningTemplate = () => {
                     <td>
                       <span className={`dashboard-badge ${
                         !med.contentReviewDate ? 'dashboard-badge--muted' :
-                        new Date(`${med.contentReviewDate}T00:00:00`).getTime() < Date.now() ? 'dashboard-badge--red' :
-                        new Date(`${med.contentReviewDate}T00:00:00`).getTime() < Date.now() + 30 * 24 * 60 * 60 * 1000 ? 'dashboard-badge--amber' :
+                        new Date(`${med.contentReviewDate}T00:00:00`).getTime() < now ? 'dashboard-badge--red' :
+                        new Date(`${med.contentReviewDate}T00:00:00`).getTime() < now + 30 * 24 * 60 * 60 * 1000 ? 'dashboard-badge--amber' :
                         'dashboard-badge--green'
                       }`}>
                         {med.contentReviewDate ? med.contentReviewDate : 'No review set'}
@@ -2661,10 +2697,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {screeningTable.sortRows(
-                  Object.values(screeningTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
-                ).map((row) => {
-                  const template = row as unknown as ScreeningTemplate;
+                {sortedScreeningRows.map((template) => {
                   const previewUrl = buildScreeningPreviewUrl(template);
                   return (
                     <tr key={template.id}>
@@ -2721,10 +2754,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {immunisationTable.sortRows(
-                  Object.values(immunisationTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
-                ).map((row) => {
-                  const template = row as unknown as ImmunisationTemplate;
+                {sortedImmunisationRows.map((template) => {
                   const previewUrl = buildImmunisationPreviewUrl(template);
                   return (
                     <tr key={template.id}>
@@ -2781,10 +2811,7 @@ const createNewScreeningTemplate = () => {
                 </tr>
               </thead>
               <tbody>
-                {ltcTable.sortRows(
-                  Object.values(longTermConditionTemplates).map((t) => ({ ...t, code: t.code || t.id }) as unknown as Record<string, unknown>)
-                ).map((row) => {
-                  const template = row as unknown as LongTermConditionTemplate;
+                {sortedLtcRows.map((template) => {
                   const previewUrl = buildPatientUrl(new URLSearchParams({ type: 'ltc', ltc: template.code || template.id }));
                   return (
                     <tr key={template.id}>
