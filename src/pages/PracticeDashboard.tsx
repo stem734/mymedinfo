@@ -884,7 +884,9 @@ const PracticeDashboard: React.FC = () => {
           ];
         }),
       );
-      const { id: _id, code: _code, templateId: _templateId, variants: _variants, ...rest } = submitted;
+      const rest = Object.fromEntries(
+        Object.entries(submitted).filter(([key]) => !['id', 'code', 'templateId', 'variants'].includes(key)),
+      );
 
       return {
         ...rest,
