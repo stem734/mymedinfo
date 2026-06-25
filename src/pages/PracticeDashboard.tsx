@@ -884,6 +884,7 @@ const PracticeDashboard: React.FC = () => {
           ];
         }),
       );
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { id: _id, code: _code, templateId: _templateId, variants: _variants, ...rest } = submitted;
 
       return {

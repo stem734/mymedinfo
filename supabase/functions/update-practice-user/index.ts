@@ -49,6 +49,8 @@ serve(async (req) => {
     const { error: authError } = await supabase.auth.admin.updateUserById(body.uid, {
       email,
       user_metadata: { name: displayName },
+      // 876600h is 100 years. Explicitly check for false/true to avoid unbanning during partial updates.
+      ban_duration: body.isActive === false ? '876600h' : body.isActive === true ? 'none' : undefined,
     });
 
     if (authError) {
