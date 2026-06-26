@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
 
-type RequestedGlobalRole = 'admin' | null;
+type RequestedGlobalRole = 'owner' | 'admin' | null;
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -20,8 +20,8 @@ serve(async (req) => {
       return errorResponse('User uid is required');
     }
 
-    if (body.globalRole !== 'admin' && body.globalRole !== null) {
-      return errorResponse('globalRole must be "admin" or null');
+    if (body.globalRole !== 'owner' && body.globalRole !== 'admin' && body.globalRole !== null) {
+      return errorResponse('globalRole must be "owner", "admin", or null');
     }
 
     if (body.uid === userId && body.globalRole === null) {
@@ -39,12 +39,31 @@ serve(async (req) => {
       return errorResponse('User account not found', 404);
     }
 
-    if (targetUser.global_role === 'owner') {
-      return errorResponse('The owner account cannot be demoted or changed by this action', 403);
+    if (body.globalRole === 'owner' && actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only an owner can promote another user to owner', 403);
     }
 
     if (body.globalRole === null && targetUser.global_role === 'admin' && actingAdmin.global_role !== 'owner') {
       return errorResponse('Only the owner can remove administrator access', 403);
+    }
+
+    if (targetUser.global_role === 'owner' && body.globalRole !== 'owner') {
+      if (actingAdmin.global_role !== 'owner') {
+        return errorResponse('Only an owner can change owner access', 403);
+      }
+
+      const { count: ownerCount, error: ownerCountError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('global_role', 'owner');
+
+      if (ownerCountError) {
+        return errorResponse(`Failed to inspect owner accounts: ${ownerCountError.message}`, 500);
+      }
+
+      if ((ownerCount ?? 0) <= 1) {
+        return errorResponse('At least one owner account must remain', 403);
+      }
     }
 
     const nextRole = body.globalRole;
@@ -57,7 +76,7 @@ serve(async (req) => {
       updated_at: new Date().toISOString(),
     };
 
-    if (nextRole === 'admin') {
+    if (nextRole === 'owner' || nextRole === 'admin') {
       updatePayload.is_active = true;
     }
 

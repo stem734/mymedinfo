@@ -217,6 +217,10 @@ export async function replacePracticeMemberships(
     throw new Error(`Failed to clear default membership: ${clearDefaultError.message}`);
   }
 
+  if (ids.length === 0) {
+    return;
+  }
+
   const payload = ids.map((practiceId) => ({
     practice_id: practiceId,
     user_uid: userUid,

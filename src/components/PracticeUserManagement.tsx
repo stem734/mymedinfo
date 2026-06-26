@@ -36,6 +36,9 @@ type PracticeUsersPayload = {
   users?: UserRow[];
 };
 
+type GlobalRole = 'owner' | 'admin';
+type RequestedGlobalRole = GlobalRole | null;
+
 type UserFormState = {
   uid?: string;
   name: string;
@@ -158,6 +161,10 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
   const activePractices = useMemo(
     () => [...practices].sort((left, right) => left.name.localeCompare(right.name)),
     [practices],
+  );
+  const ownerCount = useMemo(
+    () => users.filter((appUser) => appUser.global_role === 'owner').length,
+    [users],
   );
 
   const loadUsers = async () => {
@@ -396,22 +403,30 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
     });
   };
 
-  const updateAdminRole = (appUser: AppUserSummary, shouldBeAdmin: boolean) => {
-    const roleLabel = shouldBeAdmin ? 'Promote to Admin' : 'Demote Admin';
+  const updateAdminRole = (appUser: AppUserSummary, nextRole: RequestedGlobalRole) => {
+    const roleLabel =
+      nextRole === 'owner'
+        ? 'Promote to Owner'
+        : nextRole === 'admin'
+          ? 'Promote to Admin'
+          : 'Remove Admin Access';
     setConfirmDialog({
       title: roleLabel,
-      message: shouldBeAdmin
-        ? `Promote "${appUser.email}" to global administrator? They will be able to access the admin portal and manage platform content.`
-        : `Remove global administrator access for "${appUser.email}"? Their practice access, if any, will remain unchanged.`,
-      confirmLabel: shouldBeAdmin ? 'Promote' : 'Demote',
-      isDangerous: !shouldBeAdmin,
+      message:
+        nextRole === 'owner'
+          ? `Promote "${appUser.email}" to owner? They will be able to manage other global administrators and owners.`
+          : nextRole === 'admin'
+            ? `Promote "${appUser.email}" to global administrator? They will be able to access the admin portal and manage platform content.`
+            : `Remove global administrator access for "${appUser.email}"? Their practice access, if any, will remain unchanged.`,
+      confirmLabel: nextRole === null ? 'Remove Access' : 'Promote',
+      isDangerous: nextRole === null,
       onConfirm: () => {
         void (async () => {
           try {
             const { error: invokeError } = await supabase.functions.invoke('update-user-admin-role', {
               body: {
                 uid: appUser.uid,
-                globalRole: shouldBeAdmin ? 'admin' : null,
+                globalRole: nextRole,
               },
             });
 
@@ -420,9 +435,11 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
             }
 
             setActionMessage(
-              shouldBeAdmin
-                ? `${appUser.email} promoted to global administrator.`
-                : `${appUser.email} demoted from global administrator.`,
+              nextRole === 'owner'
+                ? `${appUser.email} promoted to owner.`
+                : nextRole === 'admin'
+                  ? `${appUser.email} promoted to global administrator.`
+                  : `${appUser.email} removed from global administrator access.`,
             );
             await loadUsers();
           } catch (err) {
@@ -708,6 +725,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
               <tbody>
                 {users.map((appUser) => {
                   const practiceRoles = Array.from(new Set(appUser.memberships.map((membership) => membership.role)));
+                  const isLastOwner = appUser.global_role === 'owner' && ownerCount <= 1;
 
                   return (
                     <tr key={appUser.uid}>
@@ -771,16 +789,26 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                             <KeyRound size={15} />
                           </button>
                           {appUser.global_role === 'admin' && (
-                            <button onClick={() => updateAdminRole(appUser, false)} className="admin-action-btn admin-action-btn--icon" title="Demote administrator">
+                            <button onClick={() => updateAdminRole(appUser, 'owner')} className="admin-action-btn admin-action-btn--activate" title="Promote to owner">
+                              <ShieldCheck size={15} /> Owner
+                            </button>
+                          )}
+                          {appUser.global_role === 'admin' && (
+                            <button onClick={() => updateAdminRole(appUser, null)} className="admin-action-btn admin-action-btn--icon" title="Remove administrator access">
                               <ShieldMinus size={15} />
                             </button>
                           )}
                           {!appUser.global_role && (
-                            <button onClick={() => updateAdminRole(appUser, true)} className="admin-action-btn admin-action-btn--activate" title="Promote to administrator">
+                            <button onClick={() => updateAdminRole(appUser, 'admin')} className="admin-action-btn admin-action-btn--activate" title="Promote to administrator">
                               <ShieldCheck size={15} /> Promote
                             </button>
                           )}
-                          <button onClick={() => deleteUser(appUser)} className="admin-action-btn admin-action-btn--icon" title={appUser.global_role ? 'Remove administrator' : 'Delete user'}>
+                          <button
+                            onClick={() => deleteUser(appUser)}
+                            className="admin-action-btn admin-action-btn--icon"
+                            title={isLastOwner ? 'At least one owner account must remain' : appUser.global_role ? 'Remove administrator' : 'Delete user'}
+                            disabled={isLastOwner}
+                          >
                             <Trash2 size={15} />
                           </button>
                         </div>

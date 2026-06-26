@@ -35,7 +35,7 @@ serve(async (req) => {
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
     const role = normalisePracticeRole(body.role);
-    const practiceIds = await assertPracticeIdsExist(supabase, Array.isArray(body.practiceIds) ? body.practiceIds : []);
+    const requestedPracticeIds = Array.isArray(body.practiceIds) ? body.practiceIds : [];
 
     const { data: targetPracticeUser, error: fetchError } = await supabase
       .from('users')
@@ -46,6 +46,14 @@ serve(async (req) => {
     if (fetchError || !targetPracticeUser) {
       return errorResponse('User account not found', 404);
     }
+
+    if (requestedPracticeIds.length === 0 && !targetPracticeUser.global_role) {
+      return errorResponse('At least one practice must be assigned');
+    }
+
+    const practiceIds = requestedPracticeIds.length > 0
+      ? await assertPracticeIdsExist(supabase, requestedPracticeIds)
+      : [];
 
     await assertNoOtherUserWithEmail(supabase, email, body.uid);
 
@@ -78,6 +86,6 @@ serve(async (req) => {
     return jsonResponse({ success: true });
   } catch (err) {
     console.error('Unexpected edge function error:', err);
-    return errorResponse('Internal error', 500);
+    return errorResponse(err instanceof Error ? err.message : 'Internal error', 500);
   }
 });

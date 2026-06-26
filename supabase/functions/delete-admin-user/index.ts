@@ -33,9 +33,24 @@ serve(async (req) => {
       return errorResponse('Administrator account not found', 404);
     }
 
-    // Permission check: only owner can delete
-    if (targetAdmin.global_role === 'owner' || actingAdmin.global_role !== 'owner') {
+    // Permission check: only owner can delete administrator accounts.
+    if (actingAdmin.global_role !== 'owner') {
       return errorResponse('Only the owner can delete administrator accounts', 403);
+    }
+
+    if (targetAdmin.global_role === 'owner') {
+      const { count: ownerCount, error: ownerCountError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true })
+        .eq('global_role', 'owner');
+
+      if (ownerCountError) {
+        return errorResponse(`Failed to inspect owner accounts: ${ownerCountError.message}`, 500);
+      }
+
+      if ((ownerCount ?? 0) <= 1) {
+        return errorResponse('At least one owner account must remain', 403);
+      }
     }
 
     const { count: membershipCount, error: membershipCountError } = await supabase
