@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { assertAdmin } from '../_shared/assert-admin.ts';
+import { assertAdminOrGpRatifier } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
 
 const BUILT_IN_MAX_FAMILY = 5;
@@ -29,7 +29,7 @@ serve(async (req) => {
   }
 
   try {
-    const { admin, userId } = await assertAdmin(req.headers.get('Authorization'));
+    const { admin, userId } = await assertAdminOrGpRatifier(req.headers.get('Authorization'));
 
     const data = await req.json() as {
       code?: string;

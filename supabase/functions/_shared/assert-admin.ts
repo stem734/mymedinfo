@@ -11,6 +11,10 @@ export type AdminRecord = {
   updated_at: string;
 };
 
+export type GlobalCardEditorRecord = Omit<AdminRecord, 'global_role'> & {
+  global_role: 'owner' | 'admin' | null;
+};
+
 /**
  * Verify the caller is an active admin.
  *
@@ -83,4 +87,29 @@ export async function assertAdmin(authHeader: string | null): Promise<{ admin: A
   if (error) throw new Error(`Failed to bootstrap admin: ${error.message}`);
 
   return { admin: bootstrapAdmin, userId: user.id };
+}
+
+export async function assertAdminOrGpRatifier(authHeader: string | null): Promise<{ admin: GlobalCardEditorRecord; userId: string }> {
+  const user = await getAuthUser(authHeader);
+  const supabase = createServiceClient();
+
+  const { data: admin } = await supabase
+    .from('users')
+    .select('*')
+    .eq('uid', user.id)
+    .single();
+
+  if (!admin) {
+    throw new Error('Administrator or GP ratifier access required');
+  }
+
+  if (!admin.is_active) {
+    throw new Error('Account is inactive');
+  }
+
+  if (admin.global_role !== 'owner' && admin.global_role !== 'admin' && admin.is_gp_ratifier !== true) {
+    throw new Error('Administrator or GP ratifier access required');
+  }
+
+  return { admin: admin as GlobalCardEditorRecord, userId: user.id };
 }

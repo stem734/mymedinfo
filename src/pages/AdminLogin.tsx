@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { supabase } from '../supabase';
 import { useNavigate } from 'react-router-dom';
 import { resolvePath } from '../subdomainUtils';
-import { getCurrentUserAdminRole } from '../adminAccess';
+import { getCurrentUserAdminProfile } from '../adminAccess';
 
 const normaliseAuthError = (error: unknown) => {
   const message = error instanceof Error ? error.message.toLowerCase() : '';
@@ -25,8 +25,8 @@ const AdminLogin: React.FC = () => {
     const hydrate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!cancelled && session?.user) {
-        const adminRole = await getCurrentUserAdminRole(session.user.id);
-        if (!cancelled && adminRole) {
+        const adminProfile = await getCurrentUserAdminProfile(session.user.id);
+        if (!cancelled && adminProfile) {
           navigate(resolvePath('/admin/dashboard'), { replace: true });
           return;
         }
@@ -41,8 +41,8 @@ const AdminLogin: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) return;
       void (async () => {
-        const adminRole = await getCurrentUserAdminRole(session.user.id);
-        if (adminRole) navigate(resolvePath('/admin/dashboard'), { replace: true });
+        const adminProfile = await getCurrentUserAdminProfile(session.user.id);
+        if (adminProfile) navigate(resolvePath('/admin/dashboard'), { replace: true });
       })();
     });
 
@@ -57,10 +57,10 @@ const AdminLogin: React.FC = () => {
       const { error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
       if (signInError) throw signInError;
       const { data: { session } } = await supabase.auth.getSession();
-      const adminRole = session?.user ? await getCurrentUserAdminRole(session.user.id) : null;
-      if (!adminRole) {
+      const adminProfile = session?.user ? await getCurrentUserAdminProfile(session.user.id) : null;
+      if (!adminProfile) {
         await supabase.auth.signOut();
-        setError('Administrator access required');
+        setError('Administrator or GP ratifier access required');
         setLoading(false);
         return;
       }

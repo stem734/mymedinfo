@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 export type GlobalAdminRole = 'owner' | 'admin';
 
 export type CurrentAdminProfile = {
-  globalRole: GlobalAdminRole;
+  globalRole: GlobalAdminRole | null;
   isGpRatifier: boolean;
 };
 
@@ -22,11 +22,14 @@ export const getCurrentUserAdminProfile = async (uid: string): Promise<CurrentAd
     return null;
   }
 
-  if (!isGlobalAdminRole(data?.global_role)) return null;
+  const globalRole = isGlobalAdminRole(data?.global_role) ? data.global_role : null;
+  const isGpRatifier = data?.is_gp_ratifier === true;
+
+  if (!globalRole && !isGpRatifier) return null;
 
   return {
-    globalRole: data.global_role,
-    isGpRatifier: data.is_gp_ratifier === true,
+    globalRole,
+    isGpRatifier,
   };
 };
 

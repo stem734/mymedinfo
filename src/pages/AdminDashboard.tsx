@@ -298,6 +298,7 @@ const AdminDashboard: React.FC = () => {
     onConfirm: () => void;
   } | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [currentAdminRole, setCurrentAdminRole] = useState<'owner' | 'admin' | null>(null);
   const [currentAdminIsGpRatifier, setCurrentAdminIsGpRatifier] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState('');
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
@@ -311,6 +312,7 @@ const AdminDashboard: React.FC = () => {
   const pendingRequestCount = serviceRequests.filter(r => r.status === 'pending').length;
   const serviceWorkCount = serviceWorkItems.filter((item) => item.status === 'overdue').length;
   const serviceDueSoonCount = serviceWorkItems.filter((item) => item.status === 'dueSoon').length;
+  const isGpRatifierOnly = currentAdminIsGpRatifier && !currentAdminRole;
 
   const adminTabs: AdminTabMeta[] = [
     { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" /> },
@@ -325,6 +327,11 @@ const AdminDashboard: React.FC = () => {
   ];
 
   const setAdminTab = (tab: AdminTab) => {
+    if (isGpRatifierOnly && tab !== 'services') {
+      setActiveTab('services');
+      setShowCardBuilder(true);
+      return;
+    }
     setActiveTab(tab);
     if (tab === 'services') {
       setShowCardBuilder(false);
@@ -400,6 +407,7 @@ const AdminDashboard: React.FC = () => {
       if (!adminProfile) {
         loadedAdminUserIdRef.current = null;
         setAuthenticated(false);
+        setCurrentAdminRole(null);
         setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
         return;
@@ -407,11 +415,21 @@ const AdminDashboard: React.FC = () => {
 
       loadedAdminUserIdRef.current = session.user.id;
       setAuthenticated(true);
+      setCurrentAdminRole(adminProfile.globalRole);
       setCurrentAdminIsGpRatifier(adminProfile.isGpRatifier);
       setCurrentUserEmail(session.user.email ?? '');
-      loadDashboardData();
+      if (!adminProfile.globalRole && adminProfile.isGpRatifier) {
+        setActiveTab('services');
+        setShowCardBuilder(true);
+        setLoading(false);
+        setLoadingLoginAudit(false);
+      } else {
+        loadDashboardData();
+      }
       void loadPlatformConfig();
-      void loadServiceRequests();
+      if (adminProfile.globalRole) {
+        void loadServiceRequests();
+      }
       void loadServiceWork();
     };
 
@@ -423,6 +441,7 @@ const AdminDashboard: React.FC = () => {
       }
 
       setAuthenticated(false);
+      setCurrentAdminRole(null);
       loadedAdminUserIdRef.current = null;
       navigate(resolvePath('/admin'));
     };
@@ -435,6 +454,7 @@ const AdminDashboard: React.FC = () => {
       } else {
         loadedAdminUserIdRef.current = null;
         setAuthenticated(false);
+        setCurrentAdminRole(null);
         setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
       }
@@ -1070,20 +1090,24 @@ const AdminDashboard: React.FC = () => {
 
         {/* Sectioned nav */}
         <nav className="admin-portal-nav" aria-label="Admin management areas">
-          <span className="admin-portal-nav__section-label">Management</span>
-          {(['overview', 'practices', 'practiceUsers'] as AdminTab[]).map((id) => {
-            const tab = adminTabs.find((t) => t.id === id)!;
-            return (
-              <button key={tab.id} type="button"
-                className={`admin-portal-nav__item${activeTab === tab.id ? ' admin-portal-nav__item--active' : ''}`}
-                onClick={() => setAdminTab(tab.id)}>
-                {tab.icon}<span>{tab.label}</span>
-              </button>
-            );
-          })}
+          {!isGpRatifierOnly && (
+            <>
+              <span className="admin-portal-nav__section-label">Management</span>
+              {(['overview', 'practices', 'practiceUsers'] as AdminTab[]).map((id) => {
+                const tab = adminTabs.find((t) => t.id === id)!;
+                return (
+                  <button key={tab.id} type="button"
+                    className={`admin-portal-nav__item${activeTab === tab.id ? ' admin-portal-nav__item--active' : ''}`}
+                    onClick={() => setAdminTab(tab.id)}>
+                    {tab.icon}<span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
 
           <span className="admin-portal-nav__section-label">Content</span>
-          {(['services', 'library'] as AdminTab[]).map((id) => {
+          {(isGpRatifierOnly ? ['services'] : ['services', 'library'] as AdminTab[]).map((id) => {
             const tab = adminTabs.find((t) => t.id === id)!;
             const badgeCount = id === 'services' ? serviceWorkCount : 0;
             return (
@@ -1104,27 +1128,31 @@ const AdminDashboard: React.FC = () => {
             );
           })}
 
-          <span className="admin-portal-nav__section-label">System</span>
-          {(['setup', 'activationRequests', 'audit', 'demo'] as AdminTab[]).map((id) => {
-            const tab = adminTabs.find((t) => t.id === id)!;
-            const badgeCount = id === 'activationRequests' ? pendingRequestCount : 0;
-            return (
-              <button key={tab.id} type="button"
-                className={[
-                  'admin-portal-nav__item',
-                  activeTab === tab.id ? 'admin-portal-nav__item--active' : '',
-                  badgeCount > 0 ? 'admin-portal-nav__item--attention' : '',
-                ].filter(Boolean).join(' ')}
-                onClick={() => setAdminTab(tab.id)}>
-                {tab.icon}<span>{tab.label}</span>
-                {badgeCount > 0 && (
-                  <span className="admin-portal-nav__alert-count" aria-label={`${badgeCount} pending activation ${badgeCount === 1 ? 'request' : 'requests'}`}>
-                    {badgeCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+          {!isGpRatifierOnly && (
+            <>
+              <span className="admin-portal-nav__section-label">System</span>
+              {(['setup', 'activationRequests', 'audit', 'demo'] as AdminTab[]).map((id) => {
+                const tab = adminTabs.find((t) => t.id === id)!;
+                const badgeCount = id === 'activationRequests' ? pendingRequestCount : 0;
+                return (
+                  <button key={tab.id} type="button"
+                    className={[
+                      'admin-portal-nav__item',
+                      activeTab === tab.id ? 'admin-portal-nav__item--active' : '',
+                      badgeCount > 0 ? 'admin-portal-nav__item--attention' : '',
+                    ].filter(Boolean).join(' ')}
+                    onClick={() => setAdminTab(tab.id)}>
+                    {tab.icon}<span>{tab.label}</span>
+                    {badgeCount > 0 && (
+                      <span className="admin-portal-nav__alert-count" aria-label={`${badgeCount} pending activation ${badgeCount === 1 ? 'request' : 'requests'}`}>
+                        {badgeCount}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </>
+          )}
         </nav>
 
         {/* Logout at bottom */}

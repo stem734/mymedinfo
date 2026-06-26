@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { assertAdmin } from '../_shared/assert-admin.ts';
+import { assertAdminOrGpRatifier } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
 
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc'] as const;
@@ -21,7 +21,7 @@ serve(async (req) => {
   }
 
   try {
-    const { admin, userId } = await assertAdmin(req.headers.get('Authorization'));
+    const { admin, userId } = await assertAdminOrGpRatifier(req.headers.get('Authorization'));
 
     const body = await req.json() as {
       builderType?: string;
