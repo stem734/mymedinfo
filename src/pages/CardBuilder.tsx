@@ -550,22 +550,28 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
   }, [currentAdminIsGpRatifierProp]);
 
   useEffect(() => {
+    // When embedded, the parent (AdminDashboard) has already verified the session and
+    // owns the isGpRatifier value — skip the async profile fetch to avoid a race where
+    // a stale async closure writes false back after the prop updates to true.
+    if (embedded) {
+      setAuthenticated(true);
+      setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
+        if (!session?.user) navigate(resolvePath('/admin'));
+      });
+      return () => subscription.unsubscribe();
+    }
+
     const loadAdminSession = async (session: Session) => {
       const profile = await getCurrentUserAdminProfile(session.user.id);
       if (!profile) {
-        if (embedded) {
-          setAuthenticated(true);
-          setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
-          return;
-        }
         setAuthenticated(false);
         setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
         return;
       }
-
       setAuthenticated(true);
-      setCurrentAdminIsGpRatifier(embedded ? currentAdminIsGpRatifierProp : profile.isGpRatifier);
+      setCurrentAdminIsGpRatifier(profile.isGpRatifier);
     };
 
     const hydrate = async () => {
@@ -574,13 +580,6 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
         await loadAdminSession(session);
         return;
       }
-
-      if (embedded) {
-        setAuthenticated(true);
-        setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
-        return;
-      }
-
       setCurrentAdminIsGpRatifier(false);
       navigate(resolvePath('/admin'));
     };
@@ -591,11 +590,6 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
       if (session?.user) {
         void loadAdminSession(session);
       } else {
-        if (embedded) {
-          setAuthenticated(true);
-          setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
-          return;
-        }
         setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
       }
