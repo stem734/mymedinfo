@@ -28,6 +28,7 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       size="sm"
       title={title}
       icon={<AlertCircle size={24} color={isDangerous ? 'var(--nhs-red)' : 'var(--nhs-blue)'} aria-hidden="true" />}
+      overlayClassName="ui-modal__overlay--dialog"
       bodyClassName="confirm-dialog__body"
       footer={(
         <>

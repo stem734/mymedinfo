@@ -496,6 +496,10 @@ main {
   padding: 1rem;
 }
 
+.ui-modal__overlay--dialog {
+  z-index: 1200;
+}
+
 .ui-modal__panel {
   background: var(--nhs-surface);
   border-radius: 16px;

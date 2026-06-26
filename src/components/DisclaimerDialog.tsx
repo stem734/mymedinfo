@@ -28,6 +28,7 @@ const DisclaimerDialog: React.FC<DisclaimerDialogProps> = ({
       size="md"
       title={title}
       icon={<AlertTriangle size={24} color="#d46b08" aria-hidden="true" />}
+      overlayClassName="ui-modal__overlay--dialog"
       bodyClassName="disclaimer-dialog__body"
       footer={(
         <>
