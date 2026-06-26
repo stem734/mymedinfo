@@ -5,6 +5,7 @@ import {
   assertNoOtherUserWithEmail,
   assertPracticeIdsExist,
   normaliseEmail,
+  normalisePracticeRole,
   replacePracticeMemberships,
 } from '../_shared/practice-user-management.ts';
 
@@ -21,6 +22,7 @@ serve(async (req) => {
       email?: string;
       name?: string;
       isActive?: boolean;
+      role?: string;
       practiceIds?: string[];
       defaultPracticeId?: string;
     };
@@ -32,6 +34,7 @@ serve(async (req) => {
     const supabase = createServiceClient();
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
+    const role = normalisePracticeRole(body.role);
     const practiceIds = await assertPracticeIdsExist(supabase, Array.isArray(body.practiceIds) ? body.practiceIds : []);
 
     const { data: targetPracticeUser, error: fetchError } = await supabase
@@ -70,7 +73,7 @@ serve(async (req) => {
       return errorResponse(`Failed to update user: ${updateError.message}`, 500);
     }
 
-    await replacePracticeMemberships(supabase, body.uid, practiceIds, body.defaultPracticeId);
+    await replacePracticeMemberships(supabase, body.uid, practiceIds, body.defaultPracticeId, role);
 
     return jsonResponse({ success: true });
   } catch (err) {

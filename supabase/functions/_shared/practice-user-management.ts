@@ -2,6 +2,12 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const normaliseEmail = (value: string) => value.trim().toLowerCase();
 
+export const PRACTICE_USER_ROLES = ['admin', 'gp', 'editor'] as const;
+export type PracticeUserRole = typeof PRACTICE_USER_ROLES[number];
+
+export const normalisePracticeRole = (value: unknown): PracticeUserRole =>
+  PRACTICE_USER_ROLES.includes(value as PracticeUserRole) ? value as PracticeUserRole : 'admin';
+
 export const uniquePracticeIds = (practiceIds: string[]) =>
   Array.from(new Set(practiceIds.map((practiceId) => practiceId.trim()).filter(Boolean)));
 
@@ -120,6 +126,7 @@ export async function addPracticeMemberships(
   userUid: string,
   practiceIds: string[],
   defaultPracticeId?: string,
+  role: PracticeUserRole = 'admin',
 ) {
   const ids = uniquePracticeIds(practiceIds);
   const now = new Date().toISOString();
@@ -151,7 +158,7 @@ export async function addPracticeMemberships(
   const payload = mergedIds.map((practiceId) => ({
     practice_id: practiceId,
     user_uid: userUid,
-    role: 'admin',
+    role,
     is_default: practiceId === resolvedDefaultPracticeId,
     updated_at: now,
   }));
@@ -170,6 +177,7 @@ export async function replacePracticeMemberships(
   userUid: string,
   practiceIds: string[],
   defaultPracticeId?: string,
+  role: PracticeUserRole = 'admin',
 ) {
   const ids = uniquePracticeIds(practiceIds);
   const now = new Date().toISOString();
@@ -212,7 +220,7 @@ export async function replacePracticeMemberships(
   const payload = ids.map((practiceId) => ({
     practice_id: practiceId,
     user_uid: userUid,
-    role: 'admin',
+    role,
     is_default: practiceId === resolvedDefaultPracticeId,
     updated_at: now,
   }));

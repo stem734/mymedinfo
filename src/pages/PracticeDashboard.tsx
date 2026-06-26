@@ -49,6 +49,7 @@ import {
 import {
   CUSTOM_CARD_DISCLAIMER_TEXT,
   GLOBAL_TEMPLATE_DISCLAIMER_TEXT,
+  PRACTICE_USER_ROLE_LABELS,
   PRACTICE_SELECTION_STORAGE_KEY,
   coercePracticeSummary,
   fetchPracticeAccessStats,
@@ -56,13 +57,14 @@ import {
   type PracticeMembership,
   type PracticeMedicationCardRow,
   type PracticeSummary,
+  type PracticeUserRole,
 } from '../practicePortal';
 
 type PracticeMembershipRow = {
   id: string;
   practice_id: string;
   user_uid: string;
-  role: 'admin' | 'editor';
+  role: PracticeUserRole;
   is_default: boolean;
   practice: PracticeSummary | PracticeSummary[] | null;
 };
@@ -662,6 +664,10 @@ const PracticeDashboard: React.FC = () => {
   );
 
   const selectedPractice = selectedMembership?.practice || null;
+  const canClinicallyRatify = selectedMembership?.role === 'gp';
+  const clinicalRatificationTitle = canClinicallyRatify
+    ? undefined
+    : 'A GP role is required to clinically ratify patient cards';
 
   const globalCount = useMemo(
     () => Object.values(practiceCards).filter((card) => card.source_type === 'global').length,
@@ -884,7 +890,11 @@ const PracticeDashboard: React.FC = () => {
           ];
         }),
       );
-      const { id: _id, code: _code, templateId: _templateId, variants: _variants, ...rest } = submitted;
+      const rest = { ...submitted };
+      delete rest.id;
+      delete rest.code;
+      delete rest.templateId;
+      delete rest.variants;
 
       return {
         ...rest,
@@ -976,6 +986,10 @@ const PracticeDashboard: React.FC = () => {
   };
 
   const applyGlobalTemplate = async (code: string) => {
+    if (!canClinicallyRatify) {
+      throw new Error('A GP role is required to clinically ratify patient cards');
+    }
+
     const { error: invokeError } = await supabase.functions.invoke('accept-global-medication-card', {
       body: {
         practiceId: selectedPracticeId,
@@ -991,6 +1005,10 @@ const PracticeDashboard: React.FC = () => {
 
   const acceptGlobalCard = (medication: MedicationRecord, confirmLabel = 'Accept Global Template') => {
     if (!selectedPracticeId) return;
+    if (!canClinicallyRatify) {
+      setError('A GP role is required to clinically ratify patient cards.');
+      return;
+    }
 
     if (medication.source === 'built-in') {
       setError(`Medication ${medication.code} is only available as a local fallback. Seed it into the Supabase medications table before accepting it as a global template.`);
@@ -1015,6 +1033,10 @@ const PracticeDashboard: React.FC = () => {
 
   const acceptAllGlobalCards = () => {
     if (!selectedPracticeId || allMedications.length === 0) return;
+    if (!canClinicallyRatify) {
+      setError('A GP role is required to clinically ratify patient cards.');
+      return;
+    }
 
     if (globalLibraryMedications.length === 0) {
       setError('No Supabase-backed global medication templates are available yet. Seed the medications table, then try again.');
@@ -1044,6 +1066,10 @@ const PracticeDashboard: React.FC = () => {
 
   const saveTemplateDraft = () => {
     if (!selectedPracticeId || !templateDraft) return;
+    if (!canClinicallyRatify) {
+      setError('A GP role is required to clinically ratify patient cards.');
+      return;
+    }
 
     const isPublishedGlobalTemplate = globalTemplateRows[templateDraft.builderType].some(
       (row) => row.template_id === templateDraft.templateId,
@@ -1117,6 +1143,10 @@ const PracticeDashboard: React.FC = () => {
 
   const saveCustomDraft = () => {
     if (!selectedPracticeId || !draft) return;
+    if (!canClinicallyRatify) {
+      setError('A GP role is required to clinically ratify patient cards.');
+      return;
+    }
 
     if (!draft.title.trim() || !draft.description.trim() || !draft.category.trim()) {
       setError('Title, description, and category are required for a practice version.');
@@ -1226,6 +1256,11 @@ const PracticeDashboard: React.FC = () => {
             <div className="practice-portal-sidebar__practice-box">
               <div className="practice-portal-sidebar__practice-label">Current Practice</div>
               <div className="practice-portal-sidebar__practice-name">{selectedPractice.name}</div>
+              {selectedMembership && (
+                <div className="admin-ods-badge" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>
+                  {PRACTICE_USER_ROLE_LABELS[selectedMembership.role]}
+                </div>
+              )}
               {memberships.length > 1 && (
                 <div className="practice-portal-sidebar__practice-switch">
                   <label className="practice-portal-sidebar__practice-switch-label" htmlFor="practice-switcher">
@@ -1371,6 +1406,12 @@ const PracticeDashboard: React.FC = () => {
             </div>
           )}
 
+      {!canClinicallyRatify && (
+        <div className="dashboard-banner dashboard-banner--info" style={{ marginBottom: '1rem' }}>
+          A GP role is required to clinically ratify patient cards. You can still review content and preview cards.
+        </div>
+      )}
+
       {activeServiceSummaries.length === 0 && (
         <div className="dashboard-banner dashboard-banner--info" style={{ marginBottom: '1rem' }}>
           No services are active for this practice yet. Ask a global administrator to activate the required services before accepting or personalising cards.
@@ -1437,6 +1478,8 @@ const PracticeDashboard: React.FC = () => {
                             <button
                               type="button"
                               className="admin-action-btn admin-action-btn--edit"
+                              disabled={!canClinicallyRatify}
+                              title={clinicalRatificationTitle}
                               onClick={() => openTemplateEditor(template.builderType, template.templateId, template.label, template.payload, template.isJsonMode)}
                             >
                               <Edit2 size={13} /> {state === 'custom' ? 'Edit version' : 'Create version'}
@@ -1475,7 +1518,13 @@ const PracticeDashboard: React.FC = () => {
               <button onClick={() => setTemplateDraft(null)} className="dashboard-pill-button dashboard-pill-button--muted">
                 Cancel
               </button>
-              <button onClick={saveTemplateDraft} disabled={saving} className="action-button" style={{ backgroundColor: '#007f3b', opacity: saving ? 0.7 : 1 }}>
+              <button
+                onClick={saveTemplateDraft}
+                disabled={saving || !canClinicallyRatify}
+                title={clinicalRatificationTitle}
+                className="action-button"
+                style={{ backgroundColor: '#007f3b', opacity: saving || !canClinicallyRatify ? 0.7 : 1 }}
+              >
                 <Save size={16} /> {saving ? 'Saving...' : 'Save Practice Template'}
               </button>
             </div>
@@ -1700,7 +1749,13 @@ const PracticeDashboard: React.FC = () => {
               >
                 <Eye size={16} /> Preview
               </button>
-              <button onClick={saveCustomDraft} disabled={saving} className="action-button" style={{ backgroundColor: '#007f3b', opacity: saving ? 0.7 : 1 }}>
+              <button
+                onClick={saveCustomDraft}
+                disabled={saving || !canClinicallyRatify}
+                title={clinicalRatificationTitle}
+                className="action-button"
+                style={{ backgroundColor: '#007f3b', opacity: saving || !canClinicallyRatify ? 0.7 : 1 }}
+              >
                 <Save size={16} /> {saving ? 'Saving...' : 'Save Practice Version'}
               </button>
             </div>
@@ -1851,7 +1906,8 @@ const PracticeDashboard: React.FC = () => {
               type="button"
               onClick={acceptAllGlobalCards}
               className="admin-action-btn admin-action-btn--edit"
-              disabled={globalLibraryMedications.length === 0}
+              disabled={globalLibraryMedications.length === 0 || !canClinicallyRatify}
+              title={clinicalRatificationTitle}
             >
               <CheckCircle size={13} /> Accept All Global
             </button>
@@ -1923,8 +1979,8 @@ const PracticeDashboard: React.FC = () => {
                             <button
                               type="button"
                               className="admin-action-btn admin-action-btn--edit"
-                              disabled={state === 'global' || !canAcceptGlobalTemplate}
-                              title={!canAcceptGlobalTemplate ? 'Seed this medication into Supabase first' : undefined}
+                              disabled={state === 'global' || !canAcceptGlobalTemplate || !canClinicallyRatify}
+                              title={!canAcceptGlobalTemplate ? 'Seed this medication into Supabase first' : clinicalRatificationTitle}
                               onClick={() => state !== 'global' && canAcceptGlobalTemplate && acceptGlobalCard(medication, 'Accept Global Template')}
                             >
                               <CheckCircle size={13} /> Accept global
@@ -1933,6 +1989,8 @@ const PracticeDashboard: React.FC = () => {
                           <button
                             type="button"
                             className="admin-action-btn admin-action-btn--edit"
+                            disabled={!canClinicallyRatify}
+                            title={clinicalRatificationTitle}
                             onClick={() => openCustomEditor(medication)}
                           >
                             <Edit2 size={13} /> {state === 'custom' ? 'Edit version' : 'Create version'}

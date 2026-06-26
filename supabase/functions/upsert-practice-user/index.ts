@@ -7,6 +7,7 @@ import {
   assertPracticeIdsExist,
   loadUserByEmail,
   normaliseEmail,
+  normalisePracticeRole,
 } from '../_shared/practice-user-management.ts';
 
 serve(async (req) => {
@@ -20,6 +21,7 @@ serve(async (req) => {
     const body = await req.json() as {
       email?: string;
       name?: string;
+      role?: string;
       practiceIds?: string[];
       defaultPracticeId?: string;
     };
@@ -31,6 +33,7 @@ serve(async (req) => {
     const supabase = createServiceClient();
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
+    const role = normalisePracticeRole(body.role);
     const practiceIds = await assertPracticeIdsExist(supabase, Array.isArray(body.practiceIds) ? body.practiceIds : []);
     const emailConfig = getEmailConfig();
 
@@ -62,7 +65,7 @@ serve(async (req) => {
         return errorResponse('Failed to update user', 500);
       }
 
-      await addPracticeMemberships(supabase, existingUser.uid, practiceIds, body.defaultPracticeId);
+      await addPracticeMemberships(supabase, existingUser.uid, practiceIds, body.defaultPracticeId, role);
 
       return jsonResponse({
         success: true,
@@ -104,7 +107,7 @@ serve(async (req) => {
       return errorResponse('Failed to create user record', 500);
     }
 
-    await addPracticeMemberships(supabase, userRecord.user.id, practiceIds, body.defaultPracticeId);
+    await addPracticeMemberships(supabase, userRecord.user.id, practiceIds, body.defaultPracticeId, role);
 
     const appBaseUrl = getAppBaseUrl();
     const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({

@@ -16,6 +16,15 @@ export const GLOBAL_TEMPLATE_DISCLAIMER_TEXT =
 export const CUSTOM_CARD_DISCLAIMER_TEXT =
   'I understand that I am creating or updating a practice-specific medication card and that my practice is responsible for reviewing, maintaining, and governing this custom content.';
 
+export const PRACTICE_USER_ROLES = ['admin', 'gp', 'editor'] as const;
+export type PracticeUserRole = typeof PRACTICE_USER_ROLES[number];
+
+export const PRACTICE_USER_ROLE_LABELS: Record<PracticeUserRole, string> = {
+  admin: 'Practice admin',
+  gp: 'GP',
+  editor: 'Editor',
+};
+
 export type PracticeSummary = Partial<PracticeFeatureSettings> & {
   id: string;
   name: string;
@@ -34,7 +43,7 @@ export type PracticeMembership = {
   id: string;
   practice_id: string;
   user_uid: string;
-  role: 'admin' | 'editor';
+  role: PracticeUserRole;
   is_default: boolean;
   practice: PracticeSummary;
 };

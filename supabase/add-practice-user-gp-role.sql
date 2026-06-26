@@ -1,32 +1,14 @@
--- Practice-specific customisations for non-medication patient card templates.
--- Medication cards keep using practice_medication_cards because they have a
--- richer schema and backwards-compatible patient resolver.
+-- Adds a GP practice-membership role for clinical card ratification.
+-- Run this on existing Supabase projects before deploying the updated app.
 
-CREATE INDEX IF NOT EXISTS idx_practices_ods_code_upper
-  ON public.practices (upper(btrim(ods_code)))
-  WHERE ods_code IS NOT NULL AND btrim(ods_code) <> '';
+BEGIN;
 
-CREATE TABLE IF NOT EXISTS practice_card_templates (
-  practice_id         uuid NOT NULL REFERENCES practices(id) ON DELETE CASCADE,
-  builder_type        text NOT NULL CHECK (builder_type IN ('healthcheck', 'screening', 'immunisation', 'ltc')),
-  template_id         text NOT NULL,
-  source_type         text NOT NULL DEFAULT 'custom' CHECK (source_type = 'custom'),
-  label               text NOT NULL,
-  payload             jsonb NOT NULL,
-  disclaimer_version  text NOT NULL CHECK (length(trim(disclaimer_version)) > 0),
-  accepted_at         timestamptz,
-  accepted_by         uuid,
-  updated_at          timestamptz DEFAULT now(),
-  updated_by          uuid,
-  PRIMARY KEY (practice_id, builder_type, template_id)
-);
+ALTER TABLE practice_memberships
+  DROP CONSTRAINT IF EXISTS practice_memberships_role_check;
 
-CREATE INDEX IF NOT EXISTS idx_practice_card_templates_practice_id
-  ON practice_card_templates (practice_id);
-CREATE INDEX IF NOT EXISTS idx_practice_card_templates_builder_type
-  ON practice_card_templates (builder_type);
-
-ALTER TABLE practice_card_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE practice_memberships
+  ADD CONSTRAINT practice_memberships_role_check
+  CHECK (role IN ('admin', 'gp', 'editor'));
 
 CREATE OR REPLACE FUNCTION is_practice_clinical_ratifier(target_practice uuid)
 RETURNS boolean
@@ -47,15 +29,22 @@ AS $$
   );
 $$;
 
-DROP POLICY IF EXISTS "practice_card_templates_select_member" ON practice_card_templates;
+DROP POLICY IF EXISTS "practice_medication_cards_insert_member" ON practice_medication_cards;
+DROP POLICY IF EXISTS "practice_medication_cards_update_member" ON practice_medication_cards;
+
+CREATE POLICY "practice_medication_cards_insert_member"
+  ON practice_medication_cards FOR INSERT
+  TO authenticated
+  WITH CHECK (is_practice_clinical_ratifier(practice_id));
+
+CREATE POLICY "practice_medication_cards_update_member"
+  ON practice_medication_cards FOR UPDATE
+  TO authenticated
+  USING (is_practice_clinical_ratifier(practice_id))
+  WITH CHECK (is_practice_clinical_ratifier(practice_id));
+
 DROP POLICY IF EXISTS "practice_card_templates_write_member" ON practice_card_templates;
 DROP POLICY IF EXISTS "practice_card_templates_update_member" ON practice_card_templates;
-DROP POLICY IF EXISTS "practice_card_templates_delete_member" ON practice_card_templates;
-
-CREATE POLICY "practice_card_templates_select_member"
-  ON practice_card_templates FOR SELECT
-  TO authenticated
-  USING (is_admin() OR is_practice_member(practice_id));
 
 CREATE POLICY "practice_card_templates_write_member"
   ON practice_card_templates FOR INSERT
@@ -130,72 +119,4 @@ CREATE POLICY "practice_card_templates_update_member"
     )
   );
 
-CREATE POLICY "practice_card_templates_delete_member"
-  ON practice_card_templates FOR DELETE
-  TO authenticated
-  USING (is_admin() OR is_practice_member(practice_id));
-
-CREATE OR REPLACE FUNCTION resolve_practice_card_templates(
-  org_name text,
-  requested_builder_type text,
-  requested_template_ids text[]
-)
-RETURNS jsonb
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = ''
-AS $$
-DECLARE
-  practice_record public.practices%ROWTYPE;
-BEGIN
-  IF org_name IS NULL OR trim(org_name) = '' THEN
-    RETURN '[]'::jsonb;
-  END IF;
-
-  IF requested_builder_type NOT IN ('healthcheck', 'screening', 'immunisation', 'ltc') THEN
-    RETURN '[]'::jsonb;
-  END IF;
-
-  SELECT *
-  INTO practice_record
-  FROM public.practices
-  WHERE (
-      name_lowercase = lower(trim(org_name))
-      OR upper(btrim(COALESCE(ods_code, ''))) = upper(btrim(org_name))
-    )
-    AND is_active = true
-  ORDER BY
-    CASE WHEN name_lowercase = lower(trim(org_name)) THEN 0 ELSE 1 END
-  LIMIT 1;
-
-  IF NOT FOUND THEN
-    RETURN '[]'::jsonb;
-  END IF;
-
-  RETURN COALESCE((
-    SELECT jsonb_agg(to_jsonb(rows.*))
-    FROM (
-      SELECT
-        practice_id,
-        builder_type,
-        template_id,
-        source_type,
-        label,
-        payload,
-        disclaimer_version,
-        accepted_at,
-        accepted_by,
-        updated_at,
-        updated_by
-      FROM public.practice_card_templates
-      WHERE practice_id = practice_record.id
-        AND builder_type = requested_builder_type
-        AND template_id = ANY(requested_template_ids)
-      ORDER BY template_id
-    ) rows
-  ), '[]'::jsonb);
-END;
-$$;
-
-GRANT EXECUTE ON FUNCTION resolve_practice_card_templates TO anon;
-GRANT EXECUTE ON FUNCTION resolve_practice_card_templates TO authenticated;
+COMMIT;

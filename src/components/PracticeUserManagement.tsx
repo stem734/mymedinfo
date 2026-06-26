@@ -3,7 +3,13 @@ import { Edit2, Plus, RefreshCw, ShieldCheck, ShieldMinus, Trash2, KeyRound } fr
 import { supabase } from '../supabase';
 import ConfirmDialog from './ConfirmDialog';
 import Modal from './Modal';
-import type { AppUserSummary, PracticeSummary } from '../practicePortal';
+import {
+  PRACTICE_USER_ROLE_LABELS,
+  PRACTICE_USER_ROLES,
+  type AppUserSummary,
+  type PracticeSummary,
+  type PracticeUserRole,
+} from '../practicePortal';
 import { getFunctionErrorMessage } from '../supabaseFunctionError';
 
 type PracticeUserManagementProps = {
@@ -20,7 +26,7 @@ type UserRow = {
     id: string;
     practice_id: string;
     user_uid: string;
-    role: 'admin' | 'editor';
+    role: PracticeUserRole;
     is_default: boolean;
     practice: Pick<PracticeSummary, 'id' | 'name' | 'is_active'> | Array<Pick<PracticeSummary, 'id' | 'name' | 'is_active'>> | null;
   }>;
@@ -35,6 +41,7 @@ type UserFormState = {
   name: string;
   email: string;
   isActive: boolean;
+  role: PracticeUserRole;
   practiceIds: string[];
   defaultPracticeId: string;
 };
@@ -43,6 +50,7 @@ const emptyForm = (): UserFormState => ({
   name: '',
   email: '',
   isActive: true,
+  role: 'admin',
   practiceIds: [],
   defaultPracticeId: '',
 });
@@ -221,6 +229,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       name: appUser.name,
       email: appUser.email,
       isActive: appUser.is_active,
+      role: appUser.memberships.find((membership) => membership.is_default)?.role || appUser.memberships[0]?.role || 'admin',
       practiceIds: appUser.memberships.map((membership) => membership.practice_id),
       defaultPracticeId:
         appUser.memberships.find((membership) => membership.is_default)?.practice_id ||
@@ -267,6 +276,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         body: {
           email: form.email.trim(),
           name: form.name.trim(),
+          role: form.role,
           practiceIds: form.practiceIds,
           defaultPracticeId: form.defaultPracticeId,
         },
@@ -312,6 +322,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           email: form.email.trim(),
           name: form.name.trim(),
           isActive: form.isActive,
+          role: form.role,
           practiceIds: form.practiceIds,
           defaultPracticeId: form.defaultPracticeId,
         },
@@ -496,6 +507,21 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           This user also has global administrator access as <strong>{editingUser.global_role}</strong>. Any practice changes here will keep that global role in place.
         </div>
       )}
+
+      <div className="dashboard-field" style={{ maxWidth: '420px' }}>
+        <label htmlFor="user-practice-role">Practice Role</label>
+        <select
+          id="user-practice-role"
+          value={form.role}
+          onChange={(event) => setForm((current) => ({ ...current, role: event.target.value as PracticeUserRole }))}
+        >
+          {PRACTICE_USER_ROLES.map((role) => (
+            <option key={role} value={role}>
+              {PRACTICE_USER_ROLE_LABELS[role]}
+            </option>
+          ))}
+        </select>
+      </div>
 
       <div className="dashboard-panel" style={{ background: '#f8fafb' }}>
         <h3 className="dashboard-panel-title" style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Assigned Practices</h3>
@@ -712,6 +738,8 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                               title={membership.is_default ? 'Default practice' : undefined}
                             >
                               {membership.practice.name}{membership.is_default ? ' ★' : ''}
+                              {' · '}
+                              {PRACTICE_USER_ROLE_LABELS[membership.role]}
                             </span>
                           ))}
                         </div>
