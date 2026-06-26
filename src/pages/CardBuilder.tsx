@@ -431,13 +431,20 @@ type CardBuilderProps = {
   embedded?: boolean;
   initialSection?: OutputBuilderType;
   enabledServices?: Partial<Record<OutputBuilderType, boolean>>;
+  currentAdminIsGpRatifier?: boolean;
   onBack?: () => void;
 };
 
-const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSection, enabledServices, onBack }) => {
+const CardBuilder: React.FC<CardBuilderProps> = ({
+  embedded = false,
+  initialSection,
+  enabledServices,
+  currentAdminIsGpRatifier: currentAdminIsGpRatifierProp = false,
+  onBack,
+}) => {
   const toast = useToast();
   const [authenticated, setAuthenticated] = useState(false);
-  const [currentAdminIsGpRatifier, setCurrentAdminIsGpRatifier] = useState(false);
+  const [currentAdminIsGpRatifier, setCurrentAdminIsGpRatifier] = useState(currentAdminIsGpRatifierProp);
   const [referenceTimeMs] = useState(() => Date.now());
   const navigate = useNavigate();
   const location = useLocation();
@@ -537,9 +544,18 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   const [selectedLocalResourceIds, setSelectedLocalResourceIds] = useState<string[]>([]);
 
   useEffect(() => {
+    setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
+  }, [currentAdminIsGpRatifierProp]);
+
+  useEffect(() => {
     const loadAdminSession = async (session: Session) => {
       const profile = await getCurrentUserAdminProfile(session.user.id);
       if (!profile) {
+        if (embedded) {
+          setAuthenticated(true);
+          setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
+          return;
+        }
         setAuthenticated(false);
         setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
@@ -547,13 +563,19 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
       }
 
       setAuthenticated(true);
-      setCurrentAdminIsGpRatifier(profile.isGpRatifier);
+      setCurrentAdminIsGpRatifier(embedded ? currentAdminIsGpRatifierProp : profile.isGpRatifier);
     };
 
     const hydrate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         await loadAdminSession(session);
+        return;
+      }
+
+      if (embedded) {
+        setAuthenticated(true);
+        setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
         return;
       }
 
@@ -567,12 +589,17 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
       if (session?.user) {
         void loadAdminSession(session);
       } else {
+        if (embedded) {
+          setAuthenticated(true);
+          setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
+          return;
+        }
         setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
       }
     });
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [currentAdminIsGpRatifierProp, embedded, navigate]);
 
   useEffect(() => {
     const domainCodes = Object.keys(PREVIEW_DOMAIN_CONFIGS[selectedHealthCheckDomain].metricByCode);

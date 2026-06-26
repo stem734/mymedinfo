@@ -45,7 +45,7 @@ import {
 } from '../localResourceLibrary';
 import { buildDemoPatientUrlForType } from '../demoHelpers';
 import { fetchCardTemplates } from '../cardTemplateStore';
-import { getCurrentUserAdminRole } from '../adminAccess';
+import { getCurrentUserAdminProfile } from '../adminAccess';
 import type { CardTemplateBuilderType, HealthCheckTemplatePayload } from '../cardTemplateTypes';
 import { loadMedicationCatalog } from '../medicationCatalog';
 import type { MedicationRecord } from '../medicationCatalog';
@@ -298,6 +298,7 @@ const AdminDashboard: React.FC = () => {
     onConfirm: () => void;
   } | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState('');
+  const [currentAdminIsGpRatifier, setCurrentAdminIsGpRatifier] = useState(false);
   const [testEmailTo, setTestEmailTo] = useState('');
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [serviceRequests, setServiceRequests] = useState<ServiceActivationRequest[]>([]);
@@ -395,16 +396,18 @@ const AdminDashboard: React.FC = () => {
         return;
       }
 
-      const adminRole = await getCurrentUserAdminRole(session.user.id);
-      if (!adminRole) {
+      const adminProfile = await getCurrentUserAdminProfile(session.user.id);
+      if (!adminProfile) {
         loadedAdminUserIdRef.current = null;
         setAuthenticated(false);
+        setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
         return;
       }
 
       loadedAdminUserIdRef.current = session.user.id;
       setAuthenticated(true);
+      setCurrentAdminIsGpRatifier(adminProfile.isGpRatifier);
       setCurrentUserEmail(session.user.email ?? '');
       loadDashboardData();
       void loadPlatformConfig();
@@ -432,6 +435,7 @@ const AdminDashboard: React.FC = () => {
       } else {
         loadedAdminUserIdRef.current = null;
         setAuthenticated(false);
+        setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
       }
     });
@@ -2008,6 +2012,7 @@ const AdminDashboard: React.FC = () => {
             immunisation: platformConfig.service_immunisation_enabled,
             ltc: platformConfig.service_ltc_enabled,
           }}
+          currentAdminIsGpRatifier={currentAdminIsGpRatifier}
           onBack={() => setShowCardBuilder(false)}
         />
       )}
