@@ -26,7 +26,8 @@ type UserRow = {
     id: string;
     practice_id: string;
     user_uid: string;
-    role: PracticeUserRole;
+    role: PracticeUserRole | 'gp';
+    is_gp?: boolean | null;
     is_default: boolean;
     practice: Pick<PracticeSummary, 'id' | 'name' | 'is_active'> | Array<Pick<PracticeSummary, 'id' | 'name' | 'is_active'>> | null;
   }>;
@@ -38,6 +39,9 @@ type PracticeUsersPayload = {
 
 type GlobalRole = 'owner' | 'admin';
 type RequestedGlobalRole = GlobalRole | null;
+type AdminRoleUpdatePayload = {
+  globalRole?: RequestedGlobalRole;
+};
 
 type UserFormState = {
   uid?: string;
@@ -45,6 +49,7 @@ type UserFormState = {
   email: string;
   isActive: boolean;
   role: PracticeUserRole;
+  isGp: boolean;
   practiceIds: string[];
   defaultPracticeId: string;
 };
@@ -54,6 +59,7 @@ const emptyForm = (): UserFormState => ({
   email: '',
   isActive: true,
   role: 'admin',
+  isGp: false,
   practiceIds: [],
   defaultPracticeId: '',
 });
@@ -65,9 +71,13 @@ const normalisePractice = (
   return practice ?? null;
 };
 
+const normalisePracticeRole = (role: PracticeUserRole | 'gp' | null | undefined): PracticeUserRole =>
+  role === 'editor' ? 'editor' : 'admin';
+
 
 const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practices }) => {
   const [users, setUsers] = useState<AppUserSummary[]>([]);
+  const [currentUserUid, setCurrentUserUid] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [showAddAdminForm, setShowAddAdminForm] = useState(false);
@@ -89,6 +99,12 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
 
   useEffect(() => {
     void loadUsers();
+  }, []);
+
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => {
+      setCurrentUserUid(data.user?.id || '');
+    });
   }, []);
 
   useEffect(() => {
@@ -166,6 +182,11 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
     () => users.filter((appUser) => appUser.global_role === 'owner').length,
     [users],
   );
+  const currentUser = useMemo(
+    () => users.find((appUser) => appUser.uid === currentUserUid) || null,
+    [currentUserUid, users],
+  );
+  const canManageOwners = currentUser?.global_role === 'owner';
 
   const loadUsers = async () => {
     setLoading(true);
@@ -194,6 +215,8 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
 
             return [{
               ...membership,
+              role: normalisePracticeRole(membership.role),
+              is_gp: membership.is_gp === true || membership.role === 'gp',
               practice,
             }];
           })
@@ -237,6 +260,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       email: appUser.email,
       isActive: appUser.is_active,
       role: appUser.memberships.find((membership) => membership.is_default)?.role || appUser.memberships[0]?.role || 'admin',
+      isGp: appUser.memberships.some((membership) => membership.is_gp),
       practiceIds: appUser.memberships.map((membership) => membership.practice_id),
       defaultPracticeId:
         appUser.memberships.find((membership) => membership.is_default)?.practice_id ||
@@ -284,6 +308,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           email: form.email.trim(),
           name: form.name.trim(),
           role: form.role,
+          isGp: form.isGp,
           practiceIds: form.practiceIds,
           defaultPracticeId: form.defaultPracticeId,
         },
@@ -330,6 +355,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           name: form.name.trim(),
           isActive: form.isActive,
           role: form.role,
+          isGp: form.isGp,
           practiceIds: form.practiceIds,
           defaultPracticeId: form.defaultPracticeId,
         },
@@ -423,7 +449,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       onConfirm: () => {
         void (async () => {
           try {
-            const { error: invokeError } = await supabase.functions.invoke('update-user-admin-role', {
+            const { data, error: invokeError } = await supabase.functions.invoke('update-user-admin-role', {
               body: {
                 uid: appUser.uid,
                 globalRole: nextRole,
@@ -434,6 +460,11 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
               throw invokeError;
             }
 
+            const payload = (data || {}) as AdminRoleUpdatePayload;
+            if (payload.globalRole !== nextRole) {
+              throw new Error('Administrator role update did not return the expected role.');
+            }
+
             setActionMessage(
               nextRole === 'owner'
                 ? `${appUser.email} promoted to owner.`
@@ -442,6 +473,11 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                   : `${appUser.email} removed from global administrator access.`,
             );
             await loadUsers();
+            setUsers((current) => current.map((user) => (
+              user.uid === appUser.uid
+                ? { ...user, global_role: payload.globalRole ?? null }
+                : user
+            )));
           } catch (err) {
             console.error('Error updating administrator access:', err);
             setError(await getFunctionErrorMessage(err, 'Unable to update administrator access.'));
@@ -526,7 +562,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       )}
 
       <div className="dashboard-field" style={{ maxWidth: '420px' }}>
-        <label htmlFor="user-practice-role">Practice Role</label>
+        <label htmlFor="user-practice-role">Practice access role</label>
         <select
           id="user-practice-role"
           value={form.role}
@@ -539,6 +575,16 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           ))}
         </select>
       </div>
+
+      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
+        <input
+          type="checkbox"
+          checked={form.isGp}
+          onChange={(event) => setForm((current) => ({ ...current, isGp: event.target.checked }))}
+          style={{ width: '18px', height: '18px' }}
+        />
+        GP / clinical ratifier
+      </label>
 
       <div className="dashboard-panel" style={{ background: '#f8fafb' }}>
         <h3 className="dashboard-panel-title" style={{ fontSize: '1rem', marginBottom: '0.75rem' }}>Assigned Practices</h3>
@@ -725,6 +771,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
               <tbody>
                 {users.map((appUser) => {
                   const practiceRoles = Array.from(new Set(appUser.memberships.map((membership) => membership.role)));
+                  const isGp = appUser.memberships.some((membership) => membership.is_gp);
                   const isLastOwner = appUser.global_role === 'owner' && ownerCount <= 1;
 
                   return (
@@ -758,6 +805,11 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                                 {PRACTICE_USER_ROLE_LABELS[role]}
                               </span>
                             ))}
+                            {isGp && (
+                              <span className="admin-ods-badge" style={{ background: '#e6f4ea', color: '#007f3b' }}>
+                                GP
+                              </span>
+                            )}
                           </div>
                         ) : (
                           <span className="admin-table-muted">—</span>
@@ -788,7 +840,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                           <button onClick={() => void sendPasswordReset(appUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
                             <KeyRound size={15} />
                           </button>
-                          {appUser.global_role === 'admin' && (
+                          {appUser.global_role === 'admin' && canManageOwners && (
                             <button onClick={() => updateAdminRole(appUser, 'owner')} className="admin-action-btn admin-action-btn--activate" title="Promote to owner">
                               <ShieldCheck size={15} /> Owner
                             </button>

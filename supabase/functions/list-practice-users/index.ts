@@ -24,6 +24,7 @@ serve(async (req) => {
           practice_id,
           user_uid,
           role,
+          is_gp,
           is_default,
           practice:practices(
             id,

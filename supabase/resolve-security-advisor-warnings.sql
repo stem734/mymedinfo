@@ -16,6 +16,9 @@ ALTER TABLE public.practice_medication_cards
   ADD COLUMN IF NOT EXISTS dont_key_info text[] DEFAULT '{}',
   ADD COLUMN IF NOT EXISTS general_key_info text[] DEFAULT '{}';
 
+ALTER TABLE public.practice_memberships
+  ADD COLUMN IF NOT EXISTS is_gp boolean NOT NULL DEFAULT false;
+
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
 LANGUAGE sql
@@ -79,7 +82,7 @@ AS $$
       ON users.uid = memberships.user_uid
     WHERE memberships.practice_id = target_practice
       AND memberships.user_uid = auth.uid()
-      AND memberships.role = 'gp'
+      AND (memberships.is_gp = true OR memberships.role = 'gp')
       AND users.is_active = true
   );
 $$;

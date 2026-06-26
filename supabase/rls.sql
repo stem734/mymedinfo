@@ -91,7 +91,7 @@ AS $$
       ON users.uid = memberships.user_uid
     WHERE memberships.practice_id = target_practice
       AND memberships.user_uid = auth.uid()
-      AND memberships.role = 'gp'
+      AND (memberships.is_gp = true OR memberships.role = 'gp')
       AND users.is_active = true
   );
 $$;

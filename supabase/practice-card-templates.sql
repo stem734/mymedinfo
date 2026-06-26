@@ -6,6 +6,9 @@ CREATE INDEX IF NOT EXISTS idx_practices_ods_code_upper
   ON public.practices (upper(btrim(ods_code)))
   WHERE ods_code IS NOT NULL AND btrim(ods_code) <> '';
 
+ALTER TABLE public.practice_memberships
+  ADD COLUMN IF NOT EXISTS is_gp boolean NOT NULL DEFAULT false;
+
 CREATE TABLE IF NOT EXISTS practice_card_templates (
   practice_id         uuid NOT NULL REFERENCES practices(id) ON DELETE CASCADE,
   builder_type        text NOT NULL CHECK (builder_type IN ('healthcheck', 'screening', 'immunisation', 'ltc')),
@@ -42,7 +45,7 @@ AS $$
       ON users.uid = memberships.user_uid
     WHERE memberships.practice_id = target_practice
       AND memberships.user_uid = auth.uid()
-      AND memberships.role = 'gp'
+      AND (memberships.is_gp = true OR memberships.role = 'gp')
       AND users.is_active = true
   );
 $$;

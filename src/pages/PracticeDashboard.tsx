@@ -64,10 +64,14 @@ type PracticeMembershipRow = {
   id: string;
   practice_id: string;
   user_uid: string;
-  role: PracticeUserRole;
+  role: PracticeUserRole | 'gp';
+  is_gp?: boolean | null;
   is_default: boolean;
   practice: PracticeSummary | PracticeSummary[] | null;
 };
+
+const normalisePracticeRole = (role: PracticeMembershipRow['role']): PracticeUserRole =>
+  role === 'editor' ? 'editor' : 'admin';
 
 type QueryErrorLike = {
   code?: string;
@@ -167,6 +171,7 @@ const PRACTICE_MEMBERSHIP_SELECT_BASE = `
   practice_id,
   user_uid,
   role,
+  is_gp,
   is_default,
   practice:practices(
     id,
@@ -187,6 +192,7 @@ const PRACTICE_MEMBERSHIP_SELECT_WITH_FEATURES = `
   practice_id,
   user_uid,
   role,
+  is_gp,
   is_default,
   practice:practices(
     id,
@@ -452,7 +458,8 @@ const PracticeDashboard: React.FC = () => {
             id: row.id,
             practice_id: row.practice_id,
             user_uid: row.user_uid,
-            role: row.role,
+            role: normalisePracticeRole(row.role),
+            is_gp: row.is_gp === true || row.role === 'gp',
             is_default: row.is_default,
             practice,
           }];
@@ -664,7 +671,7 @@ const PracticeDashboard: React.FC = () => {
   );
 
   const selectedPractice = selectedMembership?.practice || null;
-  const canClinicallyRatify = selectedMembership?.role === 'gp';
+  const canClinicallyRatify = selectedMembership?.is_gp === true;
   const clinicalRatificationTitle = canClinicallyRatify
     ? undefined
     : 'A GP role is required to clinically ratify patient cards';
@@ -1257,8 +1264,15 @@ const PracticeDashboard: React.FC = () => {
               <div className="practice-portal-sidebar__practice-label">Current Practice</div>
               <div className="practice-portal-sidebar__practice-name">{selectedPractice.name}</div>
               {selectedMembership && (
-                <div className="admin-ods-badge" style={{ marginTop: '0.5rem', display: 'inline-flex' }}>
-                  {PRACTICE_USER_ROLE_LABELS[selectedMembership.role]}
+                <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
+                  <span className="admin-ods-badge">
+                    {PRACTICE_USER_ROLE_LABELS[selectedMembership.role]}
+                  </span>
+                  {selectedMembership.is_gp && (
+                    <span className="admin-ods-badge" style={{ background: '#e6f4ea', color: '#007f3b' }}>
+                      GP
+                    </span>
+                  )}
                 </div>
               )}
               {memberships.length > 1 && (

@@ -1,14 +1,25 @@
--- Adds a GP practice-membership role for clinical card ratification.
+-- Adds supplemental GP clinical-ratifier status to practice memberships.
 -- Run this on existing Supabase projects before deploying the updated app.
 
 BEGIN;
 
 ALTER TABLE practice_memberships
+  ADD COLUMN IF NOT EXISTS is_gp boolean NOT NULL DEFAULT false;
+
+ALTER TABLE practice_memberships
   DROP CONSTRAINT IF EXISTS practice_memberships_role_check;
+
+UPDATE practice_memberships
+SET is_gp = true
+WHERE role = 'gp';
+
+UPDATE practice_memberships
+SET role = 'admin'
+WHERE role = 'gp';
 
 ALTER TABLE practice_memberships
   ADD CONSTRAINT practice_memberships_role_check
-  CHECK (role IN ('admin', 'gp', 'editor'));
+  CHECK (role IN ('admin', 'editor'));
 
 CREATE OR REPLACE FUNCTION is_practice_clinical_ratifier(target_practice uuid)
 RETURNS boolean
@@ -24,7 +35,7 @@ AS $$
       ON users.uid = memberships.user_uid
     WHERE memberships.practice_id = target_practice
       AND memberships.user_uid = auth.uid()
-      AND memberships.role = 'gp'
+      AND (memberships.is_gp = true OR memberships.role = 'gp')
       AND users.is_active = true
   );
 $$;

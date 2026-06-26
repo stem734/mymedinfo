@@ -2,11 +2,14 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const normaliseEmail = (value: string) => value.trim().toLowerCase();
 
-export const PRACTICE_USER_ROLES = ['admin', 'gp', 'editor'] as const;
+export const PRACTICE_USER_ROLES = ['admin', 'editor'] as const;
 export type PracticeUserRole = typeof PRACTICE_USER_ROLES[number];
 
 export const normalisePracticeRole = (value: unknown): PracticeUserRole =>
-  PRACTICE_USER_ROLES.includes(value as PracticeUserRole) ? value as PracticeUserRole : 'admin';
+  value === 'editor' ? 'editor' : 'admin';
+
+export const normalisePracticeGpFlag = (value: unknown, role?: unknown): boolean =>
+  value === true || role === 'gp';
 
 export const uniquePracticeIds = (practiceIds: string[]) =>
   Array.from(new Set(practiceIds.map((practiceId) => practiceId.trim()).filter(Boolean)));
@@ -127,6 +130,7 @@ export async function addPracticeMemberships(
   practiceIds: string[],
   defaultPracticeId?: string,
   role: PracticeUserRole = 'admin',
+  isGp = false,
 ) {
   const ids = uniquePracticeIds(practiceIds);
   const now = new Date().toISOString();
@@ -159,6 +163,7 @@ export async function addPracticeMemberships(
     practice_id: practiceId,
     user_uid: userUid,
     role,
+    is_gp: isGp,
     is_default: practiceId === resolvedDefaultPracticeId,
     updated_at: now,
   }));
@@ -178,6 +183,7 @@ export async function replacePracticeMemberships(
   practiceIds: string[],
   defaultPracticeId?: string,
   role: PracticeUserRole = 'admin',
+  isGp = false,
 ) {
   const ids = uniquePracticeIds(practiceIds);
   const now = new Date().toISOString();
@@ -225,6 +231,7 @@ export async function replacePracticeMemberships(
     practice_id: practiceId,
     user_uid: userUid,
     role,
+    is_gp: isGp,
     is_default: practiceId === resolvedDefaultPracticeId,
     updated_at: now,
   }));

@@ -12,7 +12,7 @@ export async function assertPracticeAccess(authHeader: string | null, practiceId
 
   const { data: membership, error: membershipError } = await userClient
     .from('practice_memberships')
-    .select('practice_id, role')
+    .select('practice_id, role, is_gp')
     .eq('practice_id', practiceId)
     .eq('user_uid', user.id)
     .single();
@@ -36,13 +36,17 @@ export async function assertPracticeAccess(authHeader: string | null, practiceId
     throw new Error('User account is inactive');
   }
 
-  return { userId: user.id, role: membership.role as PracticeUserRole };
+  return {
+    userId: user.id,
+    role: membership.role as PracticeUserRole,
+    isGp: membership.is_gp === true || membership.role === 'gp',
+  };
 }
 
 export async function assertClinicalRatifier(authHeader: string | null, practiceId: string) {
   const access = await assertPracticeAccess(authHeader, practiceId);
 
-  if (access.role !== 'gp') {
+  if (!access.isGp) {
     throw new Error('A GP role is required to clinically ratify patient cards');
   }
 
