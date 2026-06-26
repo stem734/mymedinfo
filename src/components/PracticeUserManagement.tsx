@@ -694,84 +694,100 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           <p style={{ color: '#4c6272' }}>No users found yet.</p>
         ) : (
           <div className="admin-data-table-wrap">
-            <table className="admin-data-table" style={{ minWidth: 760, tableLayout: 'auto' }}>
+            <table className="admin-data-table" style={{ minWidth: 860, tableLayout: 'auto' }}>
               <thead>
                 <tr>
                   <th scope="col">User</th>
                   <th scope="col">Status</th>
                   <th scope="col">Global Role</th>
+                  <th scope="col">Practice Role</th>
                   <th scope="col">Practice Access</th>
                   <th scope="col">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {users.map((appUser) => (
-                  <tr key={appUser.uid}>
-                    <td>
-                      <div className="admin-table-identity">
-                        <strong>{appUser.name || appUser.email}</strong>
-                        {appUser.name && <span className="admin-table-identity__email">{appUser.email}</span>}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`admin-status-dot ${appUser.is_active ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
-                        <span className="admin-status-dot__circle" aria-hidden="true" />
-                        {appUser.is_active ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      {appUser.global_role ? (
-                        <span className={`admin-role-badge admin-role-badge--${appUser.global_role}`}>
-                          {appUser.global_role === 'owner' ? 'Owner' : 'Admin'}
-                        </span>
-                      ) : (
-                        <span className="admin-table-muted">—</span>
-                      )}
-                    </td>
-                    <td>
-                      {appUser.memberships.length > 0 ? (
-                        <div className="admin-service-pills">
-                          {appUser.memberships.map((membership) => (
-                            <span
-                              key={membership.id}
-                              className={`admin-service-pill ${membership.practice.is_active ? 'admin-service-pill--on' : 'admin-service-pill--off'}`}
-                              title={membership.is_default ? 'Default practice' : undefined}
-                            >
-                              {membership.practice.name}{membership.is_default ? ' ★' : ''}
-                              {' · '}
-                              {PRACTICE_USER_ROLE_LABELS[membership.role]}
-                            </span>
-                          ))}
+                {users.map((appUser) => {
+                  const practiceRoles = Array.from(new Set(appUser.memberships.map((membership) => membership.role)));
+
+                  return (
+                    <tr key={appUser.uid}>
+                      <td>
+                        <div className="admin-table-identity">
+                          <strong>{appUser.name || appUser.email}</strong>
+                          {appUser.name && <span className="admin-table-identity__email">{appUser.email}</span>}
                         </div>
-                      ) : (
-                        <span className="admin-table-muted">No access assigned</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="admin-table-actions">
-                        <button onClick={() => openEditForm(appUser)} className="admin-action-btn admin-action-btn--edit">
-                          <Edit2 size={14} /> Edit
-                        </button>
-                        <button onClick={() => void sendPasswordReset(appUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
-                          <KeyRound size={15} />
-                        </button>
-                        {appUser.global_role === 'admin' && (
-                          <button onClick={() => updateAdminRole(appUser, false)} className="admin-action-btn admin-action-btn--icon" title="Demote administrator">
-                            <ShieldMinus size={15} />
-                          </button>
+                      </td>
+                      <td>
+                        <span className={`admin-status-dot ${appUser.is_active ? 'admin-status-dot--active' : 'admin-status-dot--inactive'}`}>
+                          <span className="admin-status-dot__circle" aria-hidden="true" />
+                          {appUser.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </td>
+                      <td>
+                        {appUser.global_role ? (
+                          <span className={`admin-role-badge admin-role-badge--${appUser.global_role}`}>
+                            {appUser.global_role === 'owner' ? 'Owner' : 'Admin'}
+                          </span>
+                        ) : (
+                          <span className="admin-table-muted">—</span>
                         )}
-                        {!appUser.global_role && (
-                          <button onClick={() => updateAdminRole(appUser, true)} className="admin-action-btn admin-action-btn--activate" title="Promote to administrator">
-                            <ShieldCheck size={15} /> Promote
-                          </button>
+                      </td>
+                      <td>
+                        {practiceRoles.length > 0 ? (
+                          <div className="admin-service-pills">
+                            {practiceRoles.map((role) => (
+                              <span key={role} className="admin-ods-badge">
+                                {PRACTICE_USER_ROLE_LABELS[role]}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="admin-table-muted">—</span>
                         )}
-                        <button onClick={() => deleteUser(appUser)} className="admin-action-btn admin-action-btn--icon" title={appUser.global_role ? 'Remove administrator' : 'Delete user'}>
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        {appUser.memberships.length > 0 ? (
+                          <div className="admin-service-pills">
+                            {appUser.memberships.map((membership) => (
+                              <span
+                                key={membership.id}
+                                className={`admin-service-pill ${membership.practice.is_active ? 'admin-service-pill--on' : 'admin-service-pill--off'}`}
+                                title={membership.is_default ? 'Default practice' : undefined}
+                              >
+                                {membership.practice.name}{membership.is_default ? ' ★' : ''}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="admin-table-muted">No access assigned</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="admin-table-actions">
+                          <button onClick={() => openEditForm(appUser)} className="admin-action-btn admin-action-btn--edit">
+                            <Edit2 size={14} /> Edit
+                          </button>
+                          <button onClick={() => void sendPasswordReset(appUser)} className="admin-action-btn admin-action-btn--icon" title="Reset password">
+                            <KeyRound size={15} />
+                          </button>
+                          {appUser.global_role === 'admin' && (
+                            <button onClick={() => updateAdminRole(appUser, false)} className="admin-action-btn admin-action-btn--icon" title="Demote administrator">
+                              <ShieldMinus size={15} />
+                            </button>
+                          )}
+                          {!appUser.global_role && (
+                            <button onClick={() => updateAdminRole(appUser, true)} className="admin-action-btn admin-action-btn--activate" title="Promote to administrator">
+                              <ShieldCheck size={15} /> Promote
+                            </button>
+                          )}
+                          <button onClick={() => deleteUser(appUser)} className="admin-action-btn admin-action-btn--icon" title={appUser.global_role ? 'Remove administrator' : 'Delete user'}>
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
