@@ -46,6 +46,8 @@ import type {
   HealthCheckTemplatePayload,
 } from '../cardTemplateTypes';
 
+const templateRatificationKey = (builderType: CardTemplateBuilderType, templateId: string) => `${builderType}:${templateId}`;
+
 interface TrendLink {
   title: string;
   url: string;
@@ -1822,7 +1824,6 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
     </>
   );
 
-  const templateRatificationKey = (builderType: CardTemplateBuilderType, templateId: string) => `${builderType}:${templateId}`;
   const isTemplateGpRatified = (builderType: CardTemplateBuilderType, templateId: string) =>
     templateGpRatified[templateRatificationKey(builderType, templateId)] === true;
   const updateTemplateGpRatified = (builderType: CardTemplateBuilderType, templateId: string, checked: boolean) => {
