@@ -434,6 +434,7 @@ type CardBuilderProps = {
   initialSection?: OutputBuilderType;
   enabledServices?: Partial<Record<OutputBuilderType, boolean>>;
   currentAdminIsGpRatifier?: boolean;
+  currentAdminRole?: 'owner' | 'admin' | null;
   onBack?: () => void;
 };
 
@@ -442,11 +443,13 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
   initialSection,
   enabledServices,
   currentAdminIsGpRatifier: currentAdminIsGpRatifierProp = false,
+  currentAdminRole: currentAdminRoleProp = null,
   onBack,
 }) => {
   const toast = useToast();
   const [authenticated, setAuthenticated] = useState(false);
   const [currentAdminIsGpRatifier, setCurrentAdminIsGpRatifier] = useState(currentAdminIsGpRatifierProp);
+  const [currentAdminRole, setCurrentAdminRole] = useState<'owner' | 'admin' | null>(currentAdminRoleProp);
   const [referenceTimeMs] = useState(() => Date.now());
   const navigate = useNavigate();
   const location = useLocation();
@@ -550,12 +553,17 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
   }, [currentAdminIsGpRatifierProp]);
 
   useEffect(() => {
+    setCurrentAdminRole(currentAdminRoleProp);
+  }, [currentAdminRoleProp]);
+
+  useEffect(() => {
     // When embedded, the parent (AdminDashboard) has already verified the session and
-    // owns the isGpRatifier value — skip the async profile fetch to avoid a race where
-    // a stale async closure writes false back after the prop updates to true.
+    // owns isGpRatifier and role — skip the async profile fetch to avoid a race where
+    // a stale async closure overwrites the correct prop values after they update.
     if (embedded) {
       setAuthenticated(true);
       setCurrentAdminIsGpRatifier(currentAdminIsGpRatifierProp);
+      setCurrentAdminRole(currentAdminRoleProp);
       const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
         if (!session?.user) navigate(resolvePath('/admin'));
       });
@@ -567,11 +575,13 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
       if (!profile) {
         setAuthenticated(false);
         setCurrentAdminIsGpRatifier(false);
+        setCurrentAdminRole(null);
         navigate(resolvePath('/admin'));
         return;
       }
       setAuthenticated(true);
       setCurrentAdminIsGpRatifier(profile.isGpRatifier);
+      setCurrentAdminRole(profile.globalRole);
     };
 
     const hydrate = async () => {
@@ -581,6 +591,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
         return;
       }
       setCurrentAdminIsGpRatifier(false);
+      setCurrentAdminRole(null);
       navigate(resolvePath('/admin'));
     };
 
@@ -591,11 +602,12 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
         void loadAdminSession(session);
       } else {
         setCurrentAdminIsGpRatifier(false);
+        setCurrentAdminRole(null);
         navigate(resolvePath('/admin'));
       }
     });
     return () => subscription.unsubscribe();
-  }, [currentAdminIsGpRatifierProp, embedded, navigate]);
+  }, [currentAdminIsGpRatifierProp, currentAdminRoleProp, embedded, navigate]);
 
   useEffect(() => {
     const domainCodes = Object.keys(PREVIEW_DOMAIN_CONFIGS[selectedHealthCheckDomain].metricByCode);
@@ -2233,7 +2245,9 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
                   value={requestedCode}
                   onChange={e => setRequestedCode(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
                   placeholder={badge === 'REAUTH' ? 'e.g. 602' : 'e.g. 601'}
-                  style={{ width: '100%', padding: '0.6rem', border: '2px solid #d8dde0', borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box' }}
+                  disabled={currentAdminRole !== 'owner'}
+                  title={currentAdminRole !== 'owner' ? 'Only owners can change the SystmOne ID' : undefined}
+                  style={{ width: '100%', padding: '0.6rem', border: '2px solid #d8dde0', borderRadius: '6px', fontSize: '0.95rem', boxSizing: 'border-box', opacity: currentAdminRole !== 'owner' ? 0.68 : 1 }}
                 />
               </div>
               <div style={{ flex: '1 1 150px', minWidth: '150px' }}>

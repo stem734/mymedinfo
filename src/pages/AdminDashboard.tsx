@@ -2041,6 +2041,7 @@ const AdminDashboard: React.FC = () => {
             ltc: platformConfig.service_ltc_enabled,
           }}
           currentAdminIsGpRatifier={currentAdminIsGpRatifier}
+          currentAdminRole={currentAdminRole}
           onBack={() => setShowCardBuilder(false)}
         />
       )}
