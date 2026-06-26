@@ -29,7 +29,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await assertAdmin(req.headers.get('Authorization'));
+    const { admin, userId } = await assertAdmin(req.headers.get('Authorization'));
 
     const data = await req.json() as {
       code?: string;
@@ -46,7 +46,13 @@ serve(async (req) => {
       contentReviewDate?: string;
       linkExpiryValue?: number;
       linkExpiryUnit?: 'weeks' | 'months';
+      isGpRatified?: boolean;
     };
+    const isGpRatified = data.isGpRatified === true;
+
+    if (isGpRatified && admin.is_gp_ratifier !== true) {
+      return errorResponse('GP ratifier access is required to clinically ratify global cards', 403);
+    }
 
     if (!data.title || !data.description || !data.badge || !data.contentReviewDate || typeof data.linkExpiryValue !== 'number') {
       return errorResponse('Title, description, type, review date, and expiry value are required');
@@ -168,6 +174,9 @@ serve(async (req) => {
       updated_by: userId,
       created_at: existingDoc?.created_at || now,
       created_by: existingDoc?.created_by || userId,
+      is_gp_ratified: isGpRatified,
+      gp_ratified_at: isGpRatified ? now : null,
+      gp_ratified_by: isGpRatified ? userId : null,
     };
 
     const { error: upsertError } = await supabase
@@ -201,6 +210,9 @@ serve(async (req) => {
       created_by: existingTemplate?.created_by || userId,
       updated_at: now,
       updated_by: userId,
+      is_gp_ratified: isGpRatified,
+      gp_ratified_at: isGpRatified ? now : null,
+      gp_ratified_by: isGpRatified ? userId : null,
     };
 
     const { error: templateUpsertError } = await supabase

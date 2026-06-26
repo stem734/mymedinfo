@@ -43,7 +43,6 @@ export type PracticeMembership = {
   practice_id: string;
   user_uid: string;
   role: PracticeUserRole;
-  is_gp: boolean;
   is_default: boolean;
   practice: PracticeSummary;
 };
@@ -54,6 +53,7 @@ export type AppUserSummary = {
   name: string;
   is_active: boolean;
   global_role?: 'owner' | 'admin' | null;
+  is_gp_ratifier?: boolean;
   memberships: PracticeMembership[];
 };
 

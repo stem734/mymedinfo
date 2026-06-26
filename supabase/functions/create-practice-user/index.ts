@@ -7,7 +7,6 @@ import {
   assertPracticeIdsExist,
   loadUserByEmail,
   normaliseEmail,
-  normalisePracticeGpFlag,
   normalisePracticeRole,
 } from '../_shared/practice-user-management.ts';
 
@@ -24,7 +23,7 @@ serve(async (req) => {
       practiceId?: string;
       name?: string;
       role?: string;
-      isGp?: boolean;
+      isGpRatifier?: boolean;
     };
 
     if (!body.email || typeof body.email !== 'string' || !body.practiceId || typeof body.practiceId !== 'string') {
@@ -35,7 +34,7 @@ serve(async (req) => {
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
     const role = normalisePracticeRole(body.role);
-    const isGp = normalisePracticeGpFlag(body.isGp, body.role);
+    const isGpRatifier = body.isGpRatifier === true;
     const [practiceId] = await assertPracticeIdsExist(supabase, [body.practiceId]);
     const emailConfig = getEmailConfig();
 
@@ -58,6 +57,7 @@ serve(async (req) => {
           name: displayName,
           is_active: true,
           global_role: existingUser.global_role || null,
+          is_gp_ratifier: isGpRatifier,
           updated_at: new Date().toISOString(),
         })
         .eq('uid', existingUser.uid);
@@ -67,7 +67,7 @@ serve(async (req) => {
         return errorResponse('Failed to update user', 500);
       }
 
-      await addPracticeMemberships(supabase, existingUser.uid, [practiceId], practiceId, role, isGp);
+      await addPracticeMemberships(supabase, existingUser.uid, [practiceId], practiceId, role);
 
       await supabase
         .from('practices')
@@ -105,6 +105,7 @@ serve(async (req) => {
       name: displayName,
       is_active: true,
       global_role: null,
+      is_gp_ratifier: isGpRatifier,
       created_at: now,
       updated_at: now,
     });
@@ -114,7 +115,7 @@ serve(async (req) => {
       return errorResponse('Failed to create user record', 500);
     }
 
-    await addPracticeMemberships(supabase, userRecord.user.id, [practiceId], practiceId, role, isGp);
+    await addPracticeMemberships(supabase, userRecord.user.id, [practiceId], practiceId, role);
 
     const { error: contactError } = await supabase
       .from('practices')

@@ -74,28 +74,6 @@ AS $$
   );
 $$;
 
--- ===================
--- Helper function: can the current user clinically ratify cards for a practice?
--- ===================
-CREATE OR REPLACE FUNCTION is_practice_clinical_ratifier(target_practice uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = ''
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.practice_memberships memberships
-    JOIN public.users
-      ON users.uid = memberships.user_uid
-    WHERE memberships.practice_id = target_practice
-      AND memberships.user_uid = auth.uid()
-      AND (memberships.is_gp = true OR memberships.role = 'gp')
-      AND users.is_active = true
-  );
-$$;
-
 -- =============================================================================
 -- PRACTICES policies
 -- =============================================================================
@@ -333,7 +311,7 @@ CREATE POLICY "practice_medication_cards_insert_admin"
 CREATE POLICY "practice_medication_cards_insert_member"
   ON practice_medication_cards FOR INSERT
   TO authenticated
-  WITH CHECK (is_practice_clinical_ratifier(practice_id));
+  WITH CHECK (is_practice_member(practice_id));
 
 CREATE POLICY "practice_medication_cards_update_admin"
   ON practice_medication_cards FOR UPDATE
@@ -343,8 +321,8 @@ CREATE POLICY "practice_medication_cards_update_admin"
 CREATE POLICY "practice_medication_cards_update_member"
   ON practice_medication_cards FOR UPDATE
   TO authenticated
-  USING (is_practice_clinical_ratifier(practice_id))
-  WITH CHECK (is_practice_clinical_ratifier(practice_id));
+  USING (is_practice_member(practice_id))
+  WITH CHECK (is_practice_member(practice_id));
 
 CREATE POLICY "practice_medication_cards_delete_admin"
   ON practice_medication_cards FOR DELETE

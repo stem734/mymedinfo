@@ -6,6 +6,7 @@ export type AdminRecord = {
   name: string;
   is_active: boolean;
   global_role: 'owner' | 'admin';
+  is_gp_ratifier?: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -73,6 +74,7 @@ export async function assertAdmin(authHeader: string | null): Promise<{ admin: A
     name: user.user_metadata?.name || user.email || 'Primary Administrator',
     is_active: true,
     global_role: 'owner',
+    is_gp_ratifier: false,
     created_at: now,
     updated_at: now,
   };

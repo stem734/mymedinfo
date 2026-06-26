@@ -64,6 +64,9 @@ CREATE TABLE medications (
   created_by          uuid,
   updated_at          timestamptz DEFAULT now(),
   updated_by          uuid,
+  is_gp_ratified      boolean NOT NULL DEFAULT false,
+  gp_ratified_at      timestamptz,
+  gp_ratified_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL,
   deleted_at          timestamptz,
   deleted_by          uuid
 );
@@ -82,7 +85,10 @@ CREATE TABLE card_templates (
   created_at          timestamptz DEFAULT now(),
   created_by          uuid,
   updated_at          timestamptz DEFAULT now(),
-  updated_by          uuid
+  updated_by          uuid,
+  is_gp_ratified      boolean NOT NULL DEFAULT false,
+  gp_ratified_at      timestamptz,
+  gp_ratified_by      uuid REFERENCES auth.users(id) ON DELETE SET NULL
 );
 
 CREATE UNIQUE INDEX idx_card_templates_builder_type_template_id
@@ -121,6 +127,7 @@ CREATE TABLE users (
   name       text NOT NULL,
   is_active  boolean NOT NULL DEFAULT true,
   global_role text CHECK (global_role IN ('owner', 'admin')),
+  is_gp_ratifier boolean NOT NULL DEFAULT false,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -137,7 +144,6 @@ CREATE TABLE practice_memberships (
   practice_id uuid NOT NULL REFERENCES practices(id) ON DELETE CASCADE,
   user_uid    uuid NOT NULL REFERENCES users(uid) ON DELETE CASCADE,
   role        text NOT NULL DEFAULT 'admin' CHECK (role IN ('admin', 'editor')),
-  is_gp       boolean NOT NULL DEFAULT false,
   is_default  boolean NOT NULL DEFAULT false,
   created_at  timestamptz DEFAULT now(),
   updated_at  timestamptz DEFAULT now(),

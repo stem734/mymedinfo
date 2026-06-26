@@ -19,12 +19,12 @@ serve(async (req) => {
         name,
         is_active,
         global_role,
+        is_gp_ratifier,
         memberships:practice_memberships(
           id,
           practice_id,
           user_uid,
           role,
-          is_gp,
           is_default,
           practice:practices(
             id,

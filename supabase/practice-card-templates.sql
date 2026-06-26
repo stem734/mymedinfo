@@ -6,9 +6,6 @@ CREATE INDEX IF NOT EXISTS idx_practices_ods_code_upper
   ON public.practices (upper(btrim(ods_code)))
   WHERE ods_code IS NOT NULL AND btrim(ods_code) <> '';
 
-ALTER TABLE public.practice_memberships
-  ADD COLUMN IF NOT EXISTS is_gp boolean NOT NULL DEFAULT false;
-
 CREATE TABLE IF NOT EXISTS practice_card_templates (
   practice_id         uuid NOT NULL REFERENCES practices(id) ON DELETE CASCADE,
   builder_type        text NOT NULL CHECK (builder_type IN ('healthcheck', 'screening', 'immunisation', 'ltc')),
@@ -31,25 +28,6 @@ CREATE INDEX IF NOT EXISTS idx_practice_card_templates_builder_type
 
 ALTER TABLE practice_card_templates ENABLE ROW LEVEL SECURITY;
 
-CREATE OR REPLACE FUNCTION is_practice_clinical_ratifier(target_practice uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = ''
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.practice_memberships memberships
-    JOIN public.users
-      ON users.uid = memberships.user_uid
-    WHERE memberships.practice_id = target_practice
-      AND memberships.user_uid = auth.uid()
-      AND (memberships.is_gp = true OR memberships.role = 'gp')
-      AND users.is_active = true
-  );
-$$;
-
 DROP POLICY IF EXISTS "practice_card_templates_select_member" ON practice_card_templates;
 DROP POLICY IF EXISTS "practice_card_templates_write_member" ON practice_card_templates;
 DROP POLICY IF EXISTS "practice_card_templates_update_member" ON practice_card_templates;
@@ -64,7 +42,7 @@ CREATE POLICY "practice_card_templates_write_member"
   ON practice_card_templates FOR INSERT
   TO authenticated
   WITH CHECK (
-    (is_admin() OR is_practice_clinical_ratifier(practice_id))
+    (is_admin() OR is_practice_member(practice_id))
     AND EXISTS (
       SELECT 1
       FROM public.card_templates AS global_templates
@@ -99,9 +77,9 @@ CREATE POLICY "practice_card_templates_write_member"
 CREATE POLICY "practice_card_templates_update_member"
   ON practice_card_templates FOR UPDATE
   TO authenticated
-  USING (is_admin() OR is_practice_clinical_ratifier(practice_id))
+  USING (is_admin() OR is_practice_member(practice_id))
   WITH CHECK (
-    (is_admin() OR is_practice_clinical_ratifier(practice_id))
+    (is_admin() OR is_practice_member(practice_id))
     AND EXISTS (
       SELECT 1
       FROM public.card_templates AS global_templates

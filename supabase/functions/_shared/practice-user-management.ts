@@ -8,9 +8,6 @@ export type PracticeUserRole = typeof PRACTICE_USER_ROLES[number];
 export const normalisePracticeRole = (value: unknown): PracticeUserRole =>
   value === 'editor' ? 'editor' : 'admin';
 
-export const normalisePracticeGpFlag = (value: unknown, role?: unknown): boolean =>
-  value === true || role === 'gp';
-
 export const uniquePracticeIds = (practiceIds: string[]) =>
   Array.from(new Set(practiceIds.map((practiceId) => practiceId.trim()).filter(Boolean)));
 
@@ -24,6 +21,7 @@ type AppUserRow = {
   name: string;
   is_active: boolean;
   global_role?: 'owner' | 'admin' | null;
+  is_gp_ratifier?: boolean | null;
 };
 
 type PracticeMembershipRow = {
@@ -130,7 +128,6 @@ export async function addPracticeMemberships(
   practiceIds: string[],
   defaultPracticeId?: string,
   role: PracticeUserRole = 'admin',
-  isGp = false,
 ) {
   const ids = uniquePracticeIds(practiceIds);
   const now = new Date().toISOString();
@@ -163,7 +160,6 @@ export async function addPracticeMemberships(
     practice_id: practiceId,
     user_uid: userUid,
     role,
-    is_gp: isGp,
     is_default: practiceId === resolvedDefaultPracticeId,
     updated_at: now,
   }));
@@ -183,7 +179,6 @@ export async function replacePracticeMemberships(
   practiceIds: string[],
   defaultPracticeId?: string,
   role: PracticeUserRole = 'admin',
-  isGp = false,
 ) {
   const ids = uniquePracticeIds(practiceIds);
   const now = new Date().toISOString();
@@ -231,7 +226,6 @@ export async function replacePracticeMemberships(
     practice_id: practiceId,
     user_uid: userUid,
     role,
-    is_gp: isGp,
     is_default: practiceId === resolvedDefaultPracticeId,
     updated_at: now,
   }));

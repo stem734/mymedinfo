@@ -3,12 +3,13 @@ import { useTableSort, type SortState } from '../hooks/useTableSort';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Activity, ArrowLeft, Plus, Trash2, Save, Copy, ExternalLink, Link, Eye, Edit2, CopyPlus } from 'lucide-react';
+import { Activity, ArrowLeft, Plus, Trash2, Save, Copy, ExternalLink, Link, Eye, Edit2, CopyPlus, ShieldCheck } from 'lucide-react';
 import MedicationPreviewModal from '../components/MedicationPreviewModal';
 import { resolvePath } from '../subdomainUtils';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
 import { useToast } from '../components/toastContext';
+import { getCurrentUserAdminProfile } from '../adminAccess';
 import { type MedicationRecord, useMedicationCatalog } from '../medicationCatalog';
 import { getFunctionErrorMessage } from '../supabaseFunctionError';
 import { fetchLocalResourceLinks, type LocalResourceLink } from '../localResourceLibrary';
@@ -436,6 +437,7 @@ type CardBuilderProps = {
 const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSection, enabledServices, onBack }) => {
   const toast = useToast();
   const [authenticated, setAuthenticated] = useState(false);
+  const [currentAdminIsGpRatifier, setCurrentAdminIsGpRatifier] = useState(false);
   const [referenceTimeMs] = useState(() => Date.now());
   const navigate = useNavigate();
   const location = useLocation();
@@ -494,6 +496,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   const [medicationEditorOpen, setMedicationEditorOpen] = useState(false);
   const [editingCode, setEditingCode] = useState('');
   const [requestedCode, setRequestedCode] = useState('');
+  const [medicationGpRatified, setMedicationGpRatified] = useState(false);
 
   const medTable = useTableSort('code');
   const screeningTable = useTableSort('label');
@@ -525,6 +528,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     ltc: false,
   });
   const [templateActionKey, setTemplateActionKey] = useState('');
+  const [templateGpRatified, setTemplateGpRatified] = useState<Record<string, boolean>>({});
   const [healthCheckLinkExpiry, setHealthCheckLinkExpiry] = useState<Record<string, { value: number; unit: 'weeks' | 'months' } | undefined>>({});
   const [healthCheckReviewMeta, setHealthCheckReviewMeta] = useState<Record<string, { reviewMonths?: number; contentReviewDate?: string }>>({});
   const [localResources, setLocalResources] = useState<LocalResourceLink[]>([]);
@@ -533,13 +537,27 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
   const [selectedLocalResourceIds, setSelectedLocalResourceIds] = useState<string[]>([]);
 
   useEffect(() => {
-    const hydrate = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setAuthenticated(true);
+    const loadAdminSession = async (session: Session) => {
+      const profile = await getCurrentUserAdminProfile(session.user.id);
+      if (!profile) {
+        setAuthenticated(false);
+        setCurrentAdminIsGpRatifier(false);
+        navigate(resolvePath('/admin'));
         return;
       }
 
+      setAuthenticated(true);
+      setCurrentAdminIsGpRatifier(profile.isGpRatifier);
+    };
+
+    const hydrate = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadAdminSession(session);
+        return;
+      }
+
+      setCurrentAdminIsGpRatifier(false);
       navigate(resolvePath('/admin'));
     };
 
@@ -547,8 +565,9 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (session?.user) {
-        setAuthenticated(true);
+        void loadAdminSession(session);
       } else {
+        setCurrentAdminIsGpRatifier(false);
         navigate(resolvePath('/admin'));
       }
     });
@@ -579,6 +598,11 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
           fetchCardTemplates<ImmunisationTemplate>('immunisation'),
           fetchCardTemplates<LongTermConditionTemplate>('ltc'),
         ]);
+        const ratificationNext: Record<string, boolean> = {};
+        [...healthcheckRows, ...screeningRows, ...immunisationRows, ...ltcRows].forEach((row) => {
+          ratificationNext[templateRatificationKey(row.builder_type, row.template_id)] = row.is_gp_ratified === true;
+        });
+        setTemplateGpRatified(ratificationNext);
 
         if (healthcheckRows.length > 0) {
           const next = createDefaultHealthCheckBuilderState();
@@ -734,6 +758,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     setMedLinkExpiryUnit(medication.linkExpiryUnit ?? 'months');
     setEditingCode(overrides?.editingCode ?? medication.code);
     setRequestedCode(overrides?.requestedCode ?? medication.code);
+    setMedicationGpRatified(overrides?.editingCode === '' ? false : medication.isGpRatified === true);
     setMedName(overrides?.medName ?? getFriendlyMedicationName(medication));
     setTitle(overrides?.title ?? medication.title);
     setHasContent(true);
@@ -1041,9 +1066,10 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
         summary: `${resultCodes.length} result type${resultCodes.length === 1 ? '' : 's'}`,
         resultCodes,
         previewUrl: buildHealthCheckFamilyPreviewUrl(domainId),
+        isGpRatified: templateGpRatified[templateRatificationKey('healthcheck', domainId)] === true,
       };
     }),
-    [buildHealthCheckFamilyPreviewUrl],
+    [buildHealthCheckFamilyPreviewUrl, templateGpRatified],
   );
 
   const sortedMedicationRows = useMemo(
@@ -1480,6 +1506,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     setHasContent(true);
     setMedicationEditorOpen(true);
     setRequestedCode('');
+    setMedicationGpRatified(false);
     setSaveError('');
     setSaveCompleted(false);
   };
@@ -1512,6 +1539,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
           contentReviewDate,
           linkExpiryValue: medLinkExpiryValue,
           linkExpiryUnit: medLinkExpiryUnit,
+          isGpRatified: medicationGpRatified,
         },
       });
       if (invokeError) throw invokeError;
@@ -1648,6 +1676,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     setMedicationEditorOpen(false);
     setEditingCode('');
     setRequestedCode('');
+    setMedicationGpRatified(false);
     setSaveError('');
     setSaveCompleted(false);
   };
@@ -1766,6 +1795,63 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     </>
   );
 
+  const templateRatificationKey = (builderType: CardTemplateBuilderType, templateId: string) => `${builderType}:${templateId}`;
+  const isTemplateGpRatified = (builderType: CardTemplateBuilderType, templateId: string) =>
+    templateGpRatified[templateRatificationKey(builderType, templateId)] === true;
+  const updateTemplateGpRatified = (builderType: CardTemplateBuilderType, templateId: string, checked: boolean) => {
+    setTemplateGpRatified((current) => ({
+      ...current,
+      [templateRatificationKey(builderType, templateId)]: checked,
+    }));
+  };
+
+  const renderGpRatificationBadge = (isRatified: boolean | undefined) => (
+    <span className={`dashboard-badge ${isRatified ? 'dashboard-badge--green' : 'dashboard-badge--muted'}`}>
+      <ShieldCheck size={13} /> {isRatified ? 'GP ratified' : 'Not ratified'}
+    </span>
+  );
+
+  const renderGpRatificationControl = (
+    checked: boolean,
+    onChange: (checked: boolean) => void,
+    id: string,
+  ) => {
+    const disabled = !currentAdminIsGpRatifier && !checked;
+
+    return (
+      <label
+        htmlFor={id}
+        title={disabled ? 'GP ratifier access is required' : undefined}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          alignSelf: 'flex-start',
+          border: '1px solid #c8d5df',
+          borderRadius: 6,
+          background: checked ? '#e6f4ea' : '#f8fbfd',
+          color: checked ? '#007f3b' : '#26343d',
+          padding: '0.55rem 0.7rem',
+          fontWeight: 700,
+          fontSize: '0.9rem',
+          opacity: disabled ? 0.68 : 1,
+          cursor: disabled ? 'not-allowed' : 'pointer',
+        }}
+      >
+        <input
+          id={id}
+          type="checkbox"
+          checked={checked}
+          disabled={disabled}
+          onChange={(event) => onChange(event.target.checked)}
+          style={{ width: 18, height: 18 }}
+        />
+        <ShieldCheck size={16} />
+        GP ratified
+      </label>
+    );
+  };
+
   const persistCardTemplate = async (
     builderType: CardTemplateBuilderType,
     templateId: string,
@@ -1777,7 +1863,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
     setTemplateActionKey(actionKey);
     try {
       const { data, error } = await supabase.functions.invoke('save-card-template', {
-        body: { builderType, templateId, label, payload },
+        body: { builderType, templateId, label, payload, isGpRatified: isTemplateGpRatified(builderType, templateId) },
       });
       if (error) throw error;
       if (!data?.success) throw new Error('Template save did not complete');
@@ -2077,6 +2163,12 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
             </div>
           </div>
 
+          {renderGpRatificationControl(
+            medicationGpRatified,
+            setMedicationGpRatified,
+            'medication-gp-ratified',
+          )}
+
           <div className="builder-editor-split">
           <section className="builder-editor-design-pane">
           <div className="builder-editor-design-pane__stack">
@@ -2312,6 +2404,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                         <span className={`dashboard-badge ${med.source === 'custom' ? 'dashboard-badge--amber' : med.source === 'override' ? 'dashboard-badge--purple' : 'dashboard-badge--muted'}`}>
                           {sourceLabel(med)}
                         </span>
+                        {renderGpRatificationBadge(med.isGpRatified)}
                       </div>
                     </td>
                     <td>
@@ -2401,6 +2494,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                           linkExpiryValue: healthCheckLinkExpiry[row.domainId]?.value,
                           linkExpiryUnit: healthCheckLinkExpiry[row.domainId]?.unit,
                         })}
+                        {renderGpRatificationBadge(row.isGpRatified)}
                       </td>
                       <td>
                         <div className="admin-table-actions">
@@ -2478,6 +2572,12 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                     </button>
                   </div>
                 </div>
+
+                {renderGpRatificationControl(
+                  isTemplateGpRatified('healthcheck', selectedHealthCheckDomain),
+                  (checked) => updateTemplateGpRatified('healthcheck', selectedHealthCheckDomain, checked),
+                  `healthcheck-${selectedHealthCheckDomain}-gp-ratified`,
+                )}
 
                 <div className="builder-editor-split">
                   <section className="builder-editor-design-pane">
@@ -2735,7 +2835,10 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                           {template.headline && <span className="admin-table-identity__email">{template.headline}</span>}
                         </div>
                       </td>
-                      <td>{renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}</td>
+                      <td>
+                        {renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}
+                        {renderGpRatificationBadge(isTemplateGpRatified('screening', template.id))}
+                      </td>
                       <td>
                         <div className="admin-table-actions">
                           <button onClick={() => openPreview(previewUrl, 'This is a preview of what patients will see when they access this screening card.')} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
@@ -2792,7 +2895,10 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                           {template.headline && <span className="admin-table-identity__email">{template.headline}</span>}
                         </div>
                       </td>
-                      <td>{renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}</td>
+                      <td>
+                        {renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}
+                        {renderGpRatificationBadge(isTemplateGpRatified('immunisation', template.id))}
+                      </td>
                       <td>
                         <div className="admin-table-actions">
                           <button onClick={() => openPreview(previewUrl)} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
@@ -2849,7 +2955,10 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                           {template.headline && <span className="admin-table-identity__email">{template.headline}</span>}
                         </div>
                       </td>
-                      <td>{renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}</td>
+                      <td>
+                        {renderMetadataBadges({ reviewMonths: template.reviewMonths, contentReviewDate: template.contentReviewDate, linkExpiryValue: template.linkExpiryValue, linkExpiryUnit: template.linkExpiryUnit })}
+                        {renderGpRatificationBadge(isTemplateGpRatified('ltc', template.id))}
+                      </td>
                       <td>
                         <div className="admin-table-actions">
                           <button onClick={() => openPreview(previewUrl)} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
@@ -2899,6 +3008,11 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                 </button>
               </div>
             </div>
+            {renderGpRatificationControl(
+              isTemplateGpRatified('screening', screeningType),
+              (checked) => updateTemplateGpRatified('screening', screeningType, checked),
+              `screening-${screeningType}-gp-ratified`,
+            )}
             <div className="builder-editor-split">
               <section className="builder-editor-design-pane">
                 <div className="builder-editor-design-pane__stack">
@@ -3068,6 +3182,11 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                 </button>
               </div>
             </div>
+            {renderGpRatificationControl(
+              isTemplateGpRatified('immunisation', selectedImmunisationTemplate.id),
+              (checked) => updateTemplateGpRatified('immunisation', selectedImmunisationTemplate.id, checked),
+              `immunisation-${selectedImmunisationTemplate.id}-gp-ratified`,
+            )}
             <div className="builder-editor-split">
               <section className="builder-editor-design-pane">
                 <div className="builder-editor-design-pane__stack">
@@ -3216,6 +3335,11 @@ const CardBuilder: React.FC<CardBuilderProps> = ({ embedded = false, initialSect
                 </button>
               </div>
             </div>
+            {renderGpRatificationControl(
+              isTemplateGpRatified('ltc', selectedLongTermCondition),
+              (checked) => updateTemplateGpRatified('ltc', selectedLongTermCondition, checked),
+              `ltc-${selectedLongTermCondition}-gp-ratified`,
+            )}
             <div className="builder-editor-split">
               <section className="builder-editor-design-pane">
                 <div className="builder-editor-design-pane__stack">

@@ -16,8 +16,18 @@ ALTER TABLE public.practice_medication_cards
   ADD COLUMN IF NOT EXISTS dont_key_info text[] DEFAULT '{}',
   ADD COLUMN IF NOT EXISTS general_key_info text[] DEFAULT '{}';
 
-ALTER TABLE public.practice_memberships
-  ADD COLUMN IF NOT EXISTS is_gp boolean NOT NULL DEFAULT false;
+ALTER TABLE public.users
+  ADD COLUMN IF NOT EXISTS is_gp_ratifier boolean NOT NULL DEFAULT false;
+
+ALTER TABLE public.medications
+  ADD COLUMN IF NOT EXISTS is_gp_ratified boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS gp_ratified_at timestamptz,
+  ADD COLUMN IF NOT EXISTS gp_ratified_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
+
+ALTER TABLE public.card_templates
+  ADD COLUMN IF NOT EXISTS is_gp_ratified boolean NOT NULL DEFAULT false,
+  ADD COLUMN IF NOT EXISTS gp_ratified_at timestamptz,
+  ADD COLUMN IF NOT EXISTS gp_ratified_by uuid REFERENCES auth.users(id) ON DELETE SET NULL;
 
 CREATE OR REPLACE FUNCTION public.is_admin()
 RETURNS boolean
@@ -64,25 +74,6 @@ AS $$
       ON users.uid = memberships.user_uid
     WHERE memberships.practice_id = target_practice
       AND memberships.user_uid = auth.uid()
-      AND users.is_active = true
-  );
-$$;
-
-CREATE OR REPLACE FUNCTION public.is_practice_clinical_ratifier(target_practice uuid)
-RETURNS boolean
-LANGUAGE sql
-SECURITY DEFINER
-STABLE
-SET search_path = ''
-AS $$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.practice_memberships memberships
-    JOIN public.users
-      ON users.uid = memberships.user_uid
-    WHERE memberships.practice_id = target_practice
-      AND memberships.user_uid = auth.uid()
-      AND (memberships.is_gp = true OR memberships.role = 'gp')
       AND users.is_active = true
   );
 $$;
@@ -503,7 +494,6 @@ GRANT EXECUTE ON FUNCTION public.resolve_practice_card_templates(text, text, tex
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_practice_user() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_practice_member(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.is_practice_clinical_ratifier(uuid) TO authenticated;
 
 REVOKE EXECUTE ON FUNCTION public.validate_practice(text) FROM PUBLIC;
 REVOKE EXECUTE ON FUNCTION public.record_patient_access(text) FROM PUBLIC;
@@ -519,11 +509,9 @@ GRANT EXECUTE ON FUNCTION public.resolve_practice_card_templates(text, text, tex
 REVOKE EXECUTE ON FUNCTION public.is_admin() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.is_practice_user() FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.is_practice_member(uuid) FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.is_practice_clinical_ratifier(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_practice_user() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.is_practice_member(uuid) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.is_practice_clinical_ratifier(uuid) TO authenticated;
 
 REVOKE EXECUTE ON FUNCTION public.set_local_resource_link_audit_fields() FROM PUBLIC, anon, authenticated;
 REVOKE EXECUTE ON FUNCTION public.sync_practice_medications_cache() FROM PUBLIC, anon, authenticated;

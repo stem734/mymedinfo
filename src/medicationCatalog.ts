@@ -5,10 +5,16 @@ import { MEDICATIONS, type MedContent } from './medicationData';
 export type MedicationRecord = MedContent & {
   source: 'built-in' | 'override' | 'custom';
   isBuiltIn: boolean;
+  isGpRatified?: boolean;
+  gpRatifiedAt?: string | null;
+  gpRatifiedBy?: string | null;
 };
 
 type MedicationOverride = Partial<MedContent> & {
   code: string;
+  isGpRatified?: boolean;
+  gpRatifiedAt?: string | null;
+  gpRatifiedBy?: string | null;
   is_deleted?: boolean;
 };
 
@@ -30,6 +36,9 @@ type MedicationDbRow = {
   content_review_date?: string;
   link_expiry_value?: number | null;
   link_expiry_unit?: 'weeks' | 'months' | null;
+  is_gp_ratified?: boolean;
+  gp_ratified_at?: string | null;
+  gp_ratified_by?: string | null;
   is_deleted?: boolean;
 };
 
@@ -94,6 +103,9 @@ export const mergeMedicationCatalog = (overrides: MedicationOverride[]): Medicat
       nhsLink: typeof override.nhsLink === 'string' ? override.nhsLink : base?.nhsLink,
       trendLinks: Array.isArray(override.trendLinks) ? override.trendLinks : base?.trendLinks ?? [],
       sickDaysNeeded: typeof override.sickDaysNeeded === 'boolean' ? override.sickDaysNeeded : base?.sickDaysNeeded,
+      isGpRatified: override.isGpRatified === true,
+      gpRatifiedAt: override.gpRatifiedAt ?? null,
+      gpRatifiedBy: override.gpRatifiedBy ?? null,
       source: builtIn ? 'override' : 'custom',
       isBuiltIn: Boolean(builtIn),
     });
@@ -131,6 +143,9 @@ export const loadMedicationCatalog = async (): Promise<MedicationRecord[]> => {
     contentReviewDate: row.content_review_date,
     linkExpiryValue: row.link_expiry_value ?? undefined,
     linkExpiryUnit: row.link_expiry_unit ?? undefined,
+    isGpRatified: row.is_gp_ratified === true,
+    gpRatifiedAt: row.gp_ratified_at ?? null,
+    gpRatifiedBy: row.gp_ratified_by ?? null,
     is_deleted: row.is_deleted,
   }));
 

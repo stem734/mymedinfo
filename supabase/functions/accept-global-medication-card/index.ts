@@ -1,5 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
-import { assertClinicalRatifier } from '../_shared/assert-practice-access.ts';
+import { assertPracticeAccess } from '../_shared/assert-practice-access.ts';
 import { GLOBAL_TEMPLATE_DISCLAIMER_VERSION } from '../_shared/practice-card-constants.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
 
@@ -23,13 +23,7 @@ serve(async (req) => {
       return errorResponse('The global template disclaimer must be accepted');
     }
 
-    let userId: string;
-    try {
-      ({ userId } = await assertClinicalRatifier(req.headers.get('Authorization'), body.practiceId));
-    } catch (accessError) {
-      return errorResponse(accessError instanceof Error ? accessError.message : 'Practice access required', 403);
-    }
-
+    const { userId } = await assertPracticeAccess(req.headers.get('Authorization'), body.practiceId);
     const supabase = createServiceClient();
 
     const { data: medication, error: medicationError } = await supabase

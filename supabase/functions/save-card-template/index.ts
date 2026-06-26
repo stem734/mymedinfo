@@ -21,13 +21,20 @@ serve(async (req) => {
   }
 
   try {
-    const { userId } = await assertAdmin(req.headers.get('Authorization'));
+    const { admin, userId } = await assertAdmin(req.headers.get('Authorization'));
+
     const body = await req.json() as {
       builderType?: string;
       templateId?: string;
       label?: string;
       payload?: unknown;
+      isGpRatified?: boolean;
     };
+    const isGpRatified = body.isGpRatified === true;
+
+    if (isGpRatified && admin.is_gp_ratifier !== true) {
+      return errorResponse('GP ratifier access is required to clinically ratify global cards', 403);
+    }
 
     const builderType = (body.builderType || '').trim() as BuilderType;
     const templateId = (body.templateId || '').trim();
@@ -103,6 +110,9 @@ serve(async (req) => {
       created_by: existingTemplate?.created_by || userId,
       updated_at: now,
       updated_by: userId,
+      is_gp_ratified: isGpRatified,
+      gp_ratified_at: isGpRatified ? now : null,
+      gp_ratified_by: isGpRatified ? userId : null,
     };
 
     const { error: upsertError } = await supabase

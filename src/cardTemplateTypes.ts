@@ -43,6 +43,9 @@ export type CardTemplateRecord<T = unknown> = {
   created_by: string | null;
   updated_at: string;
   updated_by: string | null;
+  is_gp_ratified?: boolean;
+  gp_ratified_at?: string | null;
+  gp_ratified_by?: string | null;
 };
 
 export type CardTemplateRevisionRecord<T = unknown> = {

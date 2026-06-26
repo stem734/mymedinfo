@@ -22,12 +22,12 @@ type UserRow = {
   name: string;
   is_active: boolean;
   global_role?: 'owner' | 'admin' | null;
+  is_gp_ratifier?: boolean | null;
   memberships: Array<{
     id: string;
     practice_id: string;
     user_uid: string;
-    role: PracticeUserRole | 'gp';
-    is_gp?: boolean | null;
+    role: PracticeUserRole;
     is_default: boolean;
     practice: Pick<PracticeSummary, 'id' | 'name' | 'is_active'> | Array<Pick<PracticeSummary, 'id' | 'name' | 'is_active'>> | null;
   }>;
@@ -48,8 +48,8 @@ type UserFormState = {
   name: string;
   email: string;
   isActive: boolean;
+  isGpRatifier: boolean;
   role: PracticeUserRole;
-  isGp: boolean;
   practiceIds: string[];
   defaultPracticeId: string;
 };
@@ -58,8 +58,8 @@ const emptyForm = (): UserFormState => ({
   name: '',
   email: '',
   isActive: true,
+  isGpRatifier: false,
   role: 'admin',
-  isGp: false,
   practiceIds: [],
   defaultPracticeId: '',
 });
@@ -71,7 +71,7 @@ const normalisePractice = (
   return practice ?? null;
 };
 
-const normalisePracticeRole = (role: PracticeUserRole | 'gp' | null | undefined): PracticeUserRole =>
+const normalisePracticeRole = (role: PracticeUserRole | null | undefined): PracticeUserRole =>
   role === 'editor' ? 'editor' : 'admin';
 
 
@@ -206,6 +206,7 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         name: row.name,
         is_active: row.is_active,
         global_role: row.global_role || null,
+        is_gp_ratifier: row.is_gp_ratifier === true,
         memberships: (row.memberships || [])
           .flatMap((membership) => {
             const practice = normalisePractice(membership.practice);
@@ -216,7 +217,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
             return [{
               ...membership,
               role: normalisePracticeRole(membership.role),
-              is_gp: membership.is_gp === true || membership.role === 'gp',
               practice,
             }];
           })
@@ -259,8 +259,8 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       name: appUser.name,
       email: appUser.email,
       isActive: appUser.is_active,
+      isGpRatifier: appUser.is_gp_ratifier === true,
       role: appUser.memberships.find((membership) => membership.is_default)?.role || appUser.memberships[0]?.role || 'admin',
-      isGp: appUser.memberships.some((membership) => membership.is_gp),
       practiceIds: appUser.memberships.map((membership) => membership.practice_id),
       defaultPracticeId:
         appUser.memberships.find((membership) => membership.is_default)?.practice_id ||
@@ -307,8 +307,8 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
         body: {
           email: form.email.trim(),
           name: form.name.trim(),
+          isGpRatifier: form.isGpRatifier,
           role: form.role,
-          isGp: form.isGp,
           practiceIds: form.practiceIds,
           defaultPracticeId: form.defaultPracticeId,
         },
@@ -354,8 +354,8 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
           email: form.email.trim(),
           name: form.name.trim(),
           isActive: form.isActive,
+          isGpRatifier: form.isGpRatifier,
           role: form.role,
-          isGp: form.isGp,
           practiceIds: form.practiceIds,
           defaultPracticeId: form.defaultPracticeId,
         },
@@ -579,11 +579,11 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
       <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.9rem' }}>
         <input
           type="checkbox"
-          checked={form.isGp}
-          onChange={(event) => setForm((current) => ({ ...current, isGp: event.target.checked }))}
+          checked={form.isGpRatifier}
+          onChange={(event) => setForm((current) => ({ ...current, isGpRatifier: event.target.checked }))}
           style={{ width: '18px', height: '18px' }}
         />
-        GP / clinical ratifier
+        GP ratifier for global cards
       </label>
 
       <div className="dashboard-panel" style={{ background: '#f8fafb' }}>
@@ -771,7 +771,6 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
               <tbody>
                 {users.map((appUser) => {
                   const practiceRoles = Array.from(new Set(appUser.memberships.map((membership) => membership.role)));
-                  const isGp = appUser.memberships.some((membership) => membership.is_gp);
                   const isLastOwner = appUser.global_role === 'owner' && ownerCount <= 1;
 
                   return (
@@ -805,9 +804,9 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
                                 {PRACTICE_USER_ROLE_LABELS[role]}
                               </span>
                             ))}
-                            {isGp && (
+                            {appUser.is_gp_ratifier && (
                               <span className="admin-ods-badge" style={{ background: '#e6f4ea', color: '#007f3b' }}>
-                                GP
+                                GP ratifier
                               </span>
                             )}
                           </div>
