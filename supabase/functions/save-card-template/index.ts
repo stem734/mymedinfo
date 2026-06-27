@@ -1,19 +1,10 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdminOrGpRatifier } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
+import { isValidHttpUrl } from '../_shared/validation.ts';
 
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc'] as const;
 type BuilderType = typeof VALID_BUILDER_TYPES[number];
-
-const isValidHttpUrl = (url: string | undefined): boolean => {
-  if (!url || typeof url !== 'string') return true;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
