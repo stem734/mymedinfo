@@ -62,6 +62,7 @@ serve(async (req) => {
     const { error: authError } = await supabase.auth.admin.updateUserById(body.uid, {
       email,
       user_metadata: { name: displayName },
+      ban_duration: body.isActive === false ? '876600h' : body.isActive === true ? 'none' : undefined, // 876600h is 100 years
     });
 
     if (authError) {
@@ -73,7 +74,7 @@ serve(async (req) => {
       .update({
         email,
         name: displayName,
-        is_active: body.isActive !== false,
+        is_active: body.isActive === false ? false : body.isActive === true ? true : targetPracticeUser.is_active,
         global_role: targetPracticeUser.global_role || null,
         is_gp_ratifier: isGpRatifier,
         updated_at: new Date().toISOString(),

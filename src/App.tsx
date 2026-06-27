@@ -171,9 +171,11 @@ const AppContent: React.FC = () => {
               <p className="footer__copyright">
                 © {new Date().getFullYear()} <a href="https://www.nottinghamwestpcn.co.uk/" target="_blank" rel="noopener noreferrer">Nottingham West Primary Care Network</a> - MyMedInfo
               </p>
-              <p className="footer__version" title={`Commit ${__APP_COMMIT_HASH__}`}>
-                <span className="footer__build-stamp">{buildLabel}</span>
-              </p>
+              {!isPatientRoute && (
+                <p className="footer__version" title={`Commit ${__APP_COMMIT_HASH__}`}>
+                  <span className="footer__build-stamp">{buildLabel}</span>
+                </p>
+              )}
             </div>
             <div className="footer__links">
               <a href="/legal">Legal &amp; Compliance</a>
