@@ -14,6 +14,7 @@ import SickDayRulesModal from '../components/SickDayRulesModal';
 import type { SickDayRulesVariant } from '../components/SickDayRulesModal';
 import { NhsCross, NhsTick } from '../components/NhsIcons';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
+import { safeHttpHref } from '../safeHref';
 
 const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALIDATION_CACHE_VERSION = 'v2';
@@ -801,7 +802,7 @@ const ResourceView: React.FC = () => {
                       <div className="patient-resource-list patient-resource-list--compact">
                         {content.nhsLink && (
                           <a
-                            href={content.nhsLink}
+                            href={safeHttpHref(content.nhsLink)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="patient-resource-link patient-resource-link--compact"
@@ -820,7 +821,7 @@ const ResourceView: React.FC = () => {
                         {content.trendLinks.map((link, i) => (
                           <a
                             key={i}
-                            href={link.url}
+                            href={safeHttpHref(link.url)}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="patient-resource-link patient-resource-link--compact"

@@ -30,6 +30,7 @@ import { saveElementAsPdf } from '../pdfExport';
 import { getVideoEmbedUrl } from '../videoEmbed';
 import { parsePatientLinkCodes } from '../patientLinkCodes';
 import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
+import { safeHttpHref } from '../safeHref';
 
 const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALIDATION_CACHE_VERSION = 'v2';
@@ -891,7 +892,7 @@ const CombinedPatientView: React.FC = () => {
                           <div className="patient-resource-list patient-resource-list--compact">
                             {content.nhsLink && (
                               <a
-                                href={content.nhsLink}
+                                href={safeHttpHref(content.nhsLink)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="patient-resource-link patient-resource-link--compact"
@@ -910,7 +911,7 @@ const CombinedPatientView: React.FC = () => {
                           {content.trendLinks.map((link, i) => (
                             <a
                               key={i}
-                              href={link.url}
+                              href={safeHttpHref(link.url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="patient-resource-link patient-resource-link--compact"
@@ -1044,7 +1045,7 @@ const CombinedPatientView: React.FC = () => {
               {template.nhsLinks.map((link) => (
                 <a
                   key={link.url}
-                  href={link.url}
+                  href={safeHttpHref(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="patient-resource-link patient-resource-link--compact"
@@ -1149,7 +1150,7 @@ const CombinedPatientView: React.FC = () => {
               {template.nhsLinks.map((link) => (
                 <a
                   key={link.url}
-                  href={link.url}
+                  href={safeHttpHref(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="patient-resource-link patient-resource-link--compact"

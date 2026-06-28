@@ -18,6 +18,7 @@ import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
 import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
+import { safeHttpHref } from '../safeHref';
 
 /**
  * ScreeningView — renders screening invitation / result info.
@@ -215,7 +216,7 @@ const ScreeningView: React.FC = () => {
           {selectedTemplate.nhsLinks.map((link) => (
             <a
               key={link.url}
-              href={link.url}
+              href={safeHttpHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="patient-resource-link patient-resource-link--compact"
