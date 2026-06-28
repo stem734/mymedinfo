@@ -6,7 +6,8 @@ import { METRIC_ORDER, METRIC_DEFINITIONS, type ParsedMetric } from '../healthCh
 import { PREVIEW_DOMAIN_CONFIGS, type ClinicalDomainId } from '../healthCheckVariantConfig';
 import HealthCheckCard from '../components/HealthCheckCard';
 import PatientSupportFooter from '../components/PatientSupportFooter';
-import { saveElementAsPdf } from '../pdfExport';
+// pdfExport pulls in jsPDF + html2canvas (~600 kB / ~177 kB gzip). It is loaded
+// on demand inside handleSavePdf so patients don't download it on initial load.
 import { fetchCardTemplates } from '../cardTemplateStore';
 import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore';
 import type { HealthCheckTemplatePayload } from '../cardTemplateTypes';
@@ -301,6 +302,7 @@ const HealthCheckView: React.FC = () => {
     if (!exportRef.current || isSavingPdf) return;
     setIsSavingPdf(true);
     try {
+      const { saveElementAsPdf } = await import('../pdfExport');
       await saveElementAsPdf(
         exportRef.current,
         org ? `${org} - Health Check Results` : 'MyMedInfo - Health Check Results',
