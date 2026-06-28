@@ -38,7 +38,7 @@ serve(async (req) => {
     const { error: authError } = await supabase.auth.admin.updateUserById(uid, {
       email: email.trim(),
       user_metadata: { name: name.trim() },
-      ban_duration: isActive === false ? '876600h' : isActive === true ? 'none' : undefined,
+      ban_duration: isActive === false ? '876600h' : isActive === true ? 'none' : undefined, // 876600h is 100 years
     });
 
     if (authError) {
@@ -51,7 +51,7 @@ serve(async (req) => {
       .update({
         email: email.trim(),
         name: name.trim(),
-        is_active: Boolean(isActive),
+        is_active: isActive === false ? false : isActive === true ? true : targetAdmin.is_active,
         updated_at: new Date().toISOString(),
       })
       .eq('uid', uid);
