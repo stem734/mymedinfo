@@ -28,7 +28,7 @@ const PatientRouter: React.FC = () => {
   const [searchParams] = useSearchParams();
   const explicitType = (searchParams.get('type') || '').toLowerCase().trim();
   const codesParam = (searchParams.get('codes') || '').trim();
-  const practiceLookup = useMemo(() => getPracticeLookupFromSearchParams(searchParams), [searchParams]);
+  const practiceLookup = getPracticeLookupFromSearchParams(searchParams);
   const hasLetterCodeTokens = /[A-Za-z]/.test(codesParam);
   const { catalog, loading: catalogLoading } = usePatientTemplateCodeCatalog(practiceLookup.lookupValue);
   const parsedCodes = useMemo(
