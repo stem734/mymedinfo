@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertPracticeAccess } from '../_shared/assert-practice-access.ts';
 import { CUSTOM_CARD_DISCLAIMER_VERSION } from '../_shared/practice-card-constants.ts';
 import { createServiceClient, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
+import { isValidHttpUrl } from '../_shared/url-validation.ts';
 
 type TrendLink = {
   title?: string;
@@ -12,16 +13,6 @@ const normaliseStringArray = (value: unknown): string[] =>
   Array.isArray(value)
     ? value.map((item) => (typeof item === 'string' ? item.trim() : '')).filter(Boolean)
     : [];
-
-const isValidHttpUrl = (url: string | undefined): boolean => {
-  if (!url || typeof url !== 'string') return true;
-  try {
-    const parsed = new URL(url);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-};
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
