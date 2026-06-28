@@ -51,6 +51,7 @@ import { loadMedicationCatalog } from '../medicationCatalog';
 import type { MedicationRecord } from '../medicationCatalog';
 import type { ImmunisationTemplate, LongTermConditionTemplate, ScreeningTemplate } from '../patientTemplateCatalog';
 import CardBuilder from './CardBuilder';
+import { safeHttpHref } from '../safeHref';
 
 interface ServiceActivationRequest {
   id: string;
@@ -2135,7 +2136,7 @@ const AdminDashboard: React.FC = () => {
                     </td>
                     <td className="admin-data-table__col-resource-link">
                       {resource.website
-                        ? <a href={resource.website} target="_blank" rel="noopener noreferrer" title={resource.website} style={{ color: '#005eb8' }}>
+                        ? <a href={safeHttpHref(resource.website)} target="_blank" rel="noopener noreferrer" title={resource.website} style={{ color: '#005eb8' }}>
                             <ExternalLink size={16} />
                           </a>
                         : <span className="admin-table-muted">—</span>}
