@@ -549,15 +549,7 @@ const ResourceView: React.FC = () => {
     ? `${orgName} has shared some information with you which you may find useful.`
     : 'Your GP practice has shared some information with you which you may find useful.';
 
-  const guidanceOrganisationName = useMemo(() => {
-    if (resolvedContents.some((content) => content.state === 'custom') && orgName) {
-      return orgName;
-    }
-
-    return 'Nottingham West Primary Care Network';
-  }, [orgName, resolvedContents]);
-
-  const guidanceNoticeText = `Service provided by ${guidanceOrganisationName} on behalf of the NHS. This information has been prepared and checked by the clinical pharmacists at ${guidanceOrganisationName}.`;
+  const guidanceNoticeText = 'This information has been prepared and checked by the NWPCN clinical reference group.';
 
   if ((isValidating || isResolvingContents) && hasPracticeIdentifier && !previewOnly) {
     return (
@@ -847,7 +839,7 @@ const ResourceView: React.FC = () => {
       ))}
 
       {contents.length > 0 && (
-        <PatientSupportFooter text={guidanceOrganisationName} />
+        <PatientSupportFooter text={orgName || 'Nottingham West Primary Care Network'} />
       )}
 
       {hasPracticeIdentifier && isAuthorised && contents.length > 0 && (

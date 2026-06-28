@@ -1166,7 +1166,7 @@ const CombinedPatientView: React.FC = () => {
 
       {hasPracticeIdentifier && isAuthorised && !isDemoMode && (resolvedContents.length > 0 || selectedScreenings.length > 0 || selectedImmunisations.length > 0) && (
         <PatientRatingCard
-          guidanceNoticeText="Service provided by your GP practice on behalf of the NHS."
+          guidanceNoticeText="This information has been prepared and checked by the NWPCN clinical reference group."
           practiceIdentifier={practiceIdentifier}
         />
       )}
