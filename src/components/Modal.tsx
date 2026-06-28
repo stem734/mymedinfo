@@ -45,15 +45,25 @@ const Modal: React.FC<ModalProps> = ({
   ariaLabelledBy,
   closeOnOverlayClick = true,
 }) => {
+  const generatedTitleId = React.useId();
+
   if (!isOpen) {
     return null;
   }
 
   const hasHeader = Boolean(title || subtitle || icon || actions);
+  // Wire the dialog's accessible name to its visible title so screen readers
+  // announce it as a named dialog. Fall back to the close-button label when
+  // there is no header/title to reference.
+  const titleId = title ? ariaLabelledBy ?? generatedTitleId : undefined;
 
   return (
     <div className={`ui-modal__overlay ${overlayClassName}`.trim()} onClick={closeOnOverlayClick ? onClose : undefined}>
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-label={titleId ? undefined : closeButtonLabel}
         className={`ui-modal__panel ${sizeClassName[size]} ${panelClassName}`.trim()}
         onClick={(event) => event.stopPropagation()}
       >
@@ -63,7 +73,7 @@ const Modal: React.FC<ModalProps> = ({
               {icon && <div className="ui-modal__header-icon">{icon}</div>}
               <div>
                 {title && (
-                  <h2 id={ariaLabelledBy} className="ui-modal__title">
+                  <h2 id={titleId} className="ui-modal__title">
                     {title}
                   </h2>
                 )}

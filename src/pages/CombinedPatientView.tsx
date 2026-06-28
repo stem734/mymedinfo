@@ -26,10 +26,12 @@ import type { SickDayRulesVariant } from '../components/SickDayRulesModal';
 import { NhsCross, NhsTick } from '../components/NhsIcons';
 import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
-import { saveElementAsPdf } from '../pdfExport';
+// pdfExport pulls in jsPDF + html2canvas (~600 kB / ~177 kB gzip). It is loaded
+// on demand inside handleSavePdf so patients don't download it on initial load.
 import { getVideoEmbedUrl } from '../videoEmbed';
 import { parsePatientLinkCodes } from '../patientLinkCodes';
 import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
+import { safeHttpHref } from '../safeHref';
 
 const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALIDATION_CACHE_VERSION = 'v2';
@@ -264,6 +266,7 @@ const CombinedPatientView: React.FC = () => {
     if (!exportRef.current || isSavingPdf) return;
     setIsSavingPdf(true);
     try {
+      const { saveElementAsPdf } = await import('../pdfExport');
       await saveElementAsPdf(
         exportRef.current,
         orgName ? `${orgName} - Patient Information` : 'MyMedInfo - Patient Information',
@@ -891,7 +894,7 @@ const CombinedPatientView: React.FC = () => {
                           <div className="patient-resource-list patient-resource-list--compact">
                             {content.nhsLink && (
                               <a
-                                href={content.nhsLink}
+                                href={safeHttpHref(content.nhsLink)}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="patient-resource-link patient-resource-link--compact"
@@ -910,7 +913,7 @@ const CombinedPatientView: React.FC = () => {
                           {content.trendLinks.map((link, i) => (
                             <a
                               key={i}
-                              href={link.url}
+                              href={safeHttpHref(link.url)}
                               target="_blank"
                               rel="noopener noreferrer"
                               className="patient-resource-link patient-resource-link--compact"
@@ -1044,7 +1047,7 @@ const CombinedPatientView: React.FC = () => {
               {template.nhsLinks.map((link) => (
                 <a
                   key={link.url}
-                  href={link.url}
+                  href={safeHttpHref(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="patient-resource-link patient-resource-link--compact"
@@ -1149,7 +1152,7 @@ const CombinedPatientView: React.FC = () => {
               {template.nhsLinks.map((link) => (
                 <a
                   key={link.url}
-                  href={link.url}
+                  href={safeHttpHref(link.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="patient-resource-link patient-resource-link--compact"

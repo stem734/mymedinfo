@@ -16,6 +16,7 @@ import { getPracticeLookupFromSearchParams } from '../practiceLookup';
 import { isUrlExpired, parseSystmOneTimestamp } from '../dateHelpers';
 import { getVideoEmbedUrl } from '../videoEmbed';
 import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
+import { safeHttpHref } from '../safeHref';
 
 
 const formatExpiryWindowLabel = (value?: number, unit?: 'weeks' | 'months') => {
@@ -248,7 +249,7 @@ const LongTermConditionView: React.FC = () => {
           {selectedTemplate.nhsLinks.map((link) => (
             <a
               key={link.url}
-              href={link.url}
+              href={safeHttpHref(link.url)}
               target="_blank"
               rel="noopener noreferrer"
               className="patient-resource-link patient-resource-link--compact"

@@ -1,3 +1,7 @@
+## 2026-06-28 - Heavy export libs leak into the eager patient-page chunk
+**Learning:** Even though patient pages are `React.lazy` routes, a top-level `import { saveElementAsPdf } from '../pdfExport'` makes Rollup pull jsPDF + html2canvas (~601 kB / ~177 kB gzip) into a chunk those pages import *statically* — so it's fetched on initial page load, not when the "Download PDF" button is clicked. `React.lazy` on the route does NOT defer a heavy dependency that the route imports statically; the dependency must itself be behind a dynamic `import()`.
+**Action:** For features used only on interaction (PDF export, charts, editors), import the heavy module with `await import(...)` inside the handler, not at module top level. Verify by grepping the built `dist/assets/<Page>-*.js` chunk: a static `import{...}from"./<lib>-*.js"` means it's eager; `await import("./<lib>-*.js")` means it's deferred. The patient views (ResourceView / CombinedPatientView / HealthCheckView) are the hot path — keep their initial chunks lean.
+
 ## 2025-06-14 - Eliminate Cascading Renders via Lazy State Initialization
 **Performance Issue:** The `CombinedPatientView.tsx` component parsed `sessionStorage` and called `setState` inside `useEffect` on mount, triggering cascading re-renders even when the initial state was already correct. The component was computing cache values in `useMemo`, then immediately overwriting the state with the same values.
 
