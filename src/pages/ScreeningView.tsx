@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, ShieldCheck, ExternalLink, AlertCircle } from 'lucide-react';
 import {
-  SCREENING_TEMPLATES,
   findScreeningTemplateByIdentifier,
   hydrateScreeningTemplate,
   type ScreeningTemplate,
@@ -47,7 +46,6 @@ const ScreeningView: React.FC = () => {
   const [loadedTemplate, setLoadedTemplate] = useState<ScreeningTemplate | null>(null);
   const access = usePracticeContentAccess(practiceIdentifier, 'screening_enabled', { skip: isDemoMode || previewOnly });
   const practicePhone = access.details?.contactPhone || '';
-  const knownTemplateIds = useMemo(() => Object.keys(SCREENING_TEMPLATES), []);
   const selectedTemplate = loadedTemplate;
   const videoEmbedUrl = getVideoEmbedUrl(selectedTemplate?.videoUrl);
   const issuedAt = useMemo(() => parseSystmOneTimestamp(searchParams.get('codes')), [searchParams]);
@@ -76,11 +74,7 @@ const ScreeningView: React.FC = () => {
 
       try {
         const practiceRows = practiceIdentifier
-          ? await fetchPatientPracticeCardTemplates<ScreeningTemplate>(
-            practiceIdentifier,
-            'screening',
-            knownTemplateIds,
-          )
+          ? await fetchPatientPracticeCardTemplates<ScreeningTemplate>(practiceIdentifier, 'screening')
           : [];
         const globalRows = await fetchCardTemplates<ScreeningTemplate>('screening');
         const candidateTemplates = [
@@ -94,7 +88,7 @@ const ScreeningView: React.FC = () => {
       }
     };
     void loadTemplate();
-  }, [isDemoMode, knownTemplateIds, practiceIdentifier, practicePhone, previewOnly, previewToken, screenIdentifier]);
+  }, [isDemoMode, practiceIdentifier, practicePhone, previewOnly, previewToken, screenIdentifier]);
 
   if (access.loading) {
     return (

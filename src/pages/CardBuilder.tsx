@@ -450,6 +450,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
   const [authenticated, setAuthenticated] = useState(false);
   const [currentAdminIsGpRatifier, setCurrentAdminIsGpRatifier] = useState(currentAdminIsGpRatifierProp);
   const [currentAdminRole, setCurrentAdminRole] = useState<'owner' | 'admin' | null>(currentAdminRoleProp);
+  const canEditSystmOneCodes = currentAdminRole === 'owner';
   const [referenceTimeMs] = useState(() => Date.now());
   const navigate = useNavigate();
   const location = useLocation();
@@ -2837,7 +2838,13 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
         <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid #005eb8' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.1rem', margin: 0 }}>1. Screening Card Builder</h2>
-            <button onClick={createNewScreeningTemplate} className="action-button" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
+            <button
+              onClick={createNewScreeningTemplate}
+              disabled={!canEditSystmOneCodes}
+              title={!canEditSystmOneCodes ? 'Only owners can create cards with new SystmOne codes' : undefined}
+              className="action-button"
+              style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem', opacity: canEditSystmOneCodes ? 1 : 0.68 }}
+            >
               <Plus size={14} /> Create new card
             </button>
           </div>
@@ -2879,7 +2886,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
                         <div className="admin-table-actions">
                           <button onClick={() => openPreview(previewUrl, 'This is a preview of what patients will see when they access this screening card.')} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
                           <button onClick={() => { setScreeningType(template.id); setTemplateSaveCompleted((current) => ({ ...current, screening: false })); setScreeningEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
-                          <button onClick={() => duplicateScreeningTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
+                          <button onClick={() => duplicateScreeningTemplate(template)} disabled={!canEditSystmOneCodes} className="admin-action-btn admin-action-btn--icon" title={canEditSystmOneCodes ? 'Duplicate' : 'Only owners can create cards with new SystmOne codes'}><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
                           {savedScreeningIds.has(template.id) && <button onClick={() => handleDeleteTemplate('screening', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>}
                         </div>
@@ -2897,7 +2904,13 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
         <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid #005eb8' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.1rem', margin: 0 }}>1. Immunisation Card Builder</h2>
-            <button onClick={createNewImmunisationTemplate} className="action-button" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
+            <button
+              onClick={createNewImmunisationTemplate}
+              disabled={!canEditSystmOneCodes}
+              title={!canEditSystmOneCodes ? 'Only owners can create cards with new SystmOne codes' : undefined}
+              className="action-button"
+              style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem', opacity: canEditSystmOneCodes ? 1 : 0.68 }}
+            >
               <Plus size={14} /> Create new card
             </button>
           </div>
@@ -2939,7 +2952,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
                         <div className="admin-table-actions">
                           <button onClick={() => openPreview(previewUrl)} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
                           <button onClick={() => { setImmunisationSelections([template.id]); setTemplateSaveCompleted((current) => ({ ...current, immunisation: false })); setImmunisationEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
-                          <button onClick={() => duplicateImmunisationTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
+                          <button onClick={() => duplicateImmunisationTemplate(template)} disabled={!canEditSystmOneCodes} className="admin-action-btn admin-action-btn--icon" title={canEditSystmOneCodes ? 'Duplicate' : 'Only owners can create cards with new SystmOne codes'}><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
                           {savedImmunisationIds.has(template.id) && <button onClick={() => handleDeleteTemplate('immunisation', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>}
                         </div>
@@ -2957,7 +2970,13 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
         <div className="card" style={{ marginBottom: '1.5rem', borderLeft: '4px solid #005eb8' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
             <h2 style={{ fontSize: '1.1rem', margin: 0 }}>1. Long Term Conditions Card Builder</h2>
-            <button onClick={createNewLongTermConditionTemplate} className="action-button" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem' }}>
+            <button
+              onClick={createNewLongTermConditionTemplate}
+              disabled={!canEditSystmOneCodes}
+              title={!canEditSystmOneCodes ? 'Only owners can create cards with new SystmOne codes' : undefined}
+              className="action-button"
+              style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem', opacity: canEditSystmOneCodes ? 1 : 0.68 }}
+            >
               <Plus size={14} /> Create new card
             </button>
           </div>
@@ -2999,7 +3018,7 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
                         <div className="admin-table-actions">
                           <button onClick={() => openPreview(previewUrl)} className="admin-action-btn admin-action-btn--edit"><Eye size={14} /> Preview</button>
                           <button onClick={() => { setSelectedLongTermCondition(template.id); setTemplateSaveCompleted((current) => ({ ...current, ltc: false })); setLtcEditorOpen(true); }} className="admin-action-btn admin-action-btn--edit"><Edit2 size={14} /> Edit</button>
-                          <button onClick={() => duplicateLongTermConditionTemplate(template)} className="admin-action-btn admin-action-btn--icon" title="Duplicate"><CopyPlus size={14} /></button>
+                          <button onClick={() => duplicateLongTermConditionTemplate(template)} disabled={!canEditSystmOneCodes} className="admin-action-btn admin-action-btn--icon" title={canEditSystmOneCodes ? 'Duplicate' : 'Only owners can create cards with new SystmOne codes'}><CopyPlus size={14} /></button>
                           <button onClick={() => loadTemplateHistory('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Audit history"><Activity size={14} /></button>
                           {savedLtcIds.has(template.id) && <button onClick={() => handleDeleteTemplate('ltc', template.id, template.label)} className="admin-action-btn admin-action-btn--icon" title="Delete" style={{ color: '#d5281b' }}><Trash2 size={14} /></button>}
                         </div>
@@ -3069,7 +3088,9 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
                     onChange={(e) => updateScreeningTemplate(screeningType, {
                       code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                     })}
-                    style={{ ...editorInputStyle, fontFamily: 'monospace' }}
+                    disabled={!canEditSystmOneCodes}
+                    title={!canEditSystmOneCodes ? 'Only owners can change the SystmOne code' : undefined}
+                    style={{ ...editorInputStyle, fontFamily: 'monospace', opacity: canEditSystmOneCodes ? 1 : 0.68 }}
                   />
                 </div>
                 <div className="dashboard-field">
@@ -3251,7 +3272,9 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
                     onChange={(e) => updateImmunisationTemplate(selectedImmunisationTemplate.id, {
                       code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                     })}
-                    style={{ ...editorInputStyle, fontFamily: 'monospace' }}
+                    disabled={!canEditSystmOneCodes}
+                    title={!canEditSystmOneCodes ? 'Only owners can change the SystmOne code' : undefined}
+                    style={{ ...editorInputStyle, fontFamily: 'monospace', opacity: canEditSystmOneCodes ? 1 : 0.68 }}
                   />
                 </div>
                 <div className="dashboard-field">
@@ -3400,7 +3423,9 @@ const CardBuilder: React.FC<CardBuilderProps> = ({
                     onChange={(e) => updateLongTermConditionTemplate(selectedLongTermCondition, {
                       code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''),
                     })}
-                    style={{ ...editorInputStyle, fontFamily: 'monospace' }}
+                    disabled={!canEditSystmOneCodes}
+                    title={!canEditSystmOneCodes ? 'Only owners can change the SystmOne code' : undefined}
+                    style={{ ...editorInputStyle, fontFamily: 'monospace', opacity: canEditSystmOneCodes ? 1 : 0.68 }}
                   />
                 </div>
                 <div className="dashboard-field">

@@ -45,4 +45,35 @@ describe('parsePatientLinkCodes', () => {
       unknownIdentifiers: [],
     });
   });
+
+  it('uses supplied saved template codes ahead of built-in defaults', () => {
+    expect(parsePatientLinkCodes('AAA1,SHINGAR,UNKNOWN', {
+      screeningTemplates: [{
+        id: 'aaa',
+        code: 'AAA1',
+        label: 'AAA screening',
+        headline: '',
+        explanation: '',
+        guidance: [],
+        nhsLinks: [],
+      }],
+      immunisationTemplates: [{
+        id: 'shingles_at_risk',
+        code: 'SHINGAR',
+        label: 'Shingles at-risk vaccine',
+        headline: '',
+        explanation: '',
+        guidance: [],
+        nhsLinks: [],
+      }],
+      longTermConditionTemplates: [],
+      routeUnknownLetterTokensToImmunisations: false,
+    })).toEqual({
+      medicationCodes: [],
+      screeningIdentifiers: ['AAA1'],
+      immunisationIdentifiers: ['SHINGAR'],
+      longTermConditionIdentifiers: [],
+      unknownIdentifiers: ['UNKNOWN'],
+    });
+  });
 });

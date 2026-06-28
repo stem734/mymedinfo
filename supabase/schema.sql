@@ -95,6 +95,10 @@ CREATE UNIQUE INDEX idx_card_templates_builder_type_template_id
   ON card_templates (builder_type, template_id);
 CREATE INDEX idx_card_templates_builder_type
   ON card_templates (builder_type);
+CREATE UNIQUE INDEX idx_card_templates_builder_type_payload_code
+  ON card_templates (builder_type, upper(payload->>'code'))
+  WHERE builder_type IN ('screening', 'immunisation', 'ltc')
+    AND coalesce(payload->>'code', '') <> '';
 
 -- ===================
 -- CARD_TEMPLATE_REVISIONS TABLE

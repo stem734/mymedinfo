@@ -8,15 +8,12 @@ import { getDemoNoticeText } from '../demoHelpers';
 import { fetchCardTemplates } from '../cardTemplateStore';
 import { fetchPatientPracticeCardTemplates } from '../practiceCardTemplateStore';
 import {
-  SCREENING_TEMPLATES,
-  IMMUNISATION_TEMPLATES,
   findImmunisationTemplateByIdentifier,
   findScreeningTemplateByIdentifier,
   hydrateScreeningTemplate,
   withImmunisationTemplateDefaults,
   type ImmunisationTemplate,
   type ScreeningTemplate,
-  withScreeningTemplateDefaults,
 } from '../patientTemplateCatalog';
 import WarningCallout from '../components/WarningCallout';
 import PatientSupportFooter from '../components/PatientSupportFooter';
@@ -32,6 +29,7 @@ import { getVideoEmbedUrl } from '../videoEmbed';
 import { parsePatientLinkCodes } from '../patientLinkCodes';
 import { interpolatePracticeTemplateVariables } from '../practiceTemplateVariables';
 import { safeHttpHref } from '../safeHref';
+import { usePatientTemplateCodeCatalog } from '../usePatientTemplateCodeCatalog';
 
 const VALIDATION_CACHE_TTL_MS = 5 * 60 * 1000;
 const VALIDATION_CACHE_VERSION = 'v2';
@@ -170,7 +168,14 @@ const CombinedPatientView: React.FC = () => {
   const vaccineParam = searchParams.get('vaccine') || searchParams.get('jab') || searchParams.get('imms') || '';
   const isDemoMode = searchParams.get('demo') === '1';
   const isExactDemo = searchParams.get('exactDemo') === '1';
-  const parsedCodes = useMemo(() => parsePatientLinkCodes(codesParam), [codesParam]);
+  const { catalog } = usePatientTemplateCodeCatalog(practiceIdentifier);
+  const parsedCodes = useMemo(
+    () => parsePatientLinkCodes(codesParam, {
+      ...catalog,
+      routeUnknownLetterTokensToImmunisations: false,
+    }),
+    [catalog, codesParam],
+  );
   const requestedCodes = useMemo(() => {
     if (codesParam) {
       return Array.from(new Set(parsedCodes.medicationCodes.length > 0 ? parsedCodes.medicationCodes : parseMedicationCodes(codesParam)));
@@ -192,22 +197,6 @@ const CombinedPatientView: React.FC = () => {
     if (!issuedDate) return '';
     return issuedDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
   }, [dateParam, issuedAt]);
-  const builtInScreeningTemplates = useMemo(
-    () => Object.values(SCREENING_TEMPLATES).map(withScreeningTemplateDefaults),
-    [],
-  );
-  const builtInScreeningIds = useMemo(
-    () => builtInScreeningTemplates.map((template) => template.id),
-    [builtInScreeningTemplates],
-  );
-  const builtInImmunisationTemplates = useMemo(
-    () => Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults),
-    [],
-  );
-  const builtInImmunisationIds = useMemo(
-    () => builtInImmunisationTemplates.map((template) => template.id),
-    [builtInImmunisationTemplates],
-  );
   const validationCacheKey = useMemo(
     () => getValidationCacheKey(practiceLookup.cacheKey),
     [practiceLookup.cacheKey],
@@ -455,7 +444,7 @@ const CombinedPatientView: React.FC = () => {
       try {
         const [practiceRows, globalRows] = await Promise.all([
           practiceIdentifier
-            ? fetchPatientPracticeCardTemplates<ScreeningTemplate>(practiceIdentifier, 'screening', builtInScreeningIds)
+            ? fetchPatientPracticeCardTemplates<ScreeningTemplate>(practiceIdentifier, 'screening')
             : Promise.resolve([]),
           fetchCardTemplates<ScreeningTemplate>('screening'),
         ]);
@@ -491,7 +480,7 @@ const CombinedPatientView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [builtInScreeningIds, builtInScreeningTemplates, isAuthorised, isDemoMode, practiceFeatures.screening_enabled, practiceIdentifier, practicePhone, requestedScreenings]);
+  }, [isAuthorised, isDemoMode, practiceFeatures.screening_enabled, practiceIdentifier, practicePhone, requestedScreenings]);
 
   useEffect(() => {
     let cancelled = false;
@@ -516,13 +505,12 @@ const CombinedPatientView: React.FC = () => {
       try {
         const [practiceRows, globalRows] = await Promise.all([
           practiceIdentifier
-            ? fetchPatientPracticeCardTemplates<ImmunisationTemplate>(practiceIdentifier, 'immunisation', builtInImmunisationIds)
+            ? fetchPatientPracticeCardTemplates<ImmunisationTemplate>(practiceIdentifier, 'immunisation')
             : Promise.resolve([]),
           fetchCardTemplates<ImmunisationTemplate>('immunisation'),
         ]);
 
         const candidates = [
-          ...builtInImmunisationTemplates,
           ...globalRows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
           ...practiceRows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];
@@ -552,7 +540,7 @@ const CombinedPatientView: React.FC = () => {
     return () => {
       cancelled = true;
     };
-  }, [builtInImmunisationIds, builtInImmunisationTemplates, isAuthorised, isDemoMode, practiceFeatures.immunisation_enabled, practiceIdentifier, practicePhone, requestedImmunisations]);
+  }, [isAuthorised, isDemoMode, practiceFeatures.immunisation_enabled, practiceIdentifier, practicePhone, requestedImmunisations]);
 
   const medicationContents = useMemo(() => {
     if (isDemoMode || !hasPracticeIdentifier) {

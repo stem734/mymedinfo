@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ShieldPlus, ShieldCheck, ExternalLink, Phone, Mail, Globe, AlertCircle } from 'lucide-react';
 import {
-  IMMUNISATION_TEMPLATES,
   findImmunisationTemplateByIdentifier,
   type ImmunisationTemplate,
   withImmunisationTemplateDefaults,
@@ -75,13 +74,11 @@ const ImmunisationView: React.FC = () => {
       }
 
       try {
-        const builtInIds = Object.keys(IMMUNISATION_TEMPLATES);
         const practiceRows = practiceIdentifier
-          ? await fetchPatientPracticeCardTemplates<ImmunisationTemplate>(practiceIdentifier, 'immunisation', builtInIds)
+          ? await fetchPatientPracticeCardTemplates<ImmunisationTemplate>(practiceIdentifier, 'immunisation')
           : [];
         const rows = await fetchCardTemplates<ImmunisationTemplate>('immunisation');
         const candidates = [
-          ...Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults),
           ...rows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
           ...practiceRows.map((row) => withImmunisationTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];
@@ -94,13 +91,7 @@ const ImmunisationView: React.FC = () => {
         setLoadedTemplateMap(selectedMap);
       } catch (error) {
         console.error('Failed to load immunisation template overrides', error);
-        const candidates = Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults);
-        setLoadedTemplateMap(Object.fromEntries(
-          requestedVaccines.flatMap((identifier) => {
-            const template = findImmunisationTemplateByIdentifier(identifier, candidates);
-            return template ? [[identifier, template]] : [];
-          }),
-        ));
+        setLoadedTemplateMap({});
       }
     };
     void loadTemplates();

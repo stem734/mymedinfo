@@ -463,7 +463,11 @@ BEGIN
       FROM public.practice_card_templates
       WHERE practice_id = practice_record.id
         AND builder_type = requested_builder_type
-        AND template_id = ANY(requested_template_ids)
+        AND (
+          requested_template_ids IS NULL
+          OR array_length(requested_template_ids, 1) IS NULL
+          OR template_id = ANY(requested_template_ids)
+        )
       ORDER BY template_id
     ) rows
   ), '[]'::jsonb);

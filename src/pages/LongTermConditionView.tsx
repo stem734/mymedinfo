@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ClipboardList, ShieldCheck, ExternalLink, AlertCircle } from 'lucide-react';
 import {
-  LONG_TERM_CONDITION_TEMPLATES,
   findLongTermConditionTemplateByIdentifier,
   type LongTermConditionTemplate,
   withLongTermConditionTemplateDefaults,
@@ -69,14 +68,12 @@ const LongTermConditionView: React.FC = () => {
       }
 
       try {
-        const identifier = conditionType || 'asthma';
-        const builtInIds = Object.keys(LONG_TERM_CONDITION_TEMPLATES);
+        const identifier = conditionType;
         const practiceRows = practiceIdentifier
-          ? await fetchPatientPracticeCardTemplates<LongTermConditionTemplate>(practiceIdentifier, 'ltc', builtInIds)
+          ? await fetchPatientPracticeCardTemplates<LongTermConditionTemplate>(practiceIdentifier, 'ltc')
           : [];
         const rows = await fetchCardTemplates<LongTermConditionTemplate>('ltc');
         const candidates = [
-          ...Object.values(LONG_TERM_CONDITION_TEMPLATES).map(withLongTermConditionTemplateDefaults),
           ...rows.map((row) => withLongTermConditionTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
           ...practiceRows.map((row) => withLongTermConditionTemplateDefaults(interpolatePracticeTemplateVariables(row.payload, { practicePhone }))),
         ];

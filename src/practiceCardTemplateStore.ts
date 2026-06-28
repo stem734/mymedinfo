@@ -40,16 +40,16 @@ export async function fetchPracticeCardTemplates<T = unknown>(
 export async function fetchPatientPracticeCardTemplates<T = unknown>(
   practiceIdentifier: string,
   builderType: PracticeTemplateBuilderType,
-  templateIds: string[],
+  templateIds?: string[],
 ): Promise<PracticeCardTemplateRow<T>[]> {
-  if (!practiceIdentifier.trim() || templateIds.length === 0) {
+  if (!practiceIdentifier.trim()) {
     return [];
   }
 
   const { data, error } = await supabase.rpc('resolve_practice_card_templates', {
     org_name: practiceIdentifier,
     requested_builder_type: builderType,
-    requested_template_ids: templateIds,
+    requested_template_ids: templateIds && templateIds.length > 0 ? templateIds : null,
   });
 
   if (error) throw error;

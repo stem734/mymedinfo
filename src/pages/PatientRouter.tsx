@@ -2,6 +2,8 @@ import React, { useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { detectContentType, CONTENT_TYPES } from '../contentRouter';
 import { parsePatientLinkCodes } from '../patientLinkCodes';
+import { getPracticeLookupFromSearchParams } from '../practiceLookup';
+import { usePatientTemplateCodeCatalog } from '../usePatientTemplateCodeCatalog';
 
 // All content views are lazy-loaded to keep patient routes split by content type.
 const ResourceView = React.lazy(() => import('./ResourceView'));
@@ -26,7 +28,16 @@ const PatientRouter: React.FC = () => {
   const [searchParams] = useSearchParams();
   const explicitType = (searchParams.get('type') || '').toLowerCase().trim();
   const codesParam = (searchParams.get('codes') || '').trim();
-  const parsedCodes = useMemo(() => parsePatientLinkCodes(codesParam), [codesParam]);
+  const practiceLookup = useMemo(() => getPracticeLookupFromSearchParams(searchParams), [searchParams]);
+  const hasLetterCodeTokens = /[A-Za-z]/.test(codesParam);
+  const { catalog, loading: catalogLoading } = usePatientTemplateCodeCatalog(practiceLookup.lookupValue);
+  const parsedCodes = useMemo(
+    () => parsePatientLinkCodes(codesParam, {
+      ...catalog,
+      routeUnknownLetterTokensToImmunisations: false,
+    }),
+    [catalog, codesParam],
+  );
   const hasMedicationParams = Boolean((searchParams.get('code') || searchParams.get('med') || '').trim()) || (
     parsedCodes.medicationCodes.length > 0 &&
     explicitType !== CONTENT_TYPES.SCREENING &&
@@ -46,6 +57,14 @@ const PatientRouter: React.FC = () => {
   );
 
   const renderContent = () => {
+    if (!explicitType && hasLetterCodeTokens && catalogLoading) {
+      return (
+        <div className="card patient-state-card" style={{ textAlign: 'center' }}>
+          <p style={{ marginTop: '1rem', color: '#4c6272' }}>Loading...</p>
+        </div>
+      );
+    }
+
     if (isCombinedBundle) {
       return <CombinedPatientView />;
     }

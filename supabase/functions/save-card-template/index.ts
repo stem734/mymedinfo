@@ -44,9 +44,11 @@ serve(async (req) => {
       return errorResponse('Template payload is required', 400);
     }
 
+    let payloadForSave = body.payload as Record<string, unknown>;
+
     // Validate URLs to prevent Stored XSS via javascript: or data: URIs
     if (builderType === 'healthcheck') {
-      const p = body.payload as Record<string, unknown>;
+      const p = payloadForSave;
       if (p.variants && typeof p.variants === 'object') {
         for (const variant of Object.values(p.variants as Record<string, unknown>)) {
           const v = variant as Record<string, unknown>;
@@ -61,7 +63,7 @@ serve(async (req) => {
         }
       }
     } else {
-      const p = body.payload as Record<string, unknown>;
+      const p = payloadForSave;
       if (!isValidHttpUrl(p.videoUrl)) {
         return errorResponse('Video URL must be a valid HTTP or HTTPS URL', 400);
       }
@@ -89,13 +91,56 @@ serve(async (req) => {
       return errorResponse(`Failed to load template: ${existingError.message}`, 500);
     }
 
+    if (builderType !== 'healthcheck') {
+      const existingPayload = existingTemplate?.payload && typeof existingTemplate.payload === 'object'
+        ? existingTemplate.payload as Record<string, unknown>
+        : null;
+      const existingCode = typeof existingPayload?.code === 'string'
+        ? existingPayload.code.trim().toUpperCase()
+        : '';
+      const incomingCode = typeof payloadForSave.code === 'string'
+        ? payloadForSave.code.trim().toUpperCase()
+        : '';
+
+      if (admin.global_role !== 'owner') {
+        if (!existingTemplate || !existingCode) {
+          return errorResponse('Only owners can create or assign SystmOne codes', 403);
+        }
+        if (incomingCode && incomingCode !== existingCode) {
+          return errorResponse('Only owners can change SystmOne codes', 403);
+        }
+        payloadForSave = { ...payloadForSave, code: existingCode };
+      } else {
+        if (!incomingCode) {
+          return errorResponse('SystmOne code is required', 400);
+        }
+
+        const { data: duplicateCodes, error: duplicateCodeError } = await supabase
+          .from('card_templates')
+          .select('template_key')
+          .eq('builder_type', builderType)
+          .filter('payload->>code', 'eq', incomingCode)
+          .neq('template_key', templateKey)
+          .limit(1);
+
+        if (duplicateCodeError) {
+          return errorResponse(`Failed to validate SystmOne code: ${duplicateCodeError.message}`, 500);
+        }
+        if ((duplicateCodes || []).length > 0) {
+          return errorResponse('SystmOne code is already assigned to another card', 400);
+        }
+
+        payloadForSave = { ...payloadForSave, code: incomingCode };
+      }
+    }
+
     const version = (existingTemplate?.version || 0) + 1;
     const templateRecord = {
       template_key: templateKey,
       builder_type: builderType,
       template_id: templateId,
       label,
-      payload: body.payload,
+      payload: payloadForSave,
       version,
       created_at: existingTemplate?.created_at || now,
       created_by: existingTemplate?.created_by || userId,
@@ -123,7 +168,7 @@ serve(async (req) => {
         label,
         version,
         action: existingTemplate ? 'updated' : 'created',
-        payload: body.payload,
+        payload: payloadForSave,
         restored_from_revision_id: null,
         created_at: now,
         created_by: userId,
