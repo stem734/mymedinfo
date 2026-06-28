@@ -6,7 +6,8 @@ import { DEFAULT_PRACTICE_FEATURE_SETTINGS, type PracticeFeatureSettings } from 
 import { useMedicationCatalog } from '../medicationCatalog';
 import { getDemoNoticeText } from '../demoHelpers';
 import { isIssuedDateStale, isUrlExpired, parsePatientDate, parseSystmOneTimestamp } from '../dateHelpers';
-import { saveElementAsPdf } from '../pdfExport';
+// pdfExport pulls in jsPDF + html2canvas (~600 kB / ~177 kB gzip). It is loaded
+// on demand inside handleSavePdf so patients don't download it on initial load.
 import WarningCallout from '../components/WarningCallout';
 import PatientSupportFooter from '../components/PatientSupportFooter';
 import PatientRatingCard from '../components/PatientRatingCard';
@@ -264,6 +265,7 @@ const ResourceView: React.FC = () => {
     if (!exportRef.current || isSavingPdf) return;
     setIsSavingPdf(true);
     try {
+      const { saveElementAsPdf } = await import('../pdfExport');
       await saveElementAsPdf(
         exportRef.current,
         orgName ? `${orgName} - Patient Medication Information` : 'MyMedInfo - Patient Medication Information',
