@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    await assertAdmin(req.headers.get('Authorization'));
+    const { admin: actingAdmin } = await assertAdmin(req.headers.get('Authorization'));
 
     const body = await req.json() as {
       uid?: string;
@@ -36,7 +36,6 @@ serve(async (req) => {
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
     const role = normalisePracticeRole(body.role);
-    const isGpRatifier = body.isGpRatifier === true;
     const requestedPracticeIds = Array.isArray(body.practiceIds) ? body.practiceIds : [];
 
     const { data: targetPracticeUser, error: fetchError } = await supabase
@@ -47,6 +46,14 @@ serve(async (req) => {
 
     if (fetchError || !targetPracticeUser) {
       return errorResponse('User account not found', 404);
+    }
+
+    // Permission check: only owner can modify privileged users or change GP ratifier status.
+    const isTargetPrivileged = !!(targetPracticeUser.global_role || targetPracticeUser.is_gp_ratifier);
+    const isChangingPrivilegedFields = body.isGpRatifier !== undefined && body.isGpRatifier !== targetPracticeUser.is_gp_ratifier;
+
+    if ((isTargetPrivileged || isChangingPrivilegedFields) && actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only the owner can modify privileged users or change GP ratifier status', 403);
     }
 
     if (requestedPracticeIds.length === 0 && !targetPracticeUser.global_role) {
@@ -76,7 +83,7 @@ serve(async (req) => {
         name: displayName,
         is_active: body.isActive === false ? false : body.isActive === true ? true : targetPracticeUser.is_active,
         global_role: targetPracticeUser.global_role || null,
-        is_gp_ratifier: isGpRatifier,
+        is_gp_ratifier: body.isGpRatifier === false ? false : body.isGpRatifier === true ? true : targetPracticeUser.is_gp_ratifier,
         updated_at: new Date().toISOString(),
       })
       .eq('uid', body.uid);
