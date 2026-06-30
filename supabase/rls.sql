@@ -14,6 +14,7 @@ ALTER TABLE practice_memberships ENABLE ROW LEVEL SECURITY;
 ALTER TABLE practice_medication_cards ENABLE ROW LEVEL SECURITY;
 ALTER TABLE login_audit ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log ENABLE ROW LEVEL SECURITY;
+ALTER TABLE rate_limit_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS firebase_uid_map ENABLE ROW LEVEL SECURITY;
 
 -- ===================
@@ -375,6 +376,18 @@ DROP POLICY IF EXISTS "firebase_uid_map_no_client_access" ON firebase_uid_map;
 
 CREATE POLICY "firebase_uid_map_no_client_access"
   ON firebase_uid_map FOR ALL
+  TO anon, authenticated
+  USING (false)
+  WITH CHECK (false);
+
+-- =============================================================================
+-- RATE_LIMIT_EVENTS policies
+-- =============================================================================
+-- Internal rate-limiting logs should never be accessible to clients.
+-- Service-role Edge Functions can still read/write/delete.
+DROP POLICY IF EXISTS "rate_limit_events_no_access" ON rate_limit_events;
+CREATE POLICY "rate_limit_events_no_access"
+  ON rate_limit_events FOR ALL
   TO anon, authenticated
   USING (false)
   WITH CHECK (false);

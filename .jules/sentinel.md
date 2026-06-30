@@ -27,3 +27,8 @@
 **Vulnerability:** The `update-admin-user` Edge Function incorrectly unbanned users when they were deactivated due to a logic reversal (`isActive === false ? 'none' : ...`). Additionally, a simple boolean check for deactivation can cause security regressions during partial updates if the field is missing, leading to unintended unbanning of previously deactivated users.
 **Learning:** `ban_duration` in Supabase Auth must be set to a duration (e.g., '876600h') to deactivate and 'none' to reactivate. Partial updates must explicitly check for `true` and `false` to avoid overwriting the ban status when the field is omitted from the request payload.
 **Prevention:** Always use explicit equality checks (e.g., `isActive === false ? '876600h' : isActive === true ? 'none' : undefined`) when updating Auth metadata or ban status to ensure state is only changed when intended.
+
+## 2025-06-17 - Rate Limiting Public Password Resets
+**Vulnerability:** The public `send-password-reset` Edge Function lacked rate limiting, allowing automated scripts to flood users with emails or perform account enumeration via timing analysis.
+**Learning:** Publicly accessible endpoints that trigger side effects (like sending emails) must be protected by multi-factor rate limiting (IP and Identifier-based). To maintain security, rate-limit responses must be indistinguishable from successful ones to avoid leaking account existence or the threshold status.
+**Prevention:** Use a dedicated database table or Redis cache to track attempts by IP address and normalized email/identifier. Prioritize trusted headers like `cf-connecting-ip` to mitigate IP spoofing. Ensure that the rate-limiting table is pruned regularly to prevent performance degradation.
