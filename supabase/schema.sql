@@ -243,6 +243,21 @@ CREATE INDEX idx_audit_log_code        ON audit_log (code);
 CREATE INDEX idx_audit_log_practice_id ON audit_log (practice_id);
 
 -- ===================
+-- RATE_LIMIT_EVENTS TABLE
+-- Tracks attempts on public or sensitive endpoints to prevent abuse.
+-- ===================
+CREATE TABLE rate_limit_events (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type  text NOT NULL,
+  email       text,
+  ip_address  text,
+  created_at  timestamptz DEFAULT now()
+);
+
+CREATE INDEX idx_rate_limit_events_email_created_at ON rate_limit_events (email, created_at DESC) WHERE email IS NOT NULL;
+CREATE INDEX idx_rate_limit_events_ip_created_at ON rate_limit_events (ip_address, created_at DESC) WHERE ip_address IS NOT NULL;
+
+-- ===================
 -- updated_at auto-trigger
 -- Applied to every table that has an updated_at column so the timestamp
 -- stays accurate even when rows are modified outside application code.
