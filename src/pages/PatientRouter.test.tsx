@@ -1,7 +1,26 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
+import {
+  IMMUNISATION_TEMPLATES,
+  LONG_TERM_CONDITION_TEMPLATES,
+  SCREENING_TEMPLATES,
+  withImmunisationTemplateDefaults,
+  withLongTermConditionTemplateDefaults,
+  withScreeningTemplateDefaults,
+} from '../patientTemplateCatalog';
 import PatientRouter from './PatientRouter';
+
+vi.mock('../usePatientTemplateCodeCatalog', () => ({
+  usePatientTemplateCodeCatalog: () => ({
+    catalog: {
+      screeningTemplates: Object.values(SCREENING_TEMPLATES).map(withScreeningTemplateDefaults),
+      immunisationTemplates: Object.values(IMMUNISATION_TEMPLATES).map(withImmunisationTemplateDefaults),
+      longTermConditionTemplates: Object.values(LONG_TERM_CONDITION_TEMPLATES).map(withLongTermConditionTemplateDefaults),
+    },
+    loading: false,
+  }),
+}));
 
 vi.mock('./ResourceView', () => ({
   default: () => <div>Resource View</div>,
