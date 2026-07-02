@@ -3,6 +3,20 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { describe, expect, it, vi } from 'vitest';
 import PatientRouter from './PatientRouter';
 
+vi.mock('../usePatientTemplateCodeCatalog', () => ({
+  usePatientTemplateCodeCatalog: vi.fn(() => ({
+    catalog: {
+      screeningTemplates: [
+        { id: 'CS1', code: 'CS1', label: 'Cervical' },
+        { id: 'BR1', code: 'BR1', label: 'Breast' },
+      ],
+      immunisationTemplates: [],
+      longTermConditionTemplates: [],
+    },
+    loading: false,
+  })),
+}));
+
 vi.mock('./ResourceView', () => ({
   default: () => <div>Resource View</div>,
 }));
