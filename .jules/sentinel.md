@@ -27,3 +27,8 @@
 **Vulnerability:** The `update-admin-user` Edge Function incorrectly unbanned users when they were deactivated due to a logic reversal (`isActive === false ? 'none' : ...`). Additionally, a simple boolean check for deactivation can cause security regressions during partial updates if the field is missing, leading to unintended unbanning of previously deactivated users.
 **Learning:** `ban_duration` in Supabase Auth must be set to a duration (e.g., '876600h') to deactivate and 'none' to reactivate. Partial updates must explicitly check for `true` and `false` to avoid overwriting the ban status when the field is omitted from the request payload.
 **Prevention:** Always use explicit equality checks (e.g., `isActive === false ? '876600h' : isActive === true ? 'none' : undefined`) when updating Auth metadata or ban status to ensure state is only changed when intended.
+
+## 2025-06-16 - Prevent Privilege Escalation in Practice User Management
+**Vulnerability:** The `update-practice-user` Edge Function allowed any authenticated administrator to modify global administrators or change the `is_gp_ratifier` status. This allowed a standard administrator to promote themselves or others to sensitive roles.
+**Learning:** Authorization checks must be specific to the action being performed. A generic "is admin" check is insufficient for operations that can modify higher-privileged accounts or grant sensitive flags.
+**Prevention:** Implement granular authorization checks by capturing the acting user's specific role and verifying it against the target's role and the sensitivity of the fields being updated. Only allow "owner" level accounts to modify global roles or security-critical flags like `is_gp_ratifier`.
