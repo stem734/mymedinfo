@@ -33,7 +33,9 @@ const PatientRouter: React.FC = () => {
   const { catalog, loading: catalogLoading } = usePatientTemplateCodeCatalog(practiceLookup.lookupValue);
   const parsedCodes = useMemo(
     () => parsePatientLinkCodes(codesParam, {
-      ...catalog,
+      ...(catalog.screeningTemplates.length > 0 ? { screeningTemplates: catalog.screeningTemplates } : {}),
+      ...(catalog.immunisationTemplates.length > 0 ? { immunisationTemplates: catalog.immunisationTemplates } : {}),
+      ...(catalog.longTermConditionTemplates.length > 0 ? { longTermConditionTemplates: catalog.longTermConditionTemplates } : {}),
       routeUnknownLetterTokensToImmunisations: false,
     }),
     [catalog, codesParam],
