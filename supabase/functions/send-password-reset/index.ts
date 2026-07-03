@@ -2,6 +2,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { getAppBaseUrl, getEmailConfig, sendAuthLinkEmail } from '../_shared/auth-email.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
 import { loadUserByEmail, normaliseEmail } from '../_shared/practice-user-management.ts';
+import { recordAndCheckRateLimit } from '../_shared/rate-limit.ts';
 
 /**
  * Public "forgot password" endpoint (no auth required).
@@ -29,6 +30,25 @@ serve(async (req) => {
 
     const email = normaliseEmail(body.email);
     const supabase = createServiceClient();
+
+    // Enforce rate limiting: 5 attempts per email/hour, 10 per IP/hour.
+    // We return a generic success even if rate limited to maintain enumeration safety.
+    const { allowed, error: rateLimitError } = await recordAndCheckRateLimit(
+      supabase,
+      req.headers,
+      {
+        eventType: 'password_reset',
+        email,
+        maxPerEmailPerHour: 5,
+        maxPerIpPerHour: 10,
+      },
+    );
+
+    if (!allowed) {
+      console.warn(`Password reset rate limited for ${email}: ${rateLimitError}`);
+      return jsonResponse({ success: true });
+    }
+
     const emailConfig = getEmailConfig();
 
     // Do the real work only when an account exists and email is configured.
