@@ -16,7 +16,7 @@ serve(async (req) => {
   }
 
   try {
-    await assertAdmin(req.headers.get('Authorization'));
+    const { admin: actingAdmin } = await assertAdmin(req.headers.get('Authorization'));
 
     const body = await req.json() as {
       email?: string;
@@ -34,12 +34,19 @@ serve(async (req) => {
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
     const role = normalisePracticeRole(body.role);
-    const isGpRatifier = body.isGpRatifier === true;
+    const requestedIsGpRatifier = body.isGpRatifier === true;
     const [practiceId] = await assertPracticeIdsExist(supabase, [body.practiceId]);
     const emailConfig = getEmailConfig();
 
     const existingUser = await loadUserByEmail(supabase, email);
     if (existingUser) {
+      const existingIsGpRatifier = existingUser.is_gp_ratifier === true;
+      const nextIsGpRatifier = body.isGpRatifier === false ? false : body.isGpRatifier === true ? true : existingIsGpRatifier;
+      const isChangingGpRatifier = body.isGpRatifier !== undefined && nextIsGpRatifier !== existingIsGpRatifier;
+      if ((existingUser.global_role || isChangingGpRatifier) && actingAdmin.global_role !== 'owner') {
+        return errorResponse('Only the owner can modify global administrators or change GP ratifier status', 403);
+      }
+
       const { error: authError } = await supabase.auth.admin.updateUserById(existingUser.uid, {
         email,
         user_metadata: { name: displayName },
@@ -58,7 +65,7 @@ serve(async (req) => {
           name: displayName,
           is_active: true,
           global_role: existingUser.global_role || null,
-          is_gp_ratifier: isGpRatifier,
+          is_gp_ratifier: nextIsGpRatifier,
           updated_at: new Date().toISOString(),
         })
         .eq('uid', existingUser.uid);
@@ -80,6 +87,10 @@ serve(async (req) => {
         uid: existingUser.uid,
         created: false,
       });
+    }
+
+    if (requestedIsGpRatifier && actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only the owner can grant GP ratifier status', 403);
     }
 
     if (!emailConfig) {
@@ -106,7 +117,7 @@ serve(async (req) => {
       name: displayName,
       is_active: true,
       global_role: null,
-      is_gp_ratifier: isGpRatifier,
+      is_gp_ratifier: requestedIsGpRatifier,
       created_at: now,
       updated_at: now,
     });

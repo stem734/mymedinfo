@@ -15,7 +15,7 @@ serve(async (req) => {
   }
 
   try {
-    await assertAdmin(req.headers.get('Authorization'));
+    const { admin: actingAdmin } = await assertAdmin(req.headers.get('Authorization'));
 
     const body = await req.json() as {
       uid?: string;
@@ -36,7 +36,6 @@ serve(async (req) => {
     const email = normaliseEmail(body.email);
     const displayName = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : email;
     const role = normalisePracticeRole(body.role);
-    const isGpRatifier = body.isGpRatifier === true;
     const requestedPracticeIds = Array.isArray(body.practiceIds) ? body.practiceIds : [];
 
     const { data: targetPracticeUser, error: fetchError } = await supabase
@@ -47,6 +46,13 @@ serve(async (req) => {
 
     if (fetchError || !targetPracticeUser) {
       return errorResponse('User account not found', 404);
+    }
+
+    const targetIsGpRatifier = targetPracticeUser.is_gp_ratifier === true;
+    const isGpRatifier = body.isGpRatifier === false ? false : body.isGpRatifier === true ? true : targetIsGpRatifier;
+    const isChangingGpRatifier = body.isGpRatifier !== undefined && body.isGpRatifier !== targetIsGpRatifier;
+    if ((targetPracticeUser.global_role || isChangingGpRatifier) && actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only the owner can modify global administrators or change GP ratifier status', 403);
     }
 
     if (requestedPracticeIds.length === 0 && !targetPracticeUser.global_role) {

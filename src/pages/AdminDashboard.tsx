@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
+import React, { useDeferredValue, useMemo, useRef, useState, useEffect } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -260,6 +260,7 @@ const AdminDashboard: React.FC = () => {
   const [cardBuilderSection, setCardBuilderSection] = useState<'medication' | 'healthcheck' | 'screening' | 'immunisation' | 'ltc'>('medication');
   const [loginAudit, setLoginAudit] = useState<LoginAuditEntry[]>([]);
   const [practiceSearch, setPracticeSearch] = useState('');
+  const deferredPracticeSearch = useDeferredValue(practiceSearch);
   const [practiceStatusFilter, setPracticeStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [loading, setLoading] = useState(true);
   const [loadingLoginAudit, setLoadingLoginAudit] = useState(true);
@@ -1028,40 +1029,62 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  if (!authenticated) return null;
-
-  const activePracticeCount = practices.filter((practice) => practice.is_active).length;
-  const enabledServiceCount = practices.reduce(
-    (total, practice) => total + PRACTICE_FUNCTIONS.filter((feature) => feature.isEnabled(practice)).length,
-    0,
+  const activePracticeCount = useMemo(
+    () => practices.filter((practice) => practice.is_active).length,
+    [practices],
+  );
+  const enabledServiceCount = useMemo(
+    () => practices.reduce(
+      (total, practice) => total + PRACTICE_FUNCTIONS.filter((feature) => feature.isEnabled(practice)).length,
+      0,
+    ),
+    [practices],
   );
 
   // Platform-wide patient satisfaction: pool every practice's ratings so each
   // rating counts equally (a practice with 200 ratings weighs more than one
   // with 2). Stored on a 1-5 scale (useful = 5, not = 1) → mapped to "% found
   // useful". ratingPracticeCount = how many practices have any ratings yet.
-  const { platformRatingTotal, platformRatingCount, ratingPracticeCount } = practices.reduce(
-    (acc, practice) => {
-      const count = practice.patient_rating_count ?? 0;
-      if (count > 0) {
-        acc.platformRatingTotal += practice.patient_rating_total ?? 0;
-        acc.platformRatingCount += count;
-        acc.ratingPracticeCount += 1;
-      }
-      return acc;
-    },
-    { platformRatingTotal: 0, platformRatingCount: 0, ratingPracticeCount: 0 },
+  const { platformRatingTotal, platformRatingCount, ratingPracticeCount } = useMemo(
+    () => practices.reduce(
+      (acc, practice) => {
+        const count = practice.patient_rating_count ?? 0;
+        if (count > 0) {
+          acc.platformRatingTotal += practice.patient_rating_total ?? 0;
+          acc.platformRatingCount += count;
+          acc.ratingPracticeCount += 1;
+        }
+        return acc;
+      },
+      { platformRatingTotal: 0, platformRatingCount: 0, ratingPracticeCount: 0 },
+    ),
+    [practices],
   );
-  const platformSatisfactionLabel = platformRatingCount > 0
-    ? `${Math.round((((platformRatingTotal / platformRatingCount) - 1) / 4) * 100)}%`
-    : 'No ratings';
-  const filteredPractices = practices.filter((practice) => {
-    const matchesSearch = practiceSearch === '' || [practice.name, practice.ods_code || '', practice.contact_email || '', practice.contact_phone || ''].some((field) =>
-      field.toLowerCase().includes(practiceSearch.toLowerCase()),
-    );
-    const matchesStatus = practiceStatusFilter === 'all' || (practiceStatusFilter === 'active' ? practice.is_active : !practice.is_active);
-    return matchesSearch && matchesStatus;
-  });
+  const platformSatisfactionLabel = useMemo(
+    () => platformRatingCount > 0
+      ? `${Math.round((((platformRatingTotal / platformRatingCount) - 1) / 4) * 100)}%`
+      : 'No ratings',
+    [platformRatingCount, platformRatingTotal],
+  );
+  const filteredPractices = useMemo(
+    () => {
+      const query = deferredPracticeSearch.toLowerCase();
+
+      return practices.filter((practice) => {
+        const matchesSearch = query === '' || [
+          practice.name,
+          practice.ods_code || '',
+          practice.contact_email || '',
+          practice.contact_phone || '',
+        ].some((field) => field.toLowerCase().includes(query));
+        const matchesStatus = practiceStatusFilter === 'all' || (practiceStatusFilter === 'active' ? practice.is_active : !practice.is_active);
+        return matchesSearch && matchesStatus;
+      });
+    },
+    [deferredPracticeSearch, practices, practiceStatusFilter],
+  );
+
+  if (!authenticated) return null;
 
   return (
     <>
