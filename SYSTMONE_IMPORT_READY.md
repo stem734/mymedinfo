@@ -10,7 +10,7 @@ The unified Phase 1 protocol is now fully prepared with calculated CRC values re
 - **`SystmOne_MyMedInfo_Phase1_Unified.xml`** — Ready for SystmOne import
   - ✅ All report definitions included
   - ✅ CRC values calculated and verified
-  - ✅ 22 content codes (medications, screening, immunisations)
+  - ✅ 21 content codes (10 medications, 5 screening, 6 immunisations)
 
 ### Supporting Files
 - **`SYSTMONE_PHASE1_UNIFIED.md`** — Complete implementation guide
@@ -101,8 +101,8 @@ Use the provided CRC calculator if you modify the protocol:
 # Recalculate CRCs for a modified protocol
 python3 systmone_crc_calculator.py SystmOne_MyMedInfo_Phase1_Unified.xml
 
-# Saves CRC-updated file as:
-# SystmOne_MyMedInfo_Phase1_Unified_with_crc.xml
+# Saves CRC-updated file as (pass a second argument to choose the name):
+# SystmOne_MyMedInfo_Phase1_Unified_crc.xml
 ```
 
 ## Troubleshooting Import Issues
@@ -134,4 +134,4 @@ python3 systmone_crc_calculator.py SystmOne_MyMedInfo_Phase1_Unified.xml
 
 **Last Updated:** 2026-06-14  
 **Protocol Version:** Phase 1 Unified  
-**Content Codes:** 22 (10 medications + 5 screening + 7 immunisations)
+**Content Codes:** 21 (10 medications + 5 screening + 6 immunisations)

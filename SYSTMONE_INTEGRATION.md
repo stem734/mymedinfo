@@ -110,12 +110,13 @@ The protocol uses these variables internally:
 The protocol generates URLs in this format:
 
 ```
-https://www.mymedinfo.info/patient?org=<organisation_name>&codes=<101><102><201>...<URLDT>
+https://www.mymedinfo.info/patient?org=<organisation_name>&codes=101,102,201@<URLDT>
 ```
 
 **Parameters:**
 - `org` — Organisation name (from SystmOne)
-- `codes` — Comma-separated medication codes detected
+- `codes` — Comma-separated medication codes detected, with the issue date
+  appended to the final code as an `@<date>` suffix
 - `URLDT` — Date the codes were issued (timestamp format)
 
 ## Patient Journey
@@ -140,7 +141,7 @@ https://www.mymedinfo.info/patient?org=<organisation_name>&codes=<101><102><201>
 
 ### Communication not sending
 - ✓ Verify patient has email/SMS recorded in demographics
-- ✓ Check communication settings are configured for Resend/SMS service
+- ✓ Check SystmOne communication settings are configured for your email/SMS service
 - ✓ Ensure message template is valid
 
 ## Extending the Protocol

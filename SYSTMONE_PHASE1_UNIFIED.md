@@ -30,10 +30,10 @@ When triggered, it automatically generates a MyMedInfo URL containing all releva
 | **CS1** | Cervical Screening | Women 25-65 |
 | **BS1** | Bowel Screening (FOBT) | Adults 50+ |
 | **BR1** | Breast Screening (Mammography) | Women 50-74 |
-| **AAA1** | Abdominal Aortic Aneurysm (AAA) | Men 65+ |
+| **AA1** | Abdominal Aortic Aneurysm (AAA) | Men 65+ |
 | **DE1** | Diabetic Eye Screening | People with Diabetes |
 
-### 3. IMMUNISATIONS (7 Vaccines)
+### 3. IMMUNISATIONS (6 Vaccines)
 
 | Code | Vaccine | Patient Groups |
 |------|---------|----------------|
@@ -44,7 +44,7 @@ When triggered, it automatically generates a MyMedInfo URL containing all releva
 | **IM6** | MMR | Catch-up, travel |
 | **IM7** | HPV | Young adults |
 
-**Total: 22 content codes in unified protocol**
+**Total: 21 content codes in unified protocol** (IM5, pertussis, is supported by MyMedInfo but not yet included in the protocol)
 
 ## How the Protocol Works
 
@@ -63,11 +63,11 @@ Immunisation
 
 2. **Screening Detection**
    - Checks for eligible/overdue screening programs
-   - Assigns codes (CS1, BS1, BR1, AAA1, DE1)
+   - Assigns codes (CS1, BS1, BR1, AA1, DE1)
 
 3. **Immunisation Detection**
    - Checks for eligible/overdue vaccines
-   - Assigns codes (IM1-IM7)
+   - Assigns codes (IM1-IM4, IM6, IM7)
 
 4. **URL Generation**
    - Combines all detected codes into single URL
@@ -145,8 +145,8 @@ https://www.mymedinfo.info/patient?org=Example%20Health%20Trust&codes=101,201,CS
 
 **Codes in URL:**
 - Medications: 101-102, 201-202, 301-302, 401-402, 501-502
-- Screenings: CS1, BS1, BR1, AAA1, DE1
-- Immunisations: IM1-IM7
+- Screenings: CS1, BS1, BR1, AA1, DE1
+- Immunisations: IM1-IM4, IM6, IM7
 - Timestamp: @URLDT (date issued)
 
 ## Patient Experience

@@ -13,6 +13,7 @@ MyMedInfo is a React and TypeScript application for delivering patient informati
 ## Active application areas
 
 - Patient viewer for medication and pathway content
+- Vercel serverless PDF rendering endpoint (`api/pdf.ts`)
 - Practice dashboard for adopting and customising cards
 - Admin card builder for medication and template content
 - Supabase Edge Functions for save, restore, audit, user management, and practice actions
@@ -31,7 +32,9 @@ npm install
 cp .env.example .env.local
 ```
 
-For auth invite/reset flows handled by Supabase Edge Functions, also set `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `APP_BASE_URL`.
+For auth invite/reset flows handled by Supabase Edge Functions, set `BREVO_API_KEY`
+(and optionally `BREVO_FROM_EMAIL`, `BREVO_FROM_NAME`, `APP_BASE_URL`) as Supabase
+Edge Function secrets — see `.env.example` for details. These are not Vercel env vars.
 
 3. Start the dev server:
 
@@ -55,6 +58,10 @@ The active database setup lives in:
 - `supabase/rls.sql`
 - `supabase/rpc.sql`
 - `supabase/seed-medications.sql`
+
+Incremental migrations and advisor fixes (`migrate-*.sql`, `add-*.sql`,
+`resolve-*.sql`, and feature-specific SQL) also live in `supabase/` and are
+applied on top of the base schema.
 
 Historical one-shot deployment bundles are archived under `archive/supabase-snapshots/`.
 
