@@ -85,15 +85,11 @@ To use Gemini for the admin Drug Builder, add your personal Gemini API key to th
 ```env
 # functions/.env
 GEMINI_API_KEY=your_gemini_api_key_here
-RESEND_API_KEY=your_resend_api_key_here
-RESEND_FROM_EMAIL=MyMedInfo <noreply@yourdomain.com>
 APP_BASE_URL=https://www.mymedinfo.info
 ```
 
 Notes:
 - This key is used only inside Firebase Cloud Functions, not in the browser.
-- Resend is used to send administrator welcome and password reset emails.
-- `RESEND_FROM_EMAIL` must be a verified sender/domain in Resend.
 - `APP_BASE_URL` should match the live site that admins use to sign in.
 - For local emulator use, `functions/.env` is enough.
 - For deployed functions, make sure all of these variables are available when you deploy functions.
