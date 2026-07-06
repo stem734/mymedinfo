@@ -23,6 +23,14 @@ describe('rate limiting guardrails', () => {
   it('provides a centralized rate limiting utility', () => {
     const source = readSource('supabase/functions/_shared/rate-limit.ts');
     expect(source).toContain('export async function recordAndCheckRateLimit');
+    expect(source).toContain('getClientIp(headers)');
+  });
+
+  it('implements a centralized IP extraction utility', () => {
+    const source = readSource('supabase/functions/_shared/ip-utils.ts');
+    expect(source).toContain('export function getClientIp');
     expect(source).toContain('cf-connecting-ip'); // Security best practice for IP extraction
+    expect(source).toContain('x-forwarded-for');
+    expect(source).toContain('x-client-ip');
   });
 });
