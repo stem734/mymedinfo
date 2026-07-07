@@ -311,6 +311,24 @@ const AdminDashboard: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
+  const editPracticeNameId = React.useId();
+  const editPracticeOdsId = React.useId();
+  const editPracticeEmailId = React.useId();
+  const editPracticePhoneId = React.useId();
+  const editPracticePhoneHelpId = React.useId();
+
+  const localResourceTitleId = React.useId();
+  const localResourceCategoryId = React.useId();
+  const localResourceDescId = React.useId();
+  const localResourcePhoneId = React.useId();
+  const localResourcePhoneLabelId = React.useId();
+  const localResourceEmailId = React.useId();
+  const localResourceEmailLabelId = React.useId();
+  const localResourceWebsiteId = React.useId();
+  const localResourceWebsiteLabelId = React.useId();
+  const localResourceCityId = React.useId();
+  const localResourceCountyId = React.useId();
+
   const pendingRequestCount = serviceRequests.filter(r => r.status === 'pending').length;
   const serviceWorkCount = serviceWorkItems.filter((item) => item.status === 'overdue').length;
   const serviceDueSoonCount = serviceWorkItems.filter((item) => item.status === 'dueSoon').length;
@@ -1315,37 +1333,45 @@ const AdminDashboard: React.FC = () => {
           )}
           <form onSubmit={savePracticeEdit} className="dashboard-modal__form" id="edit-practice-form">
             <div className="dashboard-field">
-              <label>Organisation Name *</label>
+              <label htmlFor={editPracticeNameId}>Organisation Name *</label>
               <input
+                id={editPracticeNameId}
                 type="text" value={editName} onChange={e => setEditName(e.target.value)} required
                 placeholder="Exact name as in SystmOne"
+                aria-required="true"
               />
             </div>
             <div className="dashboard-form-grid">
               <div className="dashboard-field">
-                <label>ODS Code</label>
+                <label htmlFor={editPracticeOdsId}>ODS Code</label>
                 <input
+                  id={editPracticeOdsId}
                   type="text" value={editOds} onChange={e => setEditOds(e.target.value)}
                   placeholder="e.g. C84001"
                 />
               </div>
               <div className="dashboard-field">
-                <label>Contact Email *</label>
+                <label htmlFor={editPracticeEmailId}>Contact Email *</label>
                 <input
+                  id={editPracticeEmailId}
                   type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} required
                   placeholder="e.g. admin@nhs.net"
+                  aria-required="true"
                 />
               </div>
               <div className="dashboard-field">
-                <label>Patient-facing phone number *</label>
+                <label htmlFor={editPracticePhoneId}>Patient-facing phone number *</label>
                 <input
+                  id={editPracticePhoneId}
                   type="text"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
                   required
                   placeholder="e.g. 0115 123 4567"
+                  aria-required="true"
+                  aria-describedby={editPracticePhoneHelpId}
                 />
-                <p className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>
+                <p id={editPracticePhoneHelpId} className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>
               </div>
             </div>
             <div className="dashboard-settings">
@@ -1404,12 +1430,14 @@ const AdminDashboard: React.FC = () => {
           )}
           <form onSubmit={saveLocalResource} className="dashboard-modal__form" id="local-resource-form">
             <div className="dashboard-field">
-              <label>Service title *</label>
+              <label htmlFor={localResourceTitleId}>Service title *</label>
               <input
+                id={localResourceTitleId}
                 type="text"
                 value={localResourceDraft.title}
                 onChange={(event) => updateLocalResourceDraft('title', event.target.value)}
                 required
+                aria-required="true"
               />
             </div>
             <label className="dashboard-setting-toggle">
@@ -1421,8 +1449,9 @@ const AdminDashboard: React.FC = () => {
               Show title on card
             </label>
             <div className="dashboard-field">
-              <label>Category</label>
+              <label htmlFor={localResourceCategoryId}>Category</label>
               <input
+                id={localResourceCategoryId}
                 type="text"
                 value={localResourceDraft.category}
                 onChange={(event) => updateLocalResourceDraft('category', event.target.value)}
@@ -1430,8 +1459,9 @@ const AdminDashboard: React.FC = () => {
               />
             </div>
             <div className="dashboard-field">
-              <label>Description</label>
+              <label htmlFor={localResourceDescId}>Description</label>
               <textarea
+                id={localResourceDescId}
                 value={localResourceDraft.description}
                 onChange={(event) => updateLocalResourceDraft('description', event.target.value)}
                 rows={3}
@@ -1439,16 +1469,18 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div className="dashboard-form-grid">
               <div className="dashboard-field">
-                <label>Phone number</label>
+                <label htmlFor={localResourcePhoneId}>Phone number</label>
                 <input
+                  id={localResourcePhoneId}
                   type="text"
                   value={localResourceDraft.phone}
                   onChange={(event) => updateLocalResourceDraft('phone', event.target.value)}
                 />
               </div>
               <div className="dashboard-field">
-                <label>Phone link text (optional)</label>
+                <label htmlFor={localResourcePhoneLabelId}>Phone link text (optional)</label>
                 <input
+                  id={localResourcePhoneLabelId}
                   type="text"
                   value={localResourceDraft.phone_label}
                   onChange={(event) => updateLocalResourceDraft('phone_label', event.target.value)}
@@ -1458,16 +1490,18 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div className="dashboard-form-grid">
               <div className="dashboard-field">
-                <label>Email address</label>
+                <label htmlFor={localResourceEmailId}>Email address</label>
                 <input
+                  id={localResourceEmailId}
                   type="email"
                   value={localResourceDraft.email}
                   onChange={(event) => updateLocalResourceDraft('email', event.target.value)}
                 />
               </div>
               <div className="dashboard-field">
-                <label>Email link text (optional)</label>
+                <label htmlFor={localResourceEmailLabelId}>Email link text (optional)</label>
                 <input
+                  id={localResourceEmailLabelId}
                   type="text"
                   value={localResourceDraft.email_label}
                   onChange={(event) => updateLocalResourceDraft('email_label', event.target.value)}
@@ -1477,8 +1511,9 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div className="dashboard-form-grid">
               <div className="dashboard-field">
-                <label>Website</label>
+                <label htmlFor={localResourceWebsiteId}>Website</label>
                 <input
+                  id={localResourceWebsiteId}
                   type="text"
                   value={localResourceDraft.website}
                   onChange={(event) => updateLocalResourceDraft('website', event.target.value)}
@@ -1486,8 +1521,9 @@ const AdminDashboard: React.FC = () => {
                 />
               </div>
               <div className="dashboard-field">
-                <label>Website link text (optional)</label>
+                <label htmlFor={localResourceWebsiteLabelId}>Website link text (optional)</label>
                 <input
+                  id={localResourceWebsiteLabelId}
                   type="text"
                   value={localResourceDraft.website_label}
                   onChange={(event) => updateLocalResourceDraft('website_label', event.target.value)}
@@ -1497,8 +1533,9 @@ const AdminDashboard: React.FC = () => {
             </div>
             <div className="dashboard-form-grid">
               <div className="dashboard-field">
-                <label>City</label>
+                <label htmlFor={localResourceCityId}>City</label>
                 <select
+                  id={localResourceCityId}
                   value={localResourceDraft.city}
                   onChange={(event) => updateLocalResourceDraft('city', event.target.value)}
                 >
@@ -1509,8 +1546,9 @@ const AdminDashboard: React.FC = () => {
                 </select>
               </div>
               <div className="dashboard-field">
-                <label>County / Area</label>
+                <label htmlFor={localResourceCountyId}>County / Area</label>
                 <select
+                  id={localResourceCountyId}
                   value={localResourceDraft.county_area}
                   onChange={(event) => updateLocalResourceDraft('county_area', event.target.value)}
                 >
@@ -1566,6 +1604,7 @@ const AdminDashboard: React.FC = () => {
                   value={practiceSearch}
                   onChange={(e) => setPracticeSearch(e.target.value)}
                   placeholder="Search by name, ODS code, or email"
+                  aria-label="Search practices"
                   style={{ width: '100%', padding: '0.75rem 0.9rem', border: '2px solid #d8dde0', borderRadius: '8px', fontSize: '0.95rem' }}
                 />
               </div>
@@ -2100,6 +2139,7 @@ const AdminDashboard: React.FC = () => {
               value={localResourceSearch}
               onChange={(event) => setLocalResourceSearch(event.target.value)}
               placeholder="Search resources by title, category, contact, or description"
+              aria-label="Search local resources"
               style={{ width: '100%', padding: '0.75rem 0.9rem', border: '2px solid #d8dde0', borderRadius: '8px', fontSize: '0.95rem' }}
             />
           </div>
