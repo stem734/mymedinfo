@@ -1,6 +1,7 @@
 import { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { getClientIp } from './ip-utils.ts';
 export async function recordAndCheckRateLimit(supabase: SupabaseClient, headers: Headers, config: { eventType: string; email?: string; maxPerEmailPerHour?: number; maxPerIpPerHour?: number; }) {
-  const ip = headers.get('cf-connecting-ip') || headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+  const ip = getClientIp(headers);
   const since = new Date(Date.now() - 3600000).toISOString();
   await supabase.from('rate_limit_events').insert({ event_type: config.eventType, email: config.email, ip_address: ip });
   if (config.maxPerIpPerHour) {
