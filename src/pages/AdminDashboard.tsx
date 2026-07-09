@@ -239,6 +239,20 @@ type AdminTabMeta = {
 
 const isAdminBuilderPath = (pathname: string) => ['/admin/card-builder', '/admin/drug-builder', '/card-builder', '/drug-builder'].includes(pathname);
 
+const ADMIN_TABS: AdminTabMeta[] = [
+  { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" /> },
+  { id: 'practices', label: 'Practices', icon: <Building2 size={16} aria-hidden="true" /> },
+  { id: 'practiceUsers', label: 'Users', icon: <Users size={16} aria-hidden="true" /> },
+  { id: 'services', label: 'Services Manager', icon: <LayoutGrid size={16} aria-hidden="true" /> },
+  { id: 'library', label: 'Pathway Library', icon: <BookOpen size={16} aria-hidden="true" /> },
+  { id: 'setup', label: 'Setup', icon: <Settings size={16} aria-hidden="true" /> },
+  { id: 'activationRequests', label: 'Activation Requests', icon: <Bell size={16} aria-hidden="true" /> },
+  { id: 'audit', label: 'User Audit', icon: <Activity size={16} aria-hidden="true" /> },
+  { id: 'demo', label: 'Demo Access', icon: <FlaskConical size={16} aria-hidden="true" /> },
+];
+
+const ADMIN_TABS_MAP = new Map<AdminTab, AdminTabMeta>(ADMIN_TABS.map(tab => [tab.id, tab]));
+
 const parseAdminTabFromSearch = (search: string): AdminTab | null => {
   const value = new URLSearchParams(search).get('tab');
   return value === 'overview' || value === 'practices' || value === 'practiceUsers' || value === 'services' || value === 'library' || value === 'setup' || value === 'activationRequests' || value === 'audit' || value === 'demo'
@@ -311,22 +325,10 @@ const AdminDashboard: React.FC = () => {
   const toast = useToast();
   const navigate = useNavigate();
 
-  const pendingRequestCount = serviceRequests.filter(r => r.status === 'pending').length;
-  const serviceWorkCount = serviceWorkItems.filter((item) => item.status === 'overdue').length;
-  const serviceDueSoonCount = serviceWorkItems.filter((item) => item.status === 'dueSoon').length;
+  const pendingRequestCount = useMemo(() => serviceRequests.filter(r => r.status === 'pending').length, [serviceRequests]);
+  const serviceWorkCount = useMemo(() => serviceWorkItems.filter((item) => item.status === 'overdue').length, [serviceWorkItems]);
+  const serviceDueSoonCount = useMemo(() => serviceWorkItems.filter((item) => item.status === 'dueSoon').length, [serviceWorkItems]);
   const isGpRatifierOnly = currentAdminIsGpRatifier && !currentAdminRole;
-
-  const adminTabs: AdminTabMeta[] = [
-    { id: 'overview', label: 'Overview', icon: <LayoutDashboard size={16} aria-hidden="true" /> },
-    { id: 'practices', label: 'Practices', icon: <Building2 size={16} aria-hidden="true" /> },
-    { id: 'practiceUsers', label: 'Users', icon: <Users size={16} aria-hidden="true" /> },
-    { id: 'services', label: 'Services Manager', icon: <LayoutGrid size={16} aria-hidden="true" /> },
-    { id: 'library', label: 'Pathway Library', icon: <BookOpen size={16} aria-hidden="true" /> },
-    { id: 'setup', label: 'Setup', icon: <Settings size={16} aria-hidden="true" /> },
-    { id: 'activationRequests', label: 'Activation Requests', icon: <Bell size={16} aria-hidden="true" /> },
-    { id: 'audit', label: 'User Audit', icon: <Activity size={16} aria-hidden="true" /> },
-    { id: 'demo', label: 'Demo Access', icon: <FlaskConical size={16} aria-hidden="true" /> },
-  ];
 
   const setAdminTab = (tab: AdminTab) => {
     if (isGpRatifierOnly && tab !== 'services') {
@@ -1118,7 +1120,7 @@ const AdminDashboard: React.FC = () => {
             <>
               <span className="admin-portal-nav__section-label">Management</span>
               {(['overview', 'practices', 'practiceUsers'] as AdminTab[]).map((id) => {
-                const tab = adminTabs.find((t) => t.id === id)!;
+                const tab = ADMIN_TABS_MAP.get(id)!;
                 return (
                   <button key={tab.id} type="button"
                     className={`admin-portal-nav__item${activeTab === tab.id ? ' admin-portal-nav__item--active' : ''}`}
@@ -1131,8 +1133,8 @@ const AdminDashboard: React.FC = () => {
           )}
 
           <span className="admin-portal-nav__section-label">Content</span>
-          {(isGpRatifierOnly ? ['services'] : ['services', 'library'] as AdminTab[]).map((id) => {
-            const tab = adminTabs.find((t) => t.id === id)!;
+          {(isGpRatifierOnly ? ['services' as AdminTab] : ['services', 'library'] as AdminTab[]).map((id) => {
+            const tab = ADMIN_TABS_MAP.get(id)!;
             const badgeCount = id === 'services' ? serviceWorkCount : 0;
             return (
               <button key={tab.id} type="button"
@@ -1156,7 +1158,7 @@ const AdminDashboard: React.FC = () => {
             <>
               <span className="admin-portal-nav__section-label">System</span>
               {(['setup', 'activationRequests', 'audit', 'demo'] as AdminTab[]).map((id) => {
-                const tab = adminTabs.find((t) => t.id === id)!;
+                const tab = ADMIN_TABS_MAP.get(id)!;
                 const badgeCount = id === 'activationRequests' ? pendingRequestCount : 0;
                 return (
                   <button key={tab.id} type="button"
@@ -1199,7 +1201,7 @@ const AdminDashboard: React.FC = () => {
             <span className="admin-portal-topbar__crumb">MyMedInfo</span>
             <span className="admin-portal-topbar__sep">/</span>
             <span className="admin-portal-topbar__title">
-              {adminTabs.find((t) => t.id === activeTab)?.label ?? 'Dashboard'}
+              {ADMIN_TABS_MAP.get(activeTab)?.label ?? 'Dashboard'}
             </span>
           </div>
           <div className="admin-portal-topbar__right">
