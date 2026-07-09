@@ -876,4 +876,4 @@ const PracticeUserManagement: React.FC<PracticeUserManagementProps> = ({ practic
   );
 };
 
-export default PracticeUserManagement;
+export default React.memo(PracticeUserManagement);
