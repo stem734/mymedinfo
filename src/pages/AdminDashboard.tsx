@@ -1,4 +1,4 @@
-import React, { useDeferredValue, useMemo, useRef, useState, useEffect } from 'react';
+import React, { useDeferredValue, useMemo, useRef, useState, useEffect, useId } from 'react';
 import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 import { supabase } from '../supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -251,6 +251,11 @@ const parseAdminTabFromLocation = (pathname: string, search: string): AdminTab |
 );
 
 const AdminDashboard: React.FC = () => {
+  const editNameId = useId();
+  const editOdsId = useId();
+  const editEmailId = useId();
+  const editPhoneId = useId();
+  const editPhoneHintId = useId();
   const location = useLocation();
   const loadedAdminUserIdRef = useRef<string | null>(null);
   const [activeTab, setActiveTab] = useState<AdminTab>(() => parseAdminTabFromLocation(window.location.pathname, window.location.search) || 'overview');
@@ -1315,37 +1320,42 @@ const AdminDashboard: React.FC = () => {
           )}
           <form onSubmit={savePracticeEdit} className="dashboard-modal__form" id="edit-practice-form">
             <div className="dashboard-field">
-              <label>Organisation Name *</label>
+              <label htmlFor={editNameId}>Organisation Name *</label>
               <input
+                id={editNameId}
                 type="text" value={editName} onChange={e => setEditName(e.target.value)} required
                 placeholder="Exact name as in SystmOne"
               />
             </div>
             <div className="dashboard-form-grid">
               <div className="dashboard-field">
-                <label>ODS Code</label>
+                <label htmlFor={editOdsId}>ODS Code</label>
                 <input
+                  id={editOdsId}
                   type="text" value={editOds} onChange={e => setEditOds(e.target.value)}
                   placeholder="e.g. C84001"
                 />
               </div>
               <div className="dashboard-field">
-                <label>Contact Email *</label>
+                <label htmlFor={editEmailId}>Contact Email *</label>
                 <input
+                  id={editEmailId}
                   type="email" value={editEmail} onChange={e => setEditEmail(e.target.value)} required
                   placeholder="e.g. admin@nhs.net"
                 />
               </div>
               <div className="dashboard-field">
-                <label>Patient-facing phone number *</label>
+                <label htmlFor={editPhoneId}>Patient-facing phone number *</label>
                 <input
+                  id={editPhoneId}
                   type="text"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
                   required
                   placeholder="e.g. 0115 123 4567"
+                  aria-describedby={editPhoneHintId}
                 />
-                <p className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>
+                <p id={editPhoneHintId} className="dashboard-field-hint">Available in card text as <code>{'{{practice_phone}}'}</code>.</p>
               </div>
             </div>
             <div className="dashboard-settings">
