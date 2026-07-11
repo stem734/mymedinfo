@@ -10,7 +10,13 @@ serve(async (req) => {
   }
 
   try {
-    await assertAdmin(req.headers.get('Authorization'));
+    const { admin: actingAdmin } = await assertAdmin(req.headers.get('Authorization'));
+
+    // Privilege escalation prevention: only owners can create new administrator accounts.
+    if (actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only the owner can create administrator accounts', 403);
+    }
+
     const { email, name } = await req.json();
 
     if (!email || typeof email !== 'string') {

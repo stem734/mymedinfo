@@ -39,6 +39,11 @@ serve(async (req) => {
       return errorResponse('User account not found', 404);
     }
 
+    // Privilege escalation prevention: only owners can manage administrator roles or promotions.
+    if (actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only the owner can manage administrator roles', 403);
+    }
+
     if (body.globalRole === 'owner' && actingAdmin.global_role !== 'owner') {
       return errorResponse('Only an owner can promote another user to owner', 403);
     }
