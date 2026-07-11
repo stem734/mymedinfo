@@ -8,7 +8,7 @@ serve(async (req) => {
   }
 
   try {
-    const { admin: actingAdmin } = await assertAdmin(req.headers.get('Authorization'));
+    const { admin: actingAdmin, userId: actingUserId } = await assertAdmin(req.headers.get('Authorization'));
     const { uid, email, name, isActive } = await req.json();
 
     if (!uid || !email || !name) {
@@ -29,7 +29,14 @@ serve(async (req) => {
       return errorResponse('Administrator account not found', 404);
     }
 
-    // Owner protection
+    // Privilege escalation prevention: admins can only modify their own account.
+    // Cross-user modifications require the owner role.
+    if (uid !== actingUserId && actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only the owner can modify other administrator accounts', 403);
+    }
+
+    // Owner protection: even an owner cannot demote themselves or another owner via this endpoint
+    // (role changes happen in update-user-admin-role).
     if (targetAdmin.global_role === 'owner' && actingAdmin.global_role !== 'owner') {
       return errorResponse('Only the owner can modify the owner account', 403);
     }

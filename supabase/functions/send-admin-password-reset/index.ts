@@ -9,7 +9,7 @@ serve(async (req) => {
   }
 
   try {
-    await assertAdmin(req.headers.get('Authorization'));
+    const { admin: actingAdmin, userId: actingUserId } = await assertAdmin(req.headers.get('Authorization'));
     const { uid } = await req.json();
 
     if (!uid) {
@@ -36,6 +36,12 @@ serve(async (req) => {
 
     if (!adminData?.global_role) {
       return errorResponse('Administrator account not found', 404);
+    }
+
+    // Privilege escalation prevention: admins can only reset their own password.
+    // Resetting another administrator's password requires the owner role.
+    if (uid !== actingUserId && actingAdmin.global_role !== 'owner') {
+      return errorResponse('Only the owner can reset other administrator passwords', 403);
     }
 
     const displayName = adminData.name || user.email;

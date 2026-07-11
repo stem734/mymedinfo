@@ -32,3 +32,13 @@
 **Vulnerability:** Public endpoints like `send-password-reset` lacked protection against brute-force and DoS attacks, allowing attackers to spam emails or exhaust database resources.
 **Learning:** Security-sensitive public endpoints must always be rate-limited. Implementing this at the database level with a dedicated events table allows for consistent tracking across multiple Edge Function instances.
 **Prevention:** Use a shared utility and a `rate_limit_events` table to track attempts by both email (if provided) and IP address. Ensure the response remains enumeration-safe when a limit is hit.
+
+## 2025-07-24 - Restricting Administrator Management to Owners
+**Vulnerability:** Standard 'admin' users could create new admins, change emails of other admins (allowing account takeover via reset), or promote users. This allowed for privilege escalation where an admin could expand the admin pool or take over existing accounts without owner oversight.
+**Learning:** In a multi-tier admin system, the distinction between 'admin' and 'owner' must be enforced at the API level for all cross-user management actions (creation, email updates, password resets, deactivation), not just for explicit role changes.
+**Prevention:** Enforce `actingAdmin.global_role === 'owner'` for all cross-user administrative operations. Standard administrators should only be permitted to modify their own profiles.
+
+## 2025-07-24 - Centralized Secure IP Extraction
+**Vulnerability:** Inconsistent and manual IP extraction across multiple Edge Functions (using `x-forwarded-for` directly) made rate limiting and audit logs susceptible to header spoofing or bypasses if proxy headers were not handled carefully.
+**Learning:** Security-critical metadata like client IP addresses must be extracted using a consistent, hardened utility that prioritizes reliable headers (like `cf-connecting-ip` from Cloudflare) to ensure defense-in-depth.
+**Prevention:** Centralize IP extraction into a shared `getClientIp` utility and use it consistently across all rate-limiting, audit-logging, and security-sensitive entry points.
