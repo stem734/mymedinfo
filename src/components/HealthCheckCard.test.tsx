@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import HealthCheckCard from './HealthCheckCard';
-import React from 'react';
 
 // Mock Lucide icons
 vi.mock('lucide-react', () => ({
