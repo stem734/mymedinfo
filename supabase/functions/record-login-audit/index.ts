@@ -1,4 +1,5 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
+import { getClientIp } from '../_shared/ip-utils.ts';
 import { createServiceClient, getAuthUser, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
 
 serve(async (req) => {
@@ -26,8 +27,7 @@ serve(async (req) => {
     }
 
     // Get client IP from headers
-    const forwarded = req.headers.get('x-forwarded-for');
-    const ipAddress = forwarded ? forwarded.split(',')[0].trim() : '';
+    const ipAddress = getClientIp(req.headers);
 
     let auditRecord;
 

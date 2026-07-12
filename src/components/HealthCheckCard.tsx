@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Building2, Check, AlertTriangle, ExternalLink, Globe, Heart, Mail, Phone, X } from 'lucide-react';
 import WarningCallout from './WarningCallout';
 import InsetText from './InsetText';
+import { safeHttpHref } from '../safeHref';
 
 interface HealthCheckCardLink {
   title: string;
@@ -135,13 +136,15 @@ const renderLinkedText = (text: string) =>
       <React.Fragment key={`line-${lineIndex}`}>
         {tokens.map((token, tokenIndex) => {
           if (token.type === 'url') {
+            const safeHref = safeHttpHref(token.href);
+            if (!safeHref) return <React.Fragment key={`token-${lineIndex}-${tokenIndex}`}>{token.label}</React.Fragment>;
             return (
               <a
                 key={`token-${lineIndex}-${tokenIndex}`}
                 className="hc-inline-link"
-                href={token.href}
+                href={safeHref}
                 target="_blank"
-                rel="noreferrer"
+                rel="noopener noreferrer"
                 aria-label={`${token.label} opens in new tab`}
               >
                 {token.label}
@@ -270,9 +273,9 @@ const HealthCheckCard: React.FC<HealthCheckCardProps> = ({
                           {link.website ? (
                             <a
                               className="hc-card__contact-title hc-card__contact-title-link"
-                              href={resolveLinkHref(link.website)}
+                              href={safeHttpHref(resolveLinkHref(link.website))}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               title={link.website}
                               aria-label={`${link.title || 'More information'} opens in new tab`}
                             >
@@ -363,9 +366,9 @@ const HealthCheckCard: React.FC<HealthCheckCardProps> = ({
                           {link.website ? (
                             <a
                               className="hc-card__contact-title hc-card__contact-title-link"
-                              href={resolveLinkHref(link.website)}
+                              href={safeHttpHref(resolveLinkHref(link.website))}
                               target="_blank"
-                              rel="noreferrer"
+                              rel="noopener noreferrer"
                               title={link.website}
                               aria-label={`${link.title || 'More information'} opens in new tab`}
                             >

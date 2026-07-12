@@ -32,3 +32,8 @@
 **Vulnerability:** Public endpoints like `send-password-reset` lacked protection against brute-force and DoS attacks, allowing attackers to spam emails or exhaust database resources.
 **Learning:** Security-sensitive public endpoints must always be rate-limited. Implementing this at the database level with a dedicated events table allows for consistent tracking across multiple Edge Function instances.
 **Prevention:** Use a shared utility and a `rate_limit_events` table to track attempts by both email (if provided) and IP address. Ensure the response remains enumeration-safe when a limit is hit.
+
+## 2025-06-18 - Centralized IP Extraction and Link Hardening
+**Vulnerability:** Inconsistent client IP extraction across Edge Functions could lead to bypasses in rate limiting or audit logs if certain headers (like `cf-connecting-ip`) are missed. Additionally, patient-facing links in `HealthCheckCard.tsx` lacked `rel="noopener"` and protocol validation, exposing users to tab-nabbing and potential Stored XSS.
+**Learning:** Security utilities for sensitive data like client IPs should be centralized to ensure consistent enforcement of best practices (e.g., header prioritization). Frontend components must treat all stored URLs as untrusted and apply protocol validation at render-time, even if server-side validation is already in place (defense-in-depth).
+**Prevention:** Use a shared `getClientIp` utility for all IP-based security logic. Use `safeHttpHref` and `rel="noopener noreferrer"` for all external or user-supplied links in React components.
