@@ -32,3 +32,8 @@
 **Vulnerability:** Public endpoints like `send-password-reset` lacked protection against brute-force and DoS attacks, allowing attackers to spam emails or exhaust database resources.
 **Learning:** Security-sensitive public endpoints must always be rate-limited. Implementing this at the database level with a dedicated events table allows for consistent tracking across multiple Edge Function instances.
 **Prevention:** Use a shared utility and a `rate_limit_events` table to track attempts by both email (if provided) and IP address. Ensure the response remains enumeration-safe when a limit is hit.
+
+## 2025-06-18 - Standardized Client IP Extraction
+**Vulnerability:** Client IP extraction was inconsistent across Edge Functions, with different endpoints prioritizing different headers (`x-forwarded-for` vs `cf-connecting-ip`) or manually parsing strings. This could lead to inaccurate audit logs or bypassable rate limiting.
+**Learning:** Security controls like rate limiting and auditing rely on accurate identity signals. Inconsistent IP extraction creates weak points in defense-in-depth. Centralizing this logic ensures that all components benefit from the most robust signal available in the environment (e.g. prioritizing Cloudflare headers).
+**Prevention:** Always use a centralized utility for extracting client IP addresses. Prioritize established proxy/WAF headers like `cf-connecting-ip` before falling back to `x-forwarded-for`. Ensure that `x-forwarded-for` is parsed safely by taking the first comma-separated value.
