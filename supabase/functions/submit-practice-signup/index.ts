@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { getEmailConfig, sendSignupConfirmationEmail } from '../_shared/auth-email.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
+import { getClientIp } from '../_shared/ip-utils.ts';
 
 type SignupBody = {
   name?: unknown;
@@ -84,11 +85,8 @@ serve(async (req) => {
 
     const since = new Date(Date.now() - DAY_MS).toISOString();
 
-    // Extract client IP from request headers
-    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0].trim() ||
-                    req.headers.get('cf-connecting-ip') ||
-                    req.headers.get('x-client-ip') ||
-                    'unknown';
+    // Extract client IP from request headers using centralized utility
+    const clientIp = getClientIp(req.headers);
 
     const [
       { count: recentEmailSignups, error: emailCountError },

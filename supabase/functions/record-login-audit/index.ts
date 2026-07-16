@@ -1,5 +1,6 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createServiceClient, getAuthUser, corsHeaders, jsonResponse, errorResponse } from '../_shared/supabase-client.ts';
+import { getClientIp } from '../_shared/ip-utils.ts';
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -25,9 +26,8 @@ serve(async (req) => {
       return errorResponse('No linked account found for login audit', 404);
     }
 
-    // Get client IP from headers
-    const forwarded = req.headers.get('x-forwarded-for');
-    const ipAddress = forwarded ? forwarded.split(',')[0].trim() : '';
+    // Get client IP from headers using centralized utility
+    const ipAddress = getClientIp(req.headers);
 
     let auditRecord;
 
