@@ -694,17 +694,15 @@ const PracticeDashboard: React.FC = () => {
 
   const filteredMedications = useMemo(() => {
     const query = deferredSearch.trim().toLowerCase();
+    if (!query) return allMedications;
 
-    return allMedications.filter((medication) => {
-      if (!query) return true;
-
-      return [
-        medication.code,
-        medication.title,
-        medication.description,
-        medication.category,
-      ].some((value) => value.toLowerCase().includes(query));
-    });
+    return allMedications.filter((medication) =>
+      // Optimized search avoiding array allocation and applying lazy short-circuit logic
+      medication.code.toLowerCase().includes(query) ||
+      medication.title.toLowerCase().includes(query) ||
+      medication.description.toLowerCase().includes(query) ||
+      medication.category.toLowerCase().includes(query)
+    );
   }, [allMedications, deferredSearch]);
 
   const practiceTemplateMap = useMemo(
