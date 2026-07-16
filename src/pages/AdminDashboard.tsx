@@ -735,8 +735,15 @@ const AdminDashboard: React.FC = () => {
     const query = localResourceSearch.trim().toLowerCase();
     if (!query) return localResources;
     return localResources.filter((resource) =>
-      [resource.title, resource.description, resource.category, resource.website, resource.phone, resource.email, resource.city, resource.county_area]
-        .some((value) => value.toLowerCase().includes(query)),
+      // Optimized search avoiding array allocation and applying lazy short-circuit logic
+      resource.title.toLowerCase().includes(query) ||
+      resource.description.toLowerCase().includes(query) ||
+      resource.category.toLowerCase().includes(query) ||
+      resource.website.toLowerCase().includes(query) ||
+      resource.phone.toLowerCase().includes(query) ||
+      resource.email.toLowerCase().includes(query) ||
+      resource.city.toLowerCase().includes(query) ||
+      resource.county_area.toLowerCase().includes(query)
     );
   }, [localResourceSearch, localResources]);
 
@@ -1071,14 +1078,15 @@ const AdminDashboard: React.FC = () => {
       const query = deferredPracticeSearch.toLowerCase();
 
       return practices.filter((practice) => {
-        const matchesSearch = query === '' || [
-          practice.name,
-          practice.ods_code || '',
-          practice.contact_email || '',
-          practice.contact_phone || '',
-        ].some((field) => field.toLowerCase().includes(query));
         const matchesStatus = practiceStatusFilter === 'all' || (practiceStatusFilter === 'active' ? practice.is_active : !practice.is_active);
-        return matchesSearch && matchesStatus;
+        if (!matchesStatus) return false;
+        if (query === '') return true;
+
+        // Optimized lookup avoiding temporary array allocation and applying short-circuit logic
+        return practice.name.toLowerCase().includes(query) ||
+          (practice.ods_code && practice.ods_code.toLowerCase().includes(query)) ||
+          (practice.contact_email && practice.contact_email.toLowerCase().includes(query)) ||
+          (practice.contact_phone && practice.contact_phone.toLowerCase().includes(query));
       });
     },
     [deferredPracticeSearch, practices, practiceStatusFilter],
