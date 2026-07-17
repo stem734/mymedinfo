@@ -20,6 +20,7 @@ const DisclaimerDialog: React.FC<DisclaimerDialogProps> = ({
   onCancel,
 }) => {
   const [accepted, setAccepted] = useState(false);
+  const checkboxId = React.useId();
 
   return (
     <Modal
@@ -52,8 +53,9 @@ const DisclaimerDialog: React.FC<DisclaimerDialogProps> = ({
     >
       <div className="disclaimer-dialog__content">
         <p className="disclaimer-dialog__message">{message}</p>
-        <label className="disclaimer-dialog__checkbox">
+        <label htmlFor={checkboxId} className="disclaimer-dialog__checkbox">
           <input
+            id={checkboxId}
             type="checkbox"
             checked={accepted}
             onChange={(event) => setAccepted(event.target.checked)}
