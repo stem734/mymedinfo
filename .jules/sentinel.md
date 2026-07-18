@@ -32,3 +32,8 @@
 **Vulnerability:** Public endpoints like `send-password-reset` lacked protection against brute-force and DoS attacks, allowing attackers to spam emails or exhaust database resources.
 **Learning:** Security-sensitive public endpoints must always be rate-limited. Implementing this at the database level with a dedicated events table allows for consistent tracking across multiple Edge Function instances.
 **Prevention:** Use a shared utility and a `rate_limit_events` table to track attempts by both email (if provided) and IP address. Ensure the response remains enumeration-safe when a limit is hit.
+
+## 2025-06-18 - Input Protocol Validation on Template Restoration
+**Vulnerability:** The `restore-card-template` Edge Function previously restored template revision payloads without protocol validation on URL properties (such as `nhs_link`, `trend_links`, `videoUrl`, `nhsLinks`, and `website`). If a historical revision contained unvalidated URLs or was maliciously modified, restoring it could re-inject `javascript:` or `data:` URIs, bypassing the newer frontend and backend XSS protections.
+**Learning:** Security validations on user input must be consistently applied to all data restoration endpoints. Relying solely on validation during the "create" or "update" phase is insufficient; defense-in-depth requires that data from historical state tables (like revisions) is validated prior to reactivation or insertion.
+**Prevention:** Always validate nested or optional URL-like fields against safe protocols (`http:` and `https:`) in both save and restore actions. Check for the presence of optional fields prior to running protocol checks to avoid false positives or runtime crashes when properties are absent.
