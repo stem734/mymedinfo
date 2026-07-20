@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
+import { isValidHttpUrl } from '../_shared/url-validation.ts';
 
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc', 'medication'] as const;
 type BuilderType = typeof VALID_BUILDER_TYPES[number];
@@ -70,6 +71,48 @@ serve(async (req) => {
 
     if (existingError) {
       return errorResponse(`Failed to load current template: ${existingError.message}`, 500);
+    }
+
+    // Validate URLs in payload to prevent bypasses/Stored XSS on restore
+    const payloadForValidation = (revision.payload || {}) as Record<string, unknown>;
+    if (builderType === 'medication') {
+      if (payloadForValidation.nhs_link && !isValidHttpUrl(payloadForValidation.nhs_link)) {
+        return errorResponse('NHS link must be a valid HTTP or HTTPS URL', 400);
+      }
+      if (Array.isArray(payloadForValidation.trend_links)) {
+        for (const link of payloadForValidation.trend_links) {
+          const l = link as Record<string, unknown>;
+          if (l.url && !isValidHttpUrl(l.url)) {
+            return errorResponse('All trend links must be valid HTTP or HTTPS URLs', 400);
+          }
+        }
+      }
+    } else if (builderType === 'healthcheck') {
+      if (payloadForValidation.variants && typeof payloadForValidation.variants === 'object') {
+        for (const variant of Object.values(payloadForValidation.variants as Record<string, unknown>)) {
+          const v = variant as Record<string, unknown>;
+          if (Array.isArray(v?.links)) {
+            for (const link of v.links) {
+              const l = link as Record<string, unknown>;
+              if (l.website && !isValidHttpUrl(l.website)) {
+                return errorResponse('All website links must be valid HTTP or HTTPS URLs', 400);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      if (payloadForValidation.videoUrl && !isValidHttpUrl(payloadForValidation.videoUrl)) {
+        return errorResponse('Video URL must be a valid HTTP or HTTPS URL', 400);
+      }
+      if (Array.isArray(payloadForValidation.nhsLinks)) {
+        for (const link of payloadForValidation.nhsLinks) {
+          const l = link as Record<string, unknown>;
+          if (l.url && !isValidHttpUrl(l.url)) {
+            return errorResponse('All NHS links must be valid HTTP or HTTPS URLs', 400);
+          }
+        }
+      }
     }
 
     const now = new Date().toISOString();
