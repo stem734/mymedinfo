@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
+import { isValidHttpUrl } from '../_shared/url-validation.ts';
 
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc', 'medication'] as const;
 type BuilderType = typeof VALID_BUILDER_TYPES[number];
@@ -44,6 +45,53 @@ serve(async (req) => {
     }
     if (!revision) {
       return errorResponse('Revision not found', 404);
+    }
+
+    const payload = (revision.payload || {}) as Record<string, unknown>;
+
+    // Validate URLs to prevent Stored XSS via javascript: or data: URIs
+    if (builderType === 'medication') {
+      if (payload.nhs_link !== undefined && !isValidHttpUrl(payload.nhs_link)) {
+        return errorResponse('NHS link must be a valid HTTP or HTTPS URL', 400);
+      }
+      if (payload.nhsLink !== undefined && !isValidHttpUrl(payload.nhsLink)) {
+        return errorResponse('NHS link must be a valid HTTP or HTTPS URL', 400);
+      }
+      const trendLinks = (payload.trend_links || payload.trendLinks) as unknown;
+      if (Array.isArray(trendLinks)) {
+        for (const link of trendLinks) {
+          const url = (link as Record<string, unknown>)?.url;
+          if (url !== undefined && !isValidHttpUrl(url)) {
+            return errorResponse('All trend links must be valid HTTP or HTTPS URLs', 400);
+          }
+        }
+      }
+    } else if (builderType === 'healthcheck') {
+      if (payload.variants && typeof payload.variants === 'object') {
+        for (const variant of Object.values(payload.variants as Record<string, unknown>)) {
+          const v = variant as Record<string, unknown>;
+          if (Array.isArray(v?.links)) {
+            for (const link of v.links) {
+              const l = link as Record<string, unknown>;
+              if (l.website !== undefined && !isValidHttpUrl(l.website)) {
+                return errorResponse('All website links must be valid HTTP or HTTPS URLs', 400);
+              }
+            }
+          }
+        }
+      }
+    } else {
+      if (payload.videoUrl !== undefined && !isValidHttpUrl(payload.videoUrl)) {
+        return errorResponse('Video URL must be a valid HTTP or HTTPS URL', 400);
+      }
+      if (Array.isArray(payload.nhsLinks)) {
+        for (const link of payload.nhsLinks) {
+          const l = link as Record<string, unknown>;
+          if (l.url !== undefined && !isValidHttpUrl(l.url)) {
+            return errorResponse('All NHS links must be valid HTTP or HTTPS URLs', 400);
+          }
+        }
+      }
     }
 
     const { data: latestRevisions, error: latestRevisionsError } = await supabase
