@@ -32,3 +32,8 @@
 **Vulnerability:** Public endpoints like `send-password-reset` lacked protection against brute-force and DoS attacks, allowing attackers to spam emails or exhaust database resources.
 **Learning:** Security-sensitive public endpoints must always be rate-limited. Implementing this at the database level with a dedicated events table allows for consistent tracking across multiple Edge Function instances.
 **Prevention:** Use a shared utility and a `rate_limit_events` table to track attempts by both email (if provided) and IP address. Ensure the response remains enumeration-safe when a limit is hit.
+
+## 2025-06-18 - Centralizing Client IP Extraction
+**Vulnerability:** Diverse client-facing Edge Functions extracted the client IP address using inconsistent, inline logic. This created security discrepancies: some endpoints relied on spoofable `x-forwarded-for` headers without prioritising provider-supplied headers (e.g. `cf-connecting-ip` from Cloudflare), while others had different fallback behaviors, leading to potential rate-limiting bypasses and audit spoofing.
+**Learning:** Hardening public endpoints and audit logs requires a robust and consistent IP resolution policy. Proxy-provided headers (such as Cloudflare's `cf-connecting-ip`) must always take precedence over user-supplied or forwarded headers to prevent IP spoofing attacks.
+**Prevention:** Use the centralized `getClientIp` utility located in `supabase/functions/_shared/ip-utils.ts` in all Deno Edge Functions that track request attempts or record security logs, rather than implementing inline extraction.
