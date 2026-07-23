@@ -32,3 +32,8 @@
 **Vulnerability:** Public endpoints like `send-password-reset` lacked protection against brute-force and DoS attacks, allowing attackers to spam emails or exhaust database resources.
 **Learning:** Security-sensitive public endpoints must always be rate-limited. Implementing this at the database level with a dedicated events table allows for consistent tracking across multiple Edge Function instances.
 **Prevention:** Use a shared utility and a `rate_limit_events` table to track attempts by both email (if provided) and IP address. Ensure the response remains enumeration-safe when a limit is hit.
+
+## 2025-06-18 - Validation of Restored Historic Revision Payloads
+**Vulnerability:** The `restore-card-template` Edge Function allowed administrators to restore template revision payloads without validating contained URL properties. If an older revision contained potentially hazardous/unvalidated URLs, restoring it would re-introduce Stored XSS vectors (such as `javascript:` or `data:` URIs) back into the active database records.
+**Learning:** Security validation must not only be applied when initially saving/creating user input but must also be re-enforced on restoration of historic or revision payloads. Restoring older revisions is essentially a write operation that can bypass current validation logic if not strictly guarded.
+**Prevention:** Secure all data-restoration and template rollback flows by running full server-side validation using `isValidHttpUrl` on all nested/optional URL properties of the target payload prior to database upserts.
