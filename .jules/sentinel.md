@@ -32,3 +32,8 @@
 **Vulnerability:** Public endpoints like `send-password-reset` lacked protection against brute-force and DoS attacks, allowing attackers to spam emails or exhaust database resources.
 **Learning:** Security-sensitive public endpoints must always be rate-limited. Implementing this at the database level with a dedicated events table allows for consistent tracking across multiple Edge Function instances.
 **Prevention:** Use a shared utility and a `rate_limit_events` table to track attempts by both email (if provided) and IP address. Ensure the response remains enumeration-safe when a limit is hit.
+
+## 2025-06-18 - Safe Optional URL Validation in Restored Revision Payloads
+**Vulnerability:** Restoring card templates via `restore-card-template` lacked validation of optional URL properties within historical revision payloads, permitting stored XSS bypasses. However, standard strict validation checks can cause functional regressions by rejecting missing, null, or undefined optional fields.
+**Learning:** During template restoration, revision payloads may contain empty, null, or undefined optional URL properties. Validation must only target defined non-empty strings.
+**Prevention:** Check if fields are non-empty strings (e.g., `typeof value === 'string' && value.trim()`) before passing them to protocol-validating helpers like `isValidHttpUrl`. This permits missing or blank fields while securely validating and blocking malicious XSS payloads.

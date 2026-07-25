@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
+import { isValidHttpUrl } from '../_shared/url-validation.ts';
 
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc', 'medication'] as const;
 type BuilderType = typeof VALID_BUILDER_TYPES[number];
@@ -44,6 +45,46 @@ serve(async (req) => {
     }
     if (!revision) {
       return errorResponse('Revision not found', 404);
+    }
+
+    const payload = revision.payload as Record<string, unknown> || {};
+
+    // Validate optional URL properties within the restored payload to prevent Stored XSS bypasses
+    if (payload && typeof payload === 'object') {
+      const nhsLinkVal = payload.nhs_link || payload.nhsLink;
+      if (typeof nhsLinkVal === 'string' && nhsLinkVal.trim() && !isValidHttpUrl(nhsLinkVal)) {
+        return errorResponse('Invalid NHS link URL in restored payload', 400);
+      }
+      if (typeof payload.videoUrl === 'string' && payload.videoUrl.trim() && !isValidHttpUrl(payload.videoUrl)) {
+        return errorResponse('Invalid video URL in restored payload', 400);
+      }
+      if ('trend_links' in payload && Array.isArray(payload.trend_links)) {
+        for (const link of payload.trend_links) {
+          if (link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() && !isValidHttpUrl(link.url)) {
+            return errorResponse('Invalid trend link URL in restored payload', 400);
+          }
+        }
+      }
+      if ('nhsLinks' in payload && Array.isArray(payload.nhsLinks)) {
+        for (const link of payload.nhsLinks) {
+          if (link && typeof link === 'object' && typeof link.url === 'string' && link.url.trim() && !isValidHttpUrl(link.url)) {
+            return errorResponse('Invalid NHS link URL in restored payload', 400);
+          }
+        }
+      }
+      if ('variants' in payload && payload.variants && typeof payload.variants === 'object') {
+        for (const variant of Object.values(payload.variants as Record<string, unknown>)) {
+          const v = variant as Record<string, unknown>;
+          if (v && Array.isArray(v.links)) {
+            for (const link of v.links) {
+              const l = link as Record<string, unknown>;
+              if (l && typeof l.website === 'string' && l.website.trim() && !isValidHttpUrl(l.website)) {
+                return errorResponse('Invalid website URL in restored payload', 400);
+              }
+            }
+          }
+        }
+      }
     }
 
     const { data: latestRevisions, error: latestRevisionsError } = await supabase
