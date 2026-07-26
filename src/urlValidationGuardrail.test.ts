@@ -31,6 +31,7 @@ describe('Edge Function URL validation', () => {
       'supabase/functions/save-medication/index.ts',
       'supabase/functions/save-practice-medication-card/index.ts',
       'supabase/functions/save-card-template/index.ts',
+      'supabase/functions/restore-card-template/index.ts',
     ];
 
     for (const path of functionPaths) {
