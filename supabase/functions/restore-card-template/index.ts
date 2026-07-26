@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { assertAdmin } from '../_shared/assert-admin.ts';
 import { createServiceClient, corsHeaders, errorResponse, jsonResponse } from '../_shared/supabase-client.ts';
+import { isValidHttpUrl } from '../_shared/url-validation.ts';
 
 const VALID_BUILDER_TYPES = ['healthcheck', 'screening', 'immunisation', 'ltc', 'medication'] as const;
 type BuilderType = typeof VALID_BUILDER_TYPES[number];
@@ -44,6 +45,63 @@ serve(async (req) => {
     }
     if (!revision) {
       return errorResponse('Revision not found', 404);
+    }
+
+    const payload = (revision.payload as Record<string, unknown>) || {};
+
+    // Validate optional URL properties within restored database payloads to prevent Stored XSS
+    if (builderType === 'medication') {
+      const nhsLink = payload.nhs_link || payload.nhsLink;
+      if (typeof nhsLink === 'string' && nhsLink.trim()) {
+        if (!isValidHttpUrl(nhsLink)) {
+          return errorResponse('All NHS links must be valid HTTP or HTTPS URLs', 400);
+        }
+      }
+      const trendLinks = payload.trend_links || payload.trendLinks;
+      if (Array.isArray(trendLinks)) {
+        for (const link of trendLinks) {
+          const url = (link as Record<string, unknown>)?.url;
+          if (typeof url === 'string' && url.trim()) {
+            if (!isValidHttpUrl(url)) {
+              return errorResponse('All trend links must be valid HTTP or HTTPS URLs', 400);
+            }
+          }
+        }
+      }
+    } else if (builderType === 'healthcheck') {
+      if (payload.variants && typeof payload.variants === 'object') {
+        for (const variant of Object.values(payload.variants as Record<string, unknown>)) {
+          const v = variant as Record<string, unknown>;
+          if (Array.isArray(v?.links)) {
+            for (const link of v.links) {
+              const website = (link as Record<string, unknown>)?.website;
+              if (typeof website === 'string' && website.trim()) {
+                if (!isValidHttpUrl(website)) {
+                  return errorResponse('All website links must be valid HTTP or HTTPS URLs', 400);
+                }
+              }
+            }
+          }
+        }
+      }
+    } else {
+      const videoUrl = payload.videoUrl || payload.video_url;
+      if (typeof videoUrl === 'string' && videoUrl.trim()) {
+        if (!isValidHttpUrl(videoUrl)) {
+          return errorResponse('Video URL must be a valid HTTP or HTTPS URL', 400);
+        }
+      }
+      const nhsLinks = payload.nhsLinks || payload.nhs_links;
+      if (Array.isArray(nhsLinks)) {
+        for (const link of nhsLinks) {
+          const url = (link as Record<string, unknown>)?.url;
+          if (typeof url === 'string' && url.trim()) {
+            if (!isValidHttpUrl(url)) {
+              return errorResponse('All NHS links must be valid HTTP or HTTPS URLs', 400);
+            }
+          }
+        }
+      }
     }
 
     const { data: latestRevisions, error: latestRevisionsError } = await supabase
