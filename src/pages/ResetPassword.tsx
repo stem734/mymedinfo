@@ -190,23 +190,37 @@ const ResetPassword: React.FC = () => {
           </p>
 
           {resendSent ? (
-            <div style={{ padding: '0.75rem', background: '#e8f5e9', color: '#007f3b', borderRadius: '8px', fontSize: '0.9rem' }}>
+            <div
+              role="status"
+              style={{ padding: '0.75rem', background: '#e8f5e9', color: '#007f3b', borderRadius: '8px', fontSize: '0.9rem' }}
+            >
               A new reset link has been sent to {resendEmail}. Please check your inbox.
             </div>
           ) : (
             <form onSubmit={handleResend}>
               {error && (
-                <div style={{ padding: '0.75rem', background: '#fde8e8', color: '#d5281b', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                <div
+                  id="resend-error"
+                  role="alert"
+                  style={{ padding: '0.75rem', background: '#fde8e8', color: '#d5281b', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}
+                >
                   {error}
                 </div>
               )}
               <div style={{ marginBottom: '1rem', textAlign: 'left' }}>
-                <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.9rem' }}>Email</label>
+                <label
+                  htmlFor="resend-email"
+                  style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.9rem' }}
+                >
+                  Email
+                </label>
                 <input
+                  id="resend-email"
                   type="email"
                   value={resendEmail}
                   onChange={e => setResendEmail(e.target.value)}
                   required
+                  aria-describedby={error ? 'resend-error' : undefined}
                   style={{
                     width: '100%', padding: '0.75rem', border: '2px solid #d8dde0',
                     borderRadius: '8px', fontSize: '1rem', boxSizing: 'border-box'
@@ -256,7 +270,7 @@ const ResetPassword: React.FC = () => {
   if (!sessionReady) {
     return (
       <div style={{ maxWidth: '400px', margin: '2rem auto' }}>
-        <div className="card" style={{ textAlign: 'center' }}>
+        <div className="card" style={{ textAlign: 'center' }} role="status" aria-live="polite">
           <ShieldCheck size={48} color="#005eb8" style={{ marginBottom: '1rem' }} />
           <h1 style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>Set Your Password</h1>
           <p style={{ color: '#4c6272' }}>
@@ -276,20 +290,31 @@ const ResetPassword: React.FC = () => {
         <p style={{ color: '#4c6272', marginBottom: '2rem' }}>MyMedInfo</p>
 
         {error && (
-          <div style={{ padding: '0.75rem', background: '#fde8e8', color: '#d5281b', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}>
+          <div
+            id="reset-error"
+            role="alert"
+            style={{ padding: '0.75rem', background: '#fde8e8', color: '#d5281b', borderRadius: '8px', marginBottom: '1rem', fontSize: '0.9rem' }}
+          >
             {error}
           </div>
         )}
 
         <form onSubmit={handleReset}>
           <div style={{ marginBottom: '1rem', textAlign: 'left' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.9rem' }}>New Password</label>
+            <label
+              htmlFor="new-password"
+              style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.9rem' }}
+            >
+              New Password
+            </label>
             <input
+              id="new-password"
               type="password"
               value={password}
               onChange={e => setPassword(e.target.value)}
               required
               minLength={8}
+              aria-describedby={error ? 'reset-error' : undefined}
               style={{
                 width: '100%', padding: '0.75rem', border: '2px solid #d8dde0',
                 borderRadius: '8px', fontSize: '1rem', boxSizing: 'border-box'
@@ -297,13 +322,20 @@ const ResetPassword: React.FC = () => {
             />
           </div>
           <div style={{ marginBottom: '1.5rem', textAlign: 'left' }}>
-            <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.9rem' }}>Confirm Password</label>
+            <label
+              htmlFor="confirm-password"
+              style={{ display: 'block', fontWeight: 600, marginBottom: '0.25rem', fontSize: '0.9rem' }}
+            >
+              Confirm Password
+            </label>
             <input
+              id="confirm-password"
               type="password"
               value={confirmPassword}
               onChange={e => setConfirmPassword(e.target.value)}
               required
               minLength={8}
+              aria-describedby={error ? 'reset-error' : undefined}
               style={{
                 width: '100%', padding: '0.75rem', border: '2px solid #d8dde0',
                 borderRadius: '8px', fontSize: '1rem', boxSizing: 'border-box'
@@ -314,6 +346,7 @@ const ResetPassword: React.FC = () => {
             type="submit"
             disabled={loading}
             className="action-button"
+            aria-busy={loading}
             style={{ width: '100%', justifyContent: 'center', opacity: loading ? 0.7 : 1 }}
           >
             {loading ? 'Updating...' : 'Set Password'}
